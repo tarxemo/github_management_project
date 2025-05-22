@@ -7,10 +7,10 @@ from .models import *
 from .inputs import *
 from .outputs import *
 from django.contrib.auth import authenticate
-from .models import User
 from .inputs import RegisterInput, LoginInput
 from .outputs import UserType
-
+from .inputs import ChickenHouseInput
+from .outputs import ChickenHouseType
 
 
 
@@ -19,6 +19,84 @@ class ProductViewSet(viewsets.ModelViewSet):
     serializer_class = ProductSerializer
 
 
+
+# Create
+
+class CreateChickenHouse(graphene.Mutation):
+    class Arguments:
+        input = ChickenHouseInput(required=True)
+
+    chicken_house = graphene.Field(ChickenHouseType)
+
+    def mutate(self, info, input):
+        # user = info.context.user
+        
+        # Check if user is authenticated and is admin
+        # if not user.is_authenticated or user.is_admin:
+        #     raise Exception("Only admins can create chicken houses.")
+
+        # Proceed to create the chicken house
+        chicken_house = ChickenHouse.objects.create(
+            name=input.name,
+            location=input.location,
+            capacity=input.capacity
+        )
+
+        # Assign workers (if worker_ids are passed)
+        for worker_id in input.worker_ids:
+            worker = CustomUser.objects.get(id=worker_id, role='worker')
+            Assignment.objects.create(worker=worker, chicken_house=chicken_house)
+
+        return CreateChickenHouse(chicken_house=chicken_house)
+
+# Update
+class UpdateChickenHouse(graphene.Mutation):
+    class Arguments:
+        id = graphene.ID(required=True)
+        input = ChickenHouseInput(required=True)
+
+    chicken_house = graphene.Field(ChickenHouseType)
+
+    def mutate(self, info, id, input):
+        user = info.context.user
+        if not user.is_authenticated or user.role != 'admin':
+            raise Exception("Only admins can update chicken houses.")
+
+        house = ChickenHouse.objects.get(pk=id)
+        house.name = input.name
+        house.location = input.location
+        house.capacity = input.capacity
+        house.save()
+
+
+        # Remove existing assignments
+        Assignment.objects.filter(chicken_house=house).delete()
+
+        for worker_id in input.worker_ids:
+            worker = CustomUser.objects.get(id=worker_id)
+            if worker.role != 'worker':
+                raise Exception(f"User {worker_id} is not a worker.")
+            if Assignment.objects.filter(worker=worker).exists():
+                raise Exception(f"Worker {worker.name} is already assigned elsewhere.")
+            Assignment.objects.create(worker=worker, chicken_house=house)
+
+        return UpdateChickenHouse(chicken_house=house)
+
+# Delete
+class DeleteChickenHouse(graphene.Mutation):
+    class Arguments:
+        id = graphene.ID(required=True)
+
+    ok = graphene.Boolean()
+
+    def mutate(self, info, id):
+        user = info.context.user
+        if not user.is_authenticated or user.role != 'admin':
+            raise Exception("Only admins can delete chicken houses.")
+
+        house = ChickenHouse.objects.get(pk=id)
+        house.delete()
+        return DeleteChickenHouse(ok=True)
 
 
 # Eggs Collection
@@ -29,7 +107,7 @@ class CreateEggsCollection(graphene.Mutation):
     collection = graphene.Field(EggsCollectionType)
 
     def mutate(self, info, input):
-        worker = User.objects.get(pk=input.worker_id)
+        worker = CustomUser.objects.get(pk=input.worker_id)
         chicken_house = ChickenHouse.objects.get(pk=input.chicken_house_id)
 
         collection = EggsCollection.objects.create(
@@ -50,7 +128,7 @@ class UpdateEggsCollection(graphene.Mutation):
 
     def mutate(self, info, id, input):
         collection = EggsCollection.objects.get(pk=id)
-        collection.worker = User.objects.get(pk=input.worker_id)
+        collection.worker = CustomUser.objects.get(pk=input.worker_id)
         collection.chicken_house = ChickenHouse.objects.get(pk=input.chicken_house_id)
         collection.date_collected = input.date_collected
         collection.quantity = input.quantity
@@ -81,7 +159,7 @@ class CreateAssignment(graphene.Mutation):
     assignment = graphene.Field(AssignmentType)
 
     def mutate(self, info, input):
-        worker = User.objects.get(pk=input.worker_id)
+        worker = CustomUser.objects.get(pk=input.worker_id)
         chicken_house = ChickenHouse.objects.get(pk=input.chicken_house_id)
         assignment = Assignment.objects.create(worker=worker, chicken_house=chicken_house)
         return CreateAssignment(assignment=assignment)
@@ -96,7 +174,7 @@ class UpdateAssignment(graphene.Mutation):
 
     def mutate(self, info, id, input):
         assignment = Assignment.objects.get(pk=id)
-        assignment.worker = User.objects.get(pk=input.worker_id)
+        assignment.worker = CustomUser.objects.get(pk=input.worker_id)
         assignment.chicken_house = ChickenHouse.objects.get(pk=input.chicken_house_id)
         assignment.save()
         return UpdateAssignment(assignment=assignment)
@@ -125,7 +203,7 @@ class CreateHealthRecord(graphene.Mutation):
     record = graphene.Field(HealthRecordType)
 
     def mutate(self, info, input):
-        doctor = User.objects.get(pk=input.doctor_id)
+        doctor = CustomUser.objects.get(pk=input.doctor_id)
         chicken_house = ChickenHouse.objects.get(pk=input.chicken_house_id)
         record = HealthRecord.objects.create(
             doctor=doctor,
@@ -147,7 +225,7 @@ class UpdateHealthRecord(graphene.Mutation):
 
     def mutate(self, info, id, input):
         record = HealthRecord.objects.get(pk=id)
-        record.doctor = User.objects.get(pk=input.doctor_id)
+        record.doctor = CustomUser.objects.get(pk=input.doctor_id)
         record.chicken_house = ChickenHouse.objects.get(pk=input.chicken_house_id)
         record.date = input.date
         record.health_issue = input.health_issue
@@ -180,7 +258,7 @@ class CreateOrder(graphene.Mutation):
     order = graphene.Field(OrderType)
 
     def mutate(self, info, input):
-        customer = User.objects.get(pk=input.customer_id)
+        customer = CustomUser.objects.get(pk=input.customer_id)
         product = Product.objects.get(pk=input.product_id)
         order = Order.objects.create(
             customer=customer,
@@ -199,7 +277,7 @@ class UpdateOrder(graphene.Mutation):
 
     def mutate(self, info, id, input):
         order = Order.objects.get(pk=id)
-        order.customer = User.objects.get(pk=input.customer_id)
+        order.customer = CustomUser.objects.get(pk=input.customer_id)
         order.product = Product.objects.get(pk=input.product_id)
         order.quantity = input.quantity
         order.save()
@@ -229,7 +307,7 @@ class CreateFeedback(graphene.Mutation):
     feedback = graphene.Field(FeedbackType)
 
     def mutate(self, info, input):
-        customer = User.objects.get(pk=input.customer_id)
+        customer = CustomUser.objects.get(pk=input.customer_id)
         order = Order.objects.get(pk=input.order_id)
         feedback = Feedback.objects.create(
             customer=customer,
@@ -249,7 +327,7 @@ class UpdateFeedback(graphene.Mutation):
 
     def mutate(self, info, id, input):
         feedback = Feedback.objects.get(pk=id)
-        feedback.customer = User.objects.get(pk=input.customer_id)
+        feedback.customer = CustomUser.objects.get(pk=input.customer_id)
         feedback.order = Order.objects.get(pk=input.order_id)
         feedback.rating = input.rating
         feedback.comment = input.comment
@@ -278,11 +356,11 @@ class RegisterUser(graphene.Mutation):
     user = graphene.Field(UserType)
 
     def mutate(self, info, input):
-        if User.objects.filter(phone_number=input.phone_number).exists():
+        if CustomUser.objects.filter(phone_number=input.phone_number).exists():
             raise Exception("User with this phone number already exists")
 
         # Force role to 'customer' on registration
-        user = User.objects.create_user(
+        user = CustomUser.objects.create_user(
             phone_number=input.phone_number,
             password=input.password,
             name=input.name,
@@ -296,10 +374,10 @@ class RegisterUser(graphene.Mutation):
 import graphql_jwt
 import graphene
 from django.contrib.auth import authenticate
-from .models import User
 from .outputs import UserType
 from .inputs import LoginInput
 
+from graphql_jwt.utils import jwt_payload, jwt_encode
 class LoginUser(graphene.Mutation):
     class Arguments:
         input = LoginInput(required=True)
@@ -312,8 +390,9 @@ class LoginUser(graphene.Mutation):
         if not user:
             raise Exception("Invalid credentials")
 
-        payload = graphql_jwt.utils.jwt_payload(user)
-        token = graphql_jwt.utils.jwt_encode(payload)
+        payload = jwt_payload(user)
+        payload['role'] = user.role  # 👈 Add this line
+        token = jwt_encode(payload)
 
         return LoginUser(user=user, token=token)
 
@@ -329,6 +408,10 @@ class Mutation(graphene.ObjectType):
     token_auth = graphql_jwt.ObtainJSONWebToken.Field()
     refresh_token = graphql_jwt.Refresh.Field()
     verify_token = graphql_jwt.Verify.Field()
+
+    create_chicken_house = CreateChickenHouse.Field()
+    update_chicken_house = UpdateChickenHouse.Field()
+    delete_chicken_house = DeleteChickenHouse.Field()
 
     create_eggs_collection = CreateEggsCollection.Field()
     update_eggs_collection = UpdateEggsCollection.Field()

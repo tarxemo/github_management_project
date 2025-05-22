@@ -58,7 +58,7 @@ AUTHENTICATION_BACKENDS = [
 
 
 
-AUTH_USER_MODEL = 'poutryapp.User'
+AUTH_USER_MODEL = 'poutryapp.CustomUser'
 
 
 MIDDLEWARE = [

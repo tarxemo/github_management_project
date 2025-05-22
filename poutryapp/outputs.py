@@ -1,6 +1,13 @@
 from graphene_django import DjangoObjectType
-from .models import EggsCollection, Assignment, HealthRecord, Order, Feedback
-from .models import User
+from .models import *
+from .models import CustomUser
+
+ 
+
+class ChickenHouseType(DjangoObjectType):
+    class Meta:
+        model = ChickenHouse
+
 
 
 class EggsCollectionType(DjangoObjectType):
@@ -36,5 +43,5 @@ class FeedbackType(DjangoObjectType):
 
 class UserType(DjangoObjectType):
     class Meta:
-        model = User
+        model = CustomUser
         fields = "__all__"

@@ -2,6 +2,14 @@ import graphene
 from graphene import InputObjectType
 
 
+
+class ChickenHouseInput(graphene.InputObjectType):
+    name = graphene.String(required=True)
+    location = graphene.String()
+    capacity = graphene.Int(required=True)
+    worker_ids = graphene.List(graphene.ID, required=True)  # list of worker IDs
+
+
 class EggsCollectionInput(InputObjectType):
     worker_id = graphene.ID(required=True)
     chicken_house_id = graphene.ID(required=True)

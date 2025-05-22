@@ -1,7 +1,7 @@
 import graphene
 
 from  .views import Mutation
-from .models import EggsCollection, Assignment, HealthRecord, Order, Feedback, User
+from .models import EggsCollection, Assignment, HealthRecord, Order, Feedback, CustomUser
 from .outputs import (
     EggsCollectionType,
     AssignmentType,
@@ -35,16 +35,16 @@ class Query(graphene.ObjectType):
     all_stock_managers = graphene.List(UserType)
 
     def resolve_all_workers(root, info):
-        return User.objects.filter(role='worker')
+        return CustomUser.objects.filter(role='worker')
 
     def resolve_all_doctors(root, info):
-        return User.objects.filter(role='doctor')
+        return CustomUser.objects.filter(role='doctor')
 
     def resolve_all_customers(root, info):
-        return User.objects.filter(role='customer')
+        return CustomUser.objects.filter(role='customer')
 
     def resolve_all_stock_managers(root, info):
-        return User.objects.filter(role='stock_manager')
+        return CustomUser.objects.filter(role='stock_manager')
     def resolve_all_eggs_collections(root, info):
         return EggsCollection.objects.all()
 

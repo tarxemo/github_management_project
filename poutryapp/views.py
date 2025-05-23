@@ -1,3 +1,4 @@
+from django.forms import ValidationError
 import graphql_jwt
 from rest_framework import viewsets
 from .models import Product
@@ -11,6 +12,121 @@ from .inputs import RegisterInput, LoginInput
 from .outputs import UserType
 from .inputs import ChickenHouseInput
 from .outputs import ChickenHouseType
+ 
+from graphql import GraphQLError
+from django.contrib.auth import authenticate, login
+from django.contrib.auth.models import Group
+from django.core.exceptions import ValidationError
+from .inputs import RegisterInput
+from .outputs import RegisterOutput, LoginOutput
+from .models import CustomUser
+ 
+
+class RegisterMutation(graphene.Mutation):
+    class Arguments:
+        input = RegisterInput(required=True)
+    
+    Output = RegisterOutput
+
+    @classmethod
+    def mutate(cls, root, info, input):
+        try:
+            # Convert Graphene input to dict and validate
+            input_dict = {
+                'phone_number': input.phone_number,
+                'password': input.password,
+                'email': input.email,
+                # 'date_of_birth': input.date_of_birth
+            }
+            validate_register_input(input_dict)
+            
+            # Create user with default 'customer' role
+            user = CustomUser.objects.create_user(
+                phone_number=input.phone_number,
+                email=input.email,
+                password=input.password,
+                role='customer',  # Set default role here
+                # date_of_birth=input.date_of_birth
+            )
+            
+            # Add to customer group
+            group, _ = Group.objects.get_or_create(name='customer')
+            user.groups.add(group)
+            
+            return RegisterOutput(
+                success=True,
+                user=user,
+                errors=None
+            )
+            
+        except ValidationError as e:
+            error_messages = []
+            for field, messages in e.message_dict.items():
+                error_messages.extend([f"{field}: {msg}" for msg in messages])
+            
+            return RegisterOutput(
+                success=False,
+                errors="; ".join(error_messages),
+                user=None
+            )
+        
+
+from rest_framework_simplejwt.tokens import RefreshToken
+from graphql import GraphQLError
+
+from rest_framework_simplejwt.tokens import RefreshToken
+
+class LoginMutation(graphene.Mutation):
+    class Arguments:
+        input = LoginInput(required=True)
+    
+    Output = LoginOutput
+
+    @classmethod
+    def mutate(cls, root, info, input):
+        try:
+            # Authenticate user
+            user = authenticate(
+                request=info.context,
+                phone_number=input.phone_number,
+                password=input.password
+            )
+            
+            if user is None:
+                raise GraphQLError("Invalid phone number or password")
+            
+            # Generate JWT tokens
+            refresh = RefreshToken.for_user(user)
+            
+            # Add role to the token's payload
+            refresh["role"] = user.role  # Include role in the payload
+            
+            access_token = str(refresh.access_token)
+            refresh_token = str(refresh)
+            
+            # Login the user (optional - only needed if using session auth)
+            login(info.context, user)
+            
+            return LoginOutput(
+                success=True,
+                user=user,
+                token=access_token,
+                refresh_token=refresh_token,
+                errors=None
+            )
+            
+        except Exception as e:
+            return LoginOutput(
+                success=False,
+                errors=str(e),
+                user=None,
+                token=None,
+                refresh_token=None
+            )
+
+
+
+
 
 
 
@@ -400,8 +516,10 @@ class LoginUser(graphene.Mutation):
 # Root Mutation
 class Mutation(graphene.ObjectType):
 
-    register_user = RegisterUser.Field()
-    login_user = LoginUser.Field()
+  
+
+    register = RegisterMutation.Field()
+    login = LoginMutation.Field()
 
 
     # JWT Authentication

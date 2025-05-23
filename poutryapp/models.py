@@ -2,6 +2,23 @@ from django.db import models
 from django.contrib.auth.models import AbstractUser
 from django.core.validators import MinValueValidator
 
+from django.contrib.auth.models import AbstractUser, BaseUserManager
+
+class CustomUserManager(BaseUserManager):
+    def create_user(self, phone_number, password=None, **extra_fields):
+        if not phone_number:
+            raise ValueError('Phone number must be set')
+        user = self.model(phone_number=phone_number, **extra_fields)
+        user.set_password(password)
+        user.save()
+        return user
+
+    def create_superuser(self, phone_number, password, **extra_fields):
+        extra_fields.setdefault('is_staff', True)
+        extra_fields.setdefault('is_superuser', True)
+        extra_fields.setdefault('role', 'admin')
+        return self.create_user(phone_number, password, **extra_fields)
+
 class CustomUser(AbstractUser):
     ROLE_CHOICES = [
         ('admin', 'Admin'),
@@ -11,32 +28,22 @@ class CustomUser(AbstractUser):
         ('stock_manager', 'Stock Manager'),
     ]
     
-    # Standard Django username/password fields are inherited from AbstractUser
-    # Add your custom fields
-    role = models.CharField(
-        max_length=20,
-        choices=ROLE_CHOICES,
-        default='customer'
-    )
-    phone_number = models.CharField(
-        max_length=15,
-        blank=True,
-        null=True
-    )
-    profile_picture = models.ImageField(
-        upload_to='profile_pictures/', 
-        blank=True, 
-        null=True
-    )
+    # Remove username and use phone_number instead
+    username = None
+    phone_number = models.CharField(max_length=15, unique=True)
+    role = models.CharField(max_length=20, choices=ROLE_CHOICES, default='customer')
+    profile_picture = models.ImageField(upload_to='profile_pictures/', blank=True, null=True)
     date_of_birth = models.DateField(blank=True, null=True)
     is_verified = models.BooleanField(default=False)
 
-    def __str__(self):
-        return f"{self.username} ({self.role})"
+    USERNAME_FIELD = 'phone_number'
+    REQUIRED_FIELDS = []
 
-    class Meta:
-        verbose_name = "User"
-        verbose_name_plural = "Users"
+    objects = CustomUserManager()
+
+    def __str__(self):
+        return f"{self.phone_number} ({self.role})"
+
 # -------------------------------
 # Chicken Houses
 # -------------------------------

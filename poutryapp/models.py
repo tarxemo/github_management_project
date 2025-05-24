@@ -70,18 +70,18 @@ class Assignment(models.Model):
     def __str__(self):
         return f"{self.worker.name} → {self.chicken_house.name}"
 
-# [Rest of your models remain the same, just change User to CustomUser]
-# -------------------------------
-# Worker Assignments
-# -------------------------------
+# # [Rest of your models remain the same, just change User to CustomUser]
+# # -------------------------------
+# # Worker Assignments
+# # -------------------------------
 
-class Assignment(models.Model):
-    worker = models.ForeignKey(CustomUser, limit_choices_to={'role': 'worker'}, on_delete=models.CASCADE)
-    chicken_house = models.ForeignKey(ChickenHouse, on_delete=models.CASCADE)
-    assigned_on = models.DateField(auto_now_add=True)
+# class Assignment(models.Model):
+#     worker = models.ForeignKey(CustomUser, limit_choices_to={'role': 'worker'}, on_delete=models.CASCADE)
+#     chicken_house = models.ForeignKey(ChickenHouse, on_delete=models.CASCADE)
+#     assigned_on = models.DateField(auto_now_add=True)
 
-    def __str__(self):
-        return f"{self.worker.name} → {self.chicken_house.name}"
+#     def __str__(self):
+#         return f"{self.worker.name} → {self.chicken_house.name}"
 
 # -------------------------------
 # Egg Collection

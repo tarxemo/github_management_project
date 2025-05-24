@@ -41,6 +41,7 @@ class Query(graphene.ObjectType):
         return User.objects.filter(role='doctor')
 
     def resolve_all_customers(root, info):
+        print(info.context.user.email)
         return User.objects.filter(role='customer')
 
     def resolve_all_stock_managers(root, info):

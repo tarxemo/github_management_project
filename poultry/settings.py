@@ -67,7 +67,7 @@ SIMPLE_JWT = {
 }
 
 
-AUTH_USER_MODEL = 'poutryapp.User'
+AUTH_USER_MODEL = 'poutryapp.CustomUser'
 
 
 MIDDLEWARE = [

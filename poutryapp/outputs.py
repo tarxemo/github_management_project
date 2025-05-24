@@ -1,6 +1,33 @@
 from graphene_django import DjangoObjectType
-from .models import EggsCollection, Assignment, HealthRecord, Order, Feedback
-from .models import User
+from .models import *
+from .models import CustomUser
+
+
+import graphene
+from graphene_django import DjangoObjectType
+from .models import CustomUser
+
+class UserType(DjangoObjectType):
+    class Meta:
+        model = CustomUser
+        fields = ('id', 'phone_number', 'email', 'role', 'is_verified')
+
+class RegisterOutput(graphene.ObjectType):
+    success = graphene.Boolean(required=True)
+    errors = graphene.String()
+    user = graphene.Field(UserType)
+
+class LoginOutput(graphene.ObjectType):
+    success = graphene.Boolean(required=True)
+    errors = graphene.String()
+    user = graphene.Field(UserType)
+    token = graphene.String(description="JWT access token")
+    refresh_token = graphene.String(description="JWT refresh token")
+
+class ChickenHouseType(DjangoObjectType):
+    class Meta:
+        model = ChickenHouse
+
 
 
 class EggsCollectionType(DjangoObjectType):
@@ -36,5 +63,5 @@ class FeedbackType(DjangoObjectType):
 
 class UserType(DjangoObjectType):
     class Meta:
-        model = User
+        model = CustomUser
         fields = "__all__"

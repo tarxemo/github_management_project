@@ -1,8 +1,9 @@
 import graphene
 
 from  .views import Mutation
-from .models import EggsCollection, Assignment, HealthRecord, Order, Feedback, User
+from .models import ChickenHouse, EggsCollection, Assignment, HealthRecord, Order, Feedback, CustomUser
 from .outputs import (
+    ChickenHouseType,
     EggsCollectionType,
     AssignmentType,
     HealthRecordType,
@@ -13,6 +14,11 @@ from .outputs import (
 
 
 class Query(graphene.ObjectType):
+
+    all_chicken_houses = graphene.List(ChickenHouseType)
+    chicken_house = graphene.Field(ChickenHouseType, id=graphene.ID(required=True))
+
+
     all_eggs_collections = graphene.List(EggsCollectionType)
     eggs_collection = graphene.Field(EggsCollectionType, id=graphene.ID(required=True))
 
@@ -34,18 +40,23 @@ class Query(graphene.ObjectType):
     all_customers = graphene.List(UserType)
     all_stock_managers = graphene.List(UserType)
 
+    def resolve_all_chicken_houses(root, info):
+        return ChickenHouse.objects.all()
+
+    def resolve_chicken_house(root, info, id):
+        return ChickenHouse.objects.get(pk=id)
+
     def resolve_all_workers(root, info):
-        return User.objects.filter(role='worker')
+        return CustomUser.objects.filter(role='worker')
 
     def resolve_all_doctors(root, info):
-        return User.objects.filter(role='doctor')
+        return CustomUser.objects.filter(role='doctor')
 
     def resolve_all_customers(root, info):
-        print(info.context.user.email)
-        return User.objects.filter(role='customer')
+        return CustomUser.objects.filter(role='customer')
 
     def resolve_all_stock_managers(root, info):
-        return User.objects.filter(role='stock_manager')
+        return CustomUser.objects.filter(role='stock_manager')
     def resolve_all_eggs_collections(root, info):
         return EggsCollection.objects.all()
 

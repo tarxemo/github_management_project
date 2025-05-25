@@ -1,7 +1,9 @@
+from ast import Store
 import graphene
+from graphql import GraphQLError
 
 from  .views import Mutation
-from .models import ChickenHouse, EggsCollection, Assignment, HealthRecord, Order, Feedback, CustomUser
+from .models import ChickenHouse, EggsCollection, Assignment, HealthRecord, Order, Feedback, CustomUser,Store
 from .outputs import (
     ChickenHouseType,
     EggsCollectionType,
@@ -9,6 +11,7 @@ from .outputs import (
     HealthRecordType,
     OrderType,
     FeedbackType,
+    StoreType,
     UserType
 )
 
@@ -39,6 +42,31 @@ class Query(graphene.ObjectType):
     all_doctors = graphene.List(UserType)
     all_customers = graphene.List(UserType)
     all_stock_managers = graphene.List(UserType)
+
+    me = graphene.Field(UserType)
+
+    all_stores = graphene.List(StoreType)
+    store_by_id = graphene.Field(StoreType, id=graphene.ID(required=True))
+
+    def resolve_all_stores(root, info):
+        return Store.objects.all()
+
+    def resolve_store_by_id(root, info, id):
+        try:
+            return Store.objects.get(pk=id)
+        except Store.DoesNotExist:
+            return None
+
+ 
+
+    def resolve_me(self, info):
+        user = info.context.user
+        if user.is_anonymous:
+            raise GraphQLError("Not logged in!")
+        return user
+
+
+
 
     def resolve_all_chicken_houses(root, info):
         return ChickenHouse.objects.all()

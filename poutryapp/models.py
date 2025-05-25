@@ -3,6 +3,7 @@ from django.contrib.auth.models import AbstractUser
 from django.core.validators import MinValueValidator
 
 from django.contrib.auth.models import AbstractUser, BaseUserManager
+from django.forms import ValidationError
 
 class CustomUserManager(BaseUserManager):
     def create_user(self, phone_number, password=None, **extra_fields):
@@ -70,19 +71,7 @@ class Assignment(models.Model):
     def __str__(self):
         return f"{self.worker.name} → {self.chicken_house.name}"
 
-# # [Rest of your models remain the same, just change User to CustomUser]
-# # -------------------------------
-# # Worker Assignments
-# # -------------------------------
-
-# class Assignment(models.Model):
-#     worker = models.ForeignKey(CustomUser, limit_choices_to={'role': 'worker'}, on_delete=models.CASCADE)
-#     chicken_house = models.ForeignKey(ChickenHouse, on_delete=models.CASCADE)
-#     assigned_on = models.DateField(auto_now_add=True)
-
-#     def __str__(self):
-#         return f"{self.worker.name} → {self.chicken_house.name}"
-
+ 
 # -------------------------------
 # Egg Collection
 # -------------------------------
@@ -123,13 +112,101 @@ class Product(models.Model):
     def __str__(self):
         return self.name
 
-class Inventory(models.Model):
-    product = models.ForeignKey(Product, on_delete=models.CASCADE)
-    quantity = models.PositiveIntegerField()
-    updated_at = models.DateTimeField(auto_now=True)
+class Store(models.Model):
+    UNIT_CHOICES = [
+        ('egg', 'Egg'),
+        ('tray', 'Tray'),  # 36 eggs = 1 tray
+        ('crate', 'Crate'),
+        ('kg', 'Kilogram'),
+        ('liter', 'Liter'),
+    ]
+    
+    # Relationships
+    eggs_collection = models.ForeignKey(
+        EggsCollection,
+        on_delete=models.CASCADE,
+        related_name='store_entries',
+        null=True,
+        blank=True
+    )
+    product = models.ForeignKey(
+        Product,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True
+    )
+    
+    # Egg-Specific Fields
+    entry_type = models.CharField(
+        max_length=20,
+        choices=[('egg', 'Egg'), ('product', 'Product')],
+        default='product'
+    )
+    
+    # Good Eggs Tracking
+    good_eggs = models.PositiveIntegerField(default=0)
+    good_trays = models.PositiveIntegerField(default=0, editable=False)
+    good_loose = models.PositiveIntegerField(default=0, editable=False)
+    
+    # Rejects Tracking
+    broken_eggs = models.PositiveIntegerField(default=0)
+    cracked_eggs = models.PositiveIntegerField(default=0)
+    dirty_eggs = models.PositiveIntegerField(default=0)
+    
+    # General Fields
+    unit = models.CharField(max_length=10, choices=UNIT_CHOICES)
+    quantity = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    date_recorded = models.DateField(auto_now_add=True)
+    quality_checker = models.ForeignKey(
+        CustomUser,
+        on_delete=models.SET_NULL,
+        null=True,
+        limit_choices_to={'role__in': ['worker', 'admin']}
+    )
+    notes = models.TextField(blank=True)
+
+    class Meta:
+        ordering = ['-date_recorded']
+        verbose_name = "Store Inventory"
+        verbose_name_plural = "Store Inventory"
 
     def __str__(self):
-        return f"{self.product.name} ({self.quantity})"
+        if self.entry_type == 'egg':
+            return (f"Eggs: {self.good_trays}t {self.good_loose}l | "
+                    f"Rejects: {self.total_rejects} (B:{self.broken_eggs} C:{self.cracked_eggs} D:{self.dirty_eggs})")
+        return f"{self.product.name}: {self.quantity}{self.unit}"
+
+    def save(self, *args, **kwargs):
+        if self.entry_type == 'egg' and self.eggs_collection:
+            # Auto-calculate good trays/loose eggs
+            self.good_trays = self.good_eggs // 36
+            self.good_loose = self.good_eggs % 36
+            
+            # Verify rejects don't exceed collected eggs
+            total_eggs_recorded = (self.good_eggs + self.broken_eggs + 
+                                 self.cracked_eggs + self.dirty_eggs)
+            if total_eggs_recorded > self.eggs_collection.quantity:
+                raise ValidationError("Total eggs recorded exceed collected quantity")
+                
+        super().save(*args, **kwargs)
+
+    @property
+    def total_rejects(self):
+        return self.broken_eggs + self.cracked_eggs + self.dirty_eggs
+
+    @property
+    def quality_metrics(self):
+        if self.entry_type != 'egg' or not self.eggs_collection:
+            return None
+            
+        total = self.eggs_collection.quantity
+        return {
+            'good_percentage': (self.good_eggs / total) * 100,
+            'broken_percentage': (self.broken_eggs / total) * 100,
+            'cracked_percentage': (self.cracked_eggs / total) * 100,
+            'dirty_percentage': (self.dirty_eggs / total) * 100
+        }
+
 
 # -------------------------------
 # Orders

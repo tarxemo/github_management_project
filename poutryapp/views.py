@@ -22,6 +22,12 @@ from .outputs import RegisterOutput, LoginOutput
 from .models import CustomUser
  
 
+
+
+
+
+
+
 class RegisterMutation(graphene.Mutation):
     class Arguments:
         input = RegisterInput(required=True)
@@ -135,7 +141,105 @@ class ProductViewSet(viewsets.ModelViewSet):
     serializer_class = ProductSerializer
 
 
+ 
+class CreateStore(graphene.Mutation):
+    store = graphene.Field(StoreType)
 
+    class Arguments:
+        input = StoreInput(required=True)
+
+    def mutate(self, info, input):
+        # Resolve foreign keys
+        eggs_collection = EggsCollection.objects.get(pk=input.eggs_collection_id) if input.eggs_collection_id else None
+        product = Product.objects.get(pk=input.product_id) if input.product_id else None
+        quality_checker = CustomUser.objects.get(pk=input.quality_checker_id) if input.quality_checker_id else None
+
+        # Create store instance
+        store = Store(
+            entry_type=input.entry_type,
+            good_eggs=input.good_eggs,
+            broken_eggs=input.broken_eggs,
+            cracked_eggs=input.cracked_eggs,
+            dirty_eggs=input.dirty_eggs,
+            unit=input.unit,
+            quantity=input.quantity,
+            notes=input.notes or "",
+            eggs_collection=eggs_collection,
+            product=product,
+            quality_checker=quality_checker
+        )
+
+        try:
+            store.save()
+        except ValidationError as e:
+            raise GraphQLError(str(e))
+
+        return CreateStore(store=store)
+    
+
+
+class UpdateStore(graphene.Mutation):
+    store = graphene.Field(StoreType)
+
+    class Arguments:
+        id = graphene.ID(required=True)
+        input = StoreInput(required=True)
+
+    def mutate(self, info, id, input):
+        try:
+            store = Store.objects.get(pk=id)
+        except Store.DoesNotExist:
+            raise GraphQLError("Store not found")
+
+        # Update foreign keys
+        if input.eggs_collection_id:
+            store.eggs_collection = EggsCollection.objects.get(pk=input.eggs_collection_id)
+        else:
+            store.eggs_collection = None
+
+        if input.product_id:
+            store.product = Product.objects.get(pk=input.product_id)
+        else:
+            store.product = None
+
+        if input.quality_checker_id:
+            store.quality_checker = CustomUser.objects.get(pk=input.quality_checker_id)
+        else:
+            store.quality_checker = None
+
+        # Update basic fields
+        store.entry_type = input.entry_type
+        store.good_eggs = input.good_eggs
+        store.broken_eggs = input.broken_eggs
+        store.cracked_eggs = input.cracked_eggs
+        store.dirty_eggs = input.dirty_eggs
+        store.unit = input.unit
+        store.quantity = input.quantity
+        store.notes = input.notes or ""
+
+        try:
+            store.save()
+        except ValidationError as e:
+            raise GraphQLError(str(e))
+
+        return UpdateStore(store=store)
+
+
+class DeleteStore(graphene.Mutation):
+    success = graphene.Boolean()
+
+    class Arguments:
+        id = graphene.ID(required=True)
+
+    def mutate(self, info, id):
+        try:
+            store = Store.objects.get(pk=id)
+            store.delete()
+            return DeleteStore(success=True)
+        except Store.DoesNotExist:
+            raise GraphQLError("Store not found")
+
+    
 # Create
 
 class CreateChickenHouse(graphene.Mutation):
@@ -487,12 +591,6 @@ class RegisterUser(graphene.Mutation):
     
 
  
-import graphql_jwt
-import graphene
-from django.contrib.auth import authenticate
-from .outputs import UserType
-from .inputs import LoginInput
-
 from graphql_jwt.utils import jwt_payload, jwt_encode
 class LoginUser(graphene.Mutation):
     class Arguments:
@@ -513,6 +611,10 @@ class LoginUser(graphene.Mutation):
         return LoginUser(user=user, token=token)
 
 
+
+
+
+
 # Root Mutation
 class Mutation(graphene.ObjectType):
 
@@ -526,6 +628,11 @@ class Mutation(graphene.ObjectType):
     token_auth = graphql_jwt.ObtainJSONWebToken.Field()
     refresh_token = graphql_jwt.Refresh.Field()
     verify_token = graphql_jwt.Verify.Field()
+
+    create_store = CreateStore.Field()
+    update_store = UpdateStore.Field()
+    delete_store = DeleteStore.Field()
+
 
     create_chicken_house = CreateChickenHouse.Field()
     update_chicken_house = UpdateChickenHouse.Field()

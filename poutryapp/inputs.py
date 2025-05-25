@@ -1,3 +1,4 @@
+from ast import Store
 import graphene
 from graphene import InputObjectType
 
@@ -77,3 +78,16 @@ class FeedbackInput(InputObjectType):
     comment = graphene.String(required=True)
 
 
+
+class StoreInput(graphene.InputObjectType):
+    entry_type = graphene.String(required=True)
+    good_eggs = graphene.Int(required=False, default_value=0)
+    broken_eggs = graphene.Int(required=False, default_value=0)
+    cracked_eggs = graphene.Int(required=False, default_value=0)
+    dirty_eggs = graphene.Int(required=False, default_value=0)
+    unit = graphene.String(required=True)
+    quantity = graphene.Float(required=True)
+    eggs_collection_id = graphene.ID(required=False)
+    product_id = graphene.ID(required=False)
+    quality_checker_id = graphene.ID(required=False)
+    notes = graphene.String(required=False)

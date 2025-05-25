@@ -10,8 +10,9 @@ from .models import CustomUser
 class UserType(DjangoObjectType):
     class Meta:
         model = CustomUser
-        fields = ('id', 'phone_number', 'email', 'role', 'is_verified')
+        fields = ('id', 'phone_number', 'email', 'role', 'is_verified', 'date_joined', 'last_login')
 
+        
 class RegisterOutput(graphene.ObjectType):
     success = graphene.Boolean(required=True)
     errors = graphene.String()
@@ -64,4 +65,10 @@ class FeedbackType(DjangoObjectType):
 class UserType(DjangoObjectType):
     class Meta:
         model = CustomUser
+        fields = "__all__"
+
+
+class StoreType(DjangoObjectType):
+    class Meta:
+        model = Store
         fields = "__all__"

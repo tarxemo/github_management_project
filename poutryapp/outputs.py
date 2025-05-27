@@ -2,6 +2,7 @@ from graphene_django import DjangoObjectType
 from .models import *
 from .models import CustomUser
 
+from django.contrib.auth import get_user_model
 
 import graphene
 from graphene_django import DjangoObjectType
@@ -12,7 +13,13 @@ class UserType(DjangoObjectType):
         model = CustomUser
         fields = ('id', 'phone_number', 'email', 'role', 'is_verified', 'date_joined', 'last_login')
 
-        
+
+CustomUser = get_user_model()
+
+class UserType(DjangoObjectType):
+    class Meta:
+        model = CustomUser
+        fields = ('id', 'email', 'phone_number', 'role', 'first_name', 'last_name')
 class RegisterOutput(graphene.ObjectType):
     success = graphene.Boolean(required=True)
     errors = graphene.String()
@@ -25,9 +32,16 @@ class LoginOutput(graphene.ObjectType):
     token = graphene.String(description="JWT access token")
     refresh_token = graphene.String(description="JWT refresh token")
 
+class WorkerType(DjangoObjectType):
+    class Meta:
+        model = CustomUser
+        fields = ('id', 'first_name', 'last_name', 'email', 'phone_number')
+
+
 class ChickenHouseType(DjangoObjectType):
     class Meta:
         model = ChickenHouse
+        fields = ('id', 'name', 'location', 'capacity', 'worker')
 
 
 
@@ -37,11 +51,7 @@ class EggsCollectionType(DjangoObjectType):
         fields = "__all__"
 
 
-class AssignmentType(DjangoObjectType):
-    class Meta:
-        model = Assignment
-        fields = "__all__"
-
+ 
 
 class HealthRecordType(DjangoObjectType):
     class Meta:

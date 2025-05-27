@@ -10,7 +10,6 @@ from .outputs import *
 from django.contrib.auth import authenticate
 from .inputs import RegisterInput, LoginInput
 from .outputs import UserType
-from .inputs import ChickenHouseInput
 from .outputs import ChickenHouseType
  
 from graphql import GraphQLError
@@ -20,13 +19,10 @@ from django.core.exceptions import ValidationError
 from .inputs import RegisterInput
 from .outputs import RegisterOutput, LoginOutput
 from .models import CustomUser
- 
+from rest_framework_simplejwt.tokens import RefreshToken
+from graphql import GraphQLError
 
-
-
-
-
-
+from rest_framework_simplejwt.tokens import RefreshToken
 
 class RegisterMutation(graphene.Mutation):
     class Arguments:
@@ -76,11 +72,6 @@ class RegisterMutation(graphene.Mutation):
                 user=None
             )
         
-
-from rest_framework_simplejwt.tokens import RefreshToken
-from graphql import GraphQLError
-
-from rest_framework_simplejwt.tokens import RefreshToken
 
 class LoginMutation(graphene.Mutation):
     class Arguments:
@@ -132,7 +123,58 @@ class LoginMutation(graphene.Mutation):
 
 
 
+class UpdateUserMutation(graphene.Mutation):
+    class Arguments:
+        input = UpdateUserInput(required=True)
 
+    user = graphene.Field(UserType)
+    success = graphene.Boolean()
+    errors = graphene.String()
+
+    @classmethod
+    def mutate(cls, root, info, input):
+        try:
+            user = CustomUser.objects.get(pk=input.id)
+
+            if input.email:
+                user.email = input.email
+            if input.phone_number:
+                user.phone_number = input.phone_number
+            if input.password:
+                user.set_password(input.password)
+            if input.role:
+                user.role = input.role
+            if input.first_name:    # New: Update first_name
+                user.first_name = input.first_name
+            if input.last_name:     # New: Update last_name
+                user.last_name = input.last_name
+
+            user.save()
+            return UpdateUserMutation(user=user, success=True)
+        except CustomUser.DoesNotExist:
+            return UpdateUserMutation(success=False, errors="User not found")
+        except Exception as e:
+            return UpdateUserMutation(success=False, errors=str(e))
+
+
+
+class DeleteUserMutation(graphene.Mutation):
+    class Arguments:
+        id = graphene.ID(required=True)
+
+    success = graphene.Boolean()
+    errors = graphene.String()
+
+    @classmethod
+    def mutate(cls, root, info, id):
+        try:
+            user = CustomUser.objects.get(pk=id)
+            user.delete()
+            return DeleteUserMutation(success=True)
+        except CustomUser.DoesNotExist:
+            return DeleteUserMutation(success=False, errors="User not found")
+        except Exception as e:
+            return DeleteUserMutation(success=False, errors=str(e))
 
 
 
@@ -242,67 +284,50 @@ class DeleteStore(graphene.Mutation):
     
 # Create
 
+
 class CreateChickenHouse(graphene.Mutation):
     class Arguments:
-        input = ChickenHouseInput(required=True)
+        input = CreateChickenHouseInput(required=True)
 
     chicken_house = graphene.Field(ChickenHouseType)
 
     def mutate(self, info, input):
-        # user = info.context.user
-        
-        # Check if user is authenticated and is admin
-        # if not user.is_authenticated or user.is_admin:
-        #     raise Exception("Only admins can create chicken houses.")
+        worker = CustomUser.objects.get(pk=input.worker_id)
 
-        # Proceed to create the chicken house
         chicken_house = ChickenHouse.objects.create(
             name=input.name,
-            location=input.location,
-            capacity=input.capacity
+            location=input.location or '',
+            capacity=input.capacity,
+            worker=worker
         )
-
-        # Assign workers (if worker_ids are passed)
-        for worker_id in input.worker_ids:
-            worker = CustomUser.objects.get(id=worker_id, role='worker')
-            Assignment.objects.create(worker=worker, chicken_house=chicken_house)
-
         return CreateChickenHouse(chicken_house=chicken_house)
 
-# Update
+
 class UpdateChickenHouse(graphene.Mutation):
     class Arguments:
-        id = graphene.ID(required=True)
-        input = ChickenHouseInput(required=True)
+        input = UpdateChickenHouseInput(required=True)
 
     chicken_house = graphene.Field(ChickenHouseType)
 
-    def mutate(self, info, id, input):
-        user = info.context.user
-        if not user.is_authenticated or user.role != 'admin':
-            raise Exception("Only admins can update chicken houses.")
+    def mutate(self, info, input):
+        try:
+            chicken_house = ChickenHouse.objects.get(pk=input.id)
+        except ChickenHouse.DoesNotExist:
+            raise Exception("Chicken house not found")
 
-        house = ChickenHouse.objects.get(pk=id)
-        house.name = input.name
-        house.location = input.location
-        house.capacity = input.capacity
-        house.save()
+        if input.name is not None:
+            chicken_house.name = input.name
+        if input.location is not None:
+            chicken_house.location = input.location
+        if input.capacity is not None:
+            chicken_house.capacity = input.capacity
+        if input.worker_id is not None:
+            chicken_house.worker = CustomUser.objects.get(pk=input.worker_id)
+
+        chicken_house.save()
+        return UpdateChickenHouse(chicken_house=chicken_house)
 
 
-        # Remove existing assignments
-        Assignment.objects.filter(chicken_house=house).delete()
-
-        for worker_id in input.worker_ids:
-            worker = CustomUser.objects.get(id=worker_id)
-            if worker.role != 'worker':
-                raise Exception(f"User {worker_id} is not a worker.")
-            if Assignment.objects.filter(worker=worker).exists():
-                raise Exception(f"Worker {worker.name} is already assigned elsewhere.")
-            Assignment.objects.create(worker=worker, chicken_house=house)
-
-        return UpdateChickenHouse(chicken_house=house)
-
-# Delete
 class DeleteChickenHouse(graphene.Mutation):
     class Arguments:
         id = graphene.ID(required=True)
@@ -310,14 +335,12 @@ class DeleteChickenHouse(graphene.Mutation):
     ok = graphene.Boolean()
 
     def mutate(self, info, id):
-        user = info.context.user
-        if not user.is_authenticated or user.role != 'admin':
-            raise Exception("Only admins can delete chicken houses.")
-
-        house = ChickenHouse.objects.get(pk=id)
-        house.delete()
-        return DeleteChickenHouse(ok=True)
-
+        try:
+            house = ChickenHouse.objects.get(pk=id)
+            house.delete()
+            return DeleteChickenHouse(ok=True)
+        except ChickenHouse.DoesNotExist:
+            return DeleteChickenHouse(ok=False)
 
 # Eggs Collection
 class CreateEggsCollection(graphene.Mutation):
@@ -372,49 +395,10 @@ class DeleteEggsCollection(graphene.Mutation):
 
 
 # Assignment
-class CreateAssignment(graphene.Mutation):
-    class Arguments:
-        input = AssignmentInput(required=True)
+ 
+ 
 
-    assignment = graphene.Field(AssignmentType)
-
-    def mutate(self, info, input):
-        worker = CustomUser.objects.get(pk=input.worker_id)
-        chicken_house = ChickenHouse.objects.get(pk=input.chicken_house_id)
-        assignment = Assignment.objects.create(worker=worker, chicken_house=chicken_house)
-        return CreateAssignment(assignment=assignment)
-
-
-class UpdateAssignment(graphene.Mutation):
-    class Arguments:
-        id = graphene.ID(required=True)
-        input = AssignmentInput(required=True)
-
-    assignment = graphene.Field(AssignmentType)
-
-    def mutate(self, info, id, input):
-        assignment = Assignment.objects.get(pk=id)
-        assignment.worker = CustomUser.objects.get(pk=input.worker_id)
-        assignment.chicken_house = ChickenHouse.objects.get(pk=input.chicken_house_id)
-        assignment.save()
-        return UpdateAssignment(assignment=assignment)
-
-
-class DeleteAssignment(graphene.Mutation):
-    class Arguments:
-        id = graphene.ID(required=True)
-
-    ok = graphene.Boolean()
-
-    def mutate(self, info, id):
-        try:
-            assignment = Assignment.objects.get(pk=id)
-            assignment.delete()
-            return DeleteAssignment(ok=True)
-        except Assignment.DoesNotExist:
-            return DeleteAssignment(ok=False)
-
-
+ 
 # Health Record
 class CreateHealthRecord(graphene.Mutation):
     class Arguments:
@@ -622,7 +606,8 @@ class Mutation(graphene.ObjectType):
 
     register = RegisterMutation.Field()
     login = LoginMutation.Field()
-
+    update_user = UpdateUserMutation.Field()
+    delete_user = DeleteUserMutation.Field()
 
     # JWT Authentication
     token_auth = graphql_jwt.ObtainJSONWebToken.Field()
@@ -633,7 +618,6 @@ class Mutation(graphene.ObjectType):
     update_store = UpdateStore.Field()
     delete_store = DeleteStore.Field()
 
-
     create_chicken_house = CreateChickenHouse.Field()
     update_chicken_house = UpdateChickenHouse.Field()
     delete_chicken_house = DeleteChickenHouse.Field()
@@ -642,9 +626,7 @@ class Mutation(graphene.ObjectType):
     update_eggs_collection = UpdateEggsCollection.Field()
     delete_eggs_collection = DeleteEggsCollection.Field()
 
-    create_assignment = CreateAssignment.Field()
-    update_assignment = UpdateAssignment.Field()
-    delete_assignment = DeleteAssignment.Field()
+     
 
     create_health_record = CreateHealthRecord.Field()
     update_health_record = UpdateHealthRecord.Field()

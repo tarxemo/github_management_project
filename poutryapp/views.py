@@ -181,106 +181,10 @@ class DeleteUserMutation(graphene.Mutation):
 class ProductViewSet(viewsets.ModelViewSet):
     queryset = Product.objects.all()
     serializer_class = ProductSerializer
-
+  
 
  
-class CreateStore(graphene.Mutation):
-    store = graphene.Field(StoreType)
-
-    class Arguments:
-        input = StoreInput(required=True)
-
-    def mutate(self, info, input):
-        # Resolve foreign keys
-        eggs_collection = EggsCollection.objects.get(pk=input.eggs_collection_id) if input.eggs_collection_id else None
-        product = Product.objects.get(pk=input.product_id) if input.product_id else None
-        quality_checker = CustomUser.objects.get(pk=input.quality_checker_id) if input.quality_checker_id else None
-
-        # Create store instance
-        store = Store(
-            entry_type=input.entry_type,
-            good_eggs=input.good_eggs,
-            broken_eggs=input.broken_eggs,
-            cracked_eggs=input.cracked_eggs,
-            dirty_eggs=input.dirty_eggs,
-            unit=input.unit,
-            quantity=input.quantity,
-            notes=input.notes or "",
-            eggs_collection=eggs_collection,
-            product=product,
-            quality_checker=quality_checker
-        )
-
-        try:
-            store.save()
-        except ValidationError as e:
-            raise GraphQLError(str(e))
-
-        return CreateStore(store=store)
-    
-
-
-class UpdateStore(graphene.Mutation):
-    store = graphene.Field(StoreType)
-
-    class Arguments:
-        id = graphene.ID(required=True)
-        input = StoreInput(required=True)
-
-    def mutate(self, info, id, input):
-        try:
-            store = Store.objects.get(pk=id)
-        except Store.DoesNotExist:
-            raise GraphQLError("Store not found")
-
-        # Update foreign keys
-        if input.eggs_collection_id:
-            store.eggs_collection = EggsCollection.objects.get(pk=input.eggs_collection_id)
-        else:
-            store.eggs_collection = None
-
-        if input.product_id:
-            store.product = Product.objects.get(pk=input.product_id)
-        else:
-            store.product = None
-
-        if input.quality_checker_id:
-            store.quality_checker = CustomUser.objects.get(pk=input.quality_checker_id)
-        else:
-            store.quality_checker = None
-
-        # Update basic fields
-        store.entry_type = input.entry_type
-        store.good_eggs = input.good_eggs
-        store.broken_eggs = input.broken_eggs
-        store.cracked_eggs = input.cracked_eggs
-        store.dirty_eggs = input.dirty_eggs
-        store.unit = input.unit
-        store.quantity = input.quantity
-        store.notes = input.notes or ""
-
-        try:
-            store.save()
-        except ValidationError as e:
-            raise GraphQLError(str(e))
-
-        return UpdateStore(store=store)
-
-
-class DeleteStore(graphene.Mutation):
-    success = graphene.Boolean()
-
-    class Arguments:
-        id = graphene.ID(required=True)
-
-    def mutate(self, info, id):
-        try:
-            store = Store.objects.get(pk=id)
-            store.delete()
-            return DeleteStore(success=True)
-        except Store.DoesNotExist:
-            raise GraphQLError("Store not found")
-
+ 
     
 # Create
 
@@ -455,22 +359,140 @@ class DeleteHealthRecord(graphene.Mutation):
 
 
 # Order
+class CreateStore(graphene.Mutation):
+    class Arguments:
+        input = StoreInput(required=True)
+
+    store = graphene.Field(StoreType)
+    success = graphene.Boolean()
+    errors = graphene.String()
+
+    def mutate(self, info, input):
+        try:
+            store = Store.objects.create(
+                entry_type=input.entry_type,
+                product_id=input.product_id,
+                eggs_collection_id=input.eggs_collection_id,
+                quantity=input.quantity,
+                unit=input.unit,
+                good_eggs=input.good_eggs or 0,
+                broken_eggs=input.broken_eggs or 0,
+                cracked_eggs=input.cracked_eggs or 0,
+                dirty_eggs=input.dirty_eggs or 0,
+                quality_checker_id=input.quality_checker_id,
+                notes=input.notes or ''
+            )
+            return CreateStore(store=store, success=True)
+        except Exception as e:
+            return CreateStore(success=False, errors=str(e))
+
+class UpdateStore(graphene.Mutation):
+    class Arguments:
+        id = graphene.ID(required=True)
+        input = StoreInput(required=True)
+
+    store = graphene.Field(StoreType)
+    success = graphene.Boolean()
+    errors = graphene.String()
+
+    def mutate(self, info, id, input):
+        try:
+            store = Store.objects.get(pk=id)
+            for field, value in input.items():
+                if value is not None:
+                    setattr(store, field, value)
+            store.save()
+            return UpdateStore(store=store, success=True)
+        except Exception as e:
+            return UpdateStore(success=False, errors=str(e))
+
+class DeleteStore(graphene.Mutation):
+    class Arguments:
+        id = graphene.ID(required=True)
+
+    success = graphene.Boolean()
+    errors = graphene.String()
+
+    def mutate(self, info, id):
+        try:
+            store = Store.objects.get(pk=id)
+            store.delete()
+            return DeleteStore(success=True)
+        except Exception as e:
+            return DeleteStore(success=False, errors=str(e))
+
+# ========== SALE ==========
+
+class CreateSale(graphene.Mutation):
+    class Arguments:
+        input = SaleInput(required=True)
+
+    sale = graphene.Field(SaleType)
+    success = graphene.Boolean()
+    errors = graphene.String()
+
+    def mutate(self, info, input):
+        try:
+            sale = Sale.objects.create(
+                product_id=input.product_id,
+                quantity=input.quantity,
+                stock_manager_id=input.stock_manager_id
+            )
+            return CreateSale(sale=sale, success=True)
+        except Exception as e:
+            return CreateSale(success=False, errors=str(e))
+
+class UpdateSale(graphene.Mutation):
+    class Arguments:
+        id = graphene.ID(required=True)
+        input = SaleInput(required=True)
+
+    sale = graphene.Field(SaleType)
+    success = graphene.Boolean()
+    errors = graphene.String()
+
+    def mutate(self, info, id, input):
+        try:
+            sale = Sale.objects.get(pk=id)
+            for field, value in input.items():
+                if value is not None:
+                    setattr(sale, field, value)
+            sale.save()
+            return UpdateSale(sale=sale, success=True)
+        except Exception as e:
+            return UpdateSale(success=False, errors=str(e))
+
+class DeleteSale(graphene.Mutation):
+    class Arguments:
+        id = graphene.ID(required=True)
+
+    success = graphene.Boolean()
+    errors = graphene.String()
+
+    def mutate(self, info, id):
+        try:
+            sale = Sale.objects.get(pk=id)
+            sale.delete()
+            return DeleteSale(success=True)
+        except Exception as e:
+            return DeleteSale(success=False, errors=str(e))
+
+# ========== ORDER ==========
+
 class CreateOrder(graphene.Mutation):
     class Arguments:
         input = OrderInput(required=True)
 
     order = graphene.Field(OrderType)
+    success = graphene.Boolean()
+    errors = graphene.String()
 
     def mutate(self, info, input):
-        customer = CustomUser.objects.get(pk=input.customer_id)
-        product = Product.objects.get(pk=input.product_id)
-        order = Order.objects.create(
-            customer=customer,
-            product=product,
-            quantity=input.quantity
-        )
-        return CreateOrder(order=order)
-
+        try:
+            order = Order.objects.create(**input)
+            return CreateOrder(order=order, success=True)
+        except Exception as e:
+            return CreateOrder(success=False, errors=str(e))
 
 class UpdateOrder(graphene.Mutation):
     class Arguments:
@@ -478,30 +500,34 @@ class UpdateOrder(graphene.Mutation):
         input = OrderInput(required=True)
 
     order = graphene.Field(OrderType)
+    success = graphene.Boolean()
+    errors = graphene.String()
 
     def mutate(self, info, id, input):
-        order = Order.objects.get(pk=id)
-        order.customer = CustomUser.objects.get(pk=input.customer_id)
-        order.product = Product.objects.get(pk=input.product_id)
-        order.quantity = input.quantity
-        order.save()
-        return UpdateOrder(order=order)
-
+        try:
+            order = Order.objects.get(pk=id)
+            for field, value in input.items():
+                if value is not None:
+                    setattr(order, field, value)
+            order.save()
+            return UpdateOrder(order=order, success=True)
+        except Exception as e:
+            return UpdateOrder(success=False, errors=str(e))
 
 class DeleteOrder(graphene.Mutation):
     class Arguments:
         id = graphene.ID(required=True)
 
-    ok = graphene.Boolean()
+    success = graphene.Boolean()
+    errors = graphene.String()
 
     def mutate(self, info, id):
         try:
             order = Order.objects.get(pk=id)
             order.delete()
-            return DeleteOrder(ok=True)
-        except Order.DoesNotExist:
-            return DeleteOrder(ok=False)
-
+            return DeleteOrder(success=True)
+        except Exception as e:
+            return DeleteOrder(success=False, errors=str(e))
 
 # Feedback
 class CreateFeedback(graphene.Mutation):
@@ -613,11 +639,7 @@ class Mutation(graphene.ObjectType):
     token_auth = graphql_jwt.ObtainJSONWebToken.Field()
     refresh_token = graphql_jwt.Refresh.Field()
     verify_token = graphql_jwt.Verify.Field()
-
-    create_store = CreateStore.Field()
-    update_store = UpdateStore.Field()
-    delete_store = DeleteStore.Field()
-
+ 
     create_chicken_house = CreateChickenHouse.Field()
     update_chicken_house = UpdateChickenHouse.Field()
     delete_chicken_house = DeleteChickenHouse.Field()
@@ -632,10 +654,20 @@ class Mutation(graphene.ObjectType):
     update_health_record = UpdateHealthRecord.Field()
     delete_health_record = DeleteHealthRecord.Field()
 
-    create_order = CreateOrder.Field()
-    update_order = UpdateOrder.Field()
-    delete_order = DeleteOrder.Field()
-
+     
     create_feedback = CreateFeedback.Field()
     update_feedback = UpdateFeedback.Field()
     delete_feedback = DeleteFeedback.Field()
+
+
+    create_store = CreateStore.Field()
+    update_store = UpdateStore.Field()
+    delete_store = DeleteStore.Field()
+
+    create_sale = CreateSale.Field()
+    update_sale = UpdateSale.Field()
+    delete_sale = DeleteSale.Field()
+
+    create_order = CreateOrder.Field()
+    update_order = UpdateOrder.Field()
+    delete_order = DeleteOrder.Field()

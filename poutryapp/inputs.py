@@ -80,17 +80,14 @@ class HealthRecordInput(InputObjectType):
     deaths = graphene.Int(required=True)
 
 
-class OrderInput(InputObjectType):
-    customer_id = graphene.ID(required=True)
-    product_id = graphene.ID(required=True)
-    quantity = graphene.Int(required=True)
-
+ 
 
 class FeedbackInput(InputObjectType):
     customer_id = graphene.ID(required=True)
     order_id = graphene.ID(required=True)
     rating = graphene.Int(required=True)
     comment = graphene.String(required=True)
+
 
 
 
@@ -106,3 +103,33 @@ class StoreInput(graphene.InputObjectType):
     product_id = graphene.ID(required=False)
     quality_checker_id = graphene.ID(required=False)
     notes = graphene.String(required=False)
+
+
+
+import graphene
+from graphene_django.types import DjangoObjectType
+from .models import Store, Sale, Order
+
+class StoreInput(graphene.InputObjectType):
+    entry_type = graphene.String(required=True)
+    product_id = graphene.ID()
+    eggs_collection_id = graphene.ID()
+    quantity = graphene.Decimal(required=True)
+    unit = graphene.String(required=True)
+    good_eggs = graphene.Int()
+    broken_eggs = graphene.Int()
+    cracked_eggs = graphene.Int()
+    dirty_eggs = graphene.Int()
+    quality_checker_id = graphene.ID()
+    notes = graphene.String()
+
+class SaleInput(graphene.InputObjectType):
+    product_id = graphene.ID(required=True)
+    quantity = graphene.Decimal(required=True)
+    stock_manager_id = graphene.ID(required=True)
+
+class OrderInput(graphene.InputObjectType):
+    customer_id = graphene.ID(required=True)
+    product_id = graphene.ID(required=True)
+    quantity = graphene.Decimal(required=True)
+    status = graphene.String()

@@ -23,6 +23,7 @@ from .models import Product, Store, Sale, Order
 from django.db import transaction
 from django.core.exceptions import ValidationError
 from django.db.models import Sum
+from django.utils.html import format_html
 
 @admin.register(CustomUser)
 class CustomUserAdmin(UserAdmin):
@@ -105,16 +106,24 @@ class ProductAdminForm(forms.ModelForm):
             raise ValidationError("Price must be greater than zero")
         return price
 
-@admin.register(Product)
+
 class ProductAdmin(admin.ModelAdmin):
     form = ProductAdminForm
-    list_display = ('name', 'product_type', 'price', 'description_short')
+    list_display = ('name', 'product_type', 'price', 'description_short', 'image_tag')
     list_filter = ('product_type',)
     search_fields = ('name', 'product_type')
     
     def description_short(self, obj):
         return obj.description[:50] + '...' if len(obj.description) > 50 else obj.description
     description_short.short_description = 'Description'
+
+    def image_tag(self, obj):
+        if obj.image:
+            return format_html('<img src="{}" style="max-height: 50px;" />', obj.image.url)
+        return '-'
+    image_tag.short_description = 'Image'
+
+
 
 class StoreAdminForm(forms.ModelForm):
     class Meta:

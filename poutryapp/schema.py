@@ -3,13 +3,15 @@ import graphene
 from graphql import GraphQLError
 
 from  .views import Mutation
-from .models import ChickenHouse, EggsCollection, HealthRecord, Order, Feedback, CustomUser,Store
+from .models import ChickenHouse, EggsCollection, HealthRecord, Order, Feedback, CustomUser, Product, Sale,Store
 from .outputs import (
     ChickenHouseType,
     EggsCollectionType,
     HealthRecordType,
     OrderType,
     FeedbackType,
+    ProductType,
+    SaleType,
     StoreType,
     UserType
 )
@@ -27,10 +29,7 @@ class Query(graphene.ObjectType):
    
     all_health_records = graphene.List(HealthRecordType)
     health_record = graphene.Field(HealthRecordType, id=graphene.ID(required=True))
-
-    all_orders = graphene.List(OrderType)
-    order = graphene.Field(OrderType, id=graphene.ID(required=True))
-
+ 
     all_feedbacks = graphene.List(FeedbackType)
     feedback = graphene.Field(FeedbackType, id=graphene.ID(required=True))
 
@@ -41,10 +40,7 @@ class Query(graphene.ObjectType):
     all_stock_managers = graphene.List(UserType)
 
     me = graphene.Field(UserType)
-
-    all_stores = graphene.List(StoreType)
-    store_by_id = graphene.Field(StoreType, id=graphene.ID(required=True))
-
+ 
     all_chicken_houses = graphene.List(ChickenHouseType)
     chicken_house = graphene.Field(ChickenHouseType, id=graphene.ID(required=True))
 
@@ -99,16 +95,7 @@ class Query(graphene.ObjectType):
             return ChickenHouse.objects.select_related('worker').get(pk=id)
         except ChickenHouse.DoesNotExist:
             return None
-
-    def resolve_all_stores(root, info):
-        return Store.objects.all()
-
-    def resolve_store_by_id(root, info, id):
-        try:
-            return Store.objects.get(pk=id)
-        except Store.DoesNotExist:
-            return None
-
+ 
  
 
     def resolve_me(self, info):
@@ -150,17 +137,60 @@ class Query(graphene.ObjectType):
     def resolve_health_record(root, info, id):
         return HealthRecord.objects.get(pk=id)
 
-    def resolve_all_orders(root, info):
-        return Order.objects.all()
-
-    def resolve_order(root, info, id):
-        return Order.objects.get(pk=id)
-
+ 
     def resolve_all_feedbacks(root, info):
         return Feedback.objects.all()
 
     def resolve_feedback(root, info, id):
         return Feedback.objects.get(pk=id)
+    
+
+    all_stores = graphene.List(StoreType)
+    store_by_id = graphene.Field(StoreType, id=graphene.ID(required=True))
+    stores_by_product = graphene.List(StoreType, product_id=graphene.ID(required=True))
+    
+    # Sale Queries
+    all_sales = graphene.List(SaleType)
+    sales_by_product = graphene.List(SaleType, product_id=graphene.ID(required=True))
+    
+    # Order Queries
+    all_orders = graphene.List(OrderType)
+    orders_by_customer = graphene.List(OrderType, customer_id=graphene.ID(required=True))
+    orders_by_status = graphene.List(OrderType, status=graphene.String(required=True))
+    
+    # Product Queries
+    all_products = graphene.List(ProductType)
+    products_by_type = graphene.List(ProductType, product_type=graphene.String(required=True))
+
+    def resolve_all_stores(self, info):
+        return Store.objects.all()
+    
+    def resolve_store_by_id(self, info, id):
+        return Store.objects.get(pk=id)
+    
+    def resolve_stores_by_product(self, info, product_id):
+        return Store.objects.filter(product_id=product_id)
+    
+    def resolve_all_sales(self, info):
+        return Sale.objects.all()
+    
+    def resolve_sales_by_product(self, info, product_id):
+        return Sale.objects.filter(product_id=product_id)
+    
+    def resolve_all_orders(self, info):
+        return Order.objects.all()
+    
+    def resolve_orders_by_customer(self, info, customer_id):
+        return Order.objects.filter(customer_id=customer_id)
+    
+    def resolve_orders_by_status(self, info, status):
+        return Order.objects.filter(status=status)
+    
+    def resolve_all_products(self, info):
+        return Product.objects.all()
+    
+    def resolve_products_by_type(self, info, product_type):
+        return Product.objects.filter(product_type=product_type)
 
 
 schema = graphene.Schema(query=Query, mutation=Mutation)

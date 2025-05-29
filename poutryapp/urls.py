@@ -5,6 +5,8 @@ from .views import ProductViewSet
 from graphene_django.views import GraphQLView
 from django.views.decorators.csrf import csrf_exempt
 from .schema import schema  # adjust the import path to your schema.py location
+from django.conf import settings
+from django.conf.urls.static import static
 
 
 
@@ -19,3 +21,7 @@ urlpatterns = [
     path('api/', include(router.urls)),
 
 ]
+ 
+if settings.DEBUG:
+    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+

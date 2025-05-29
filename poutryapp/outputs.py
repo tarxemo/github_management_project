@@ -59,11 +59,7 @@ class HealthRecordType(DjangoObjectType):
         fields = "__all__"
 
 
-class OrderType(DjangoObjectType):
-    class Meta:
-        model = Order
-        fields = "__all__"
-
+ 
 
 class FeedbackType(DjangoObjectType):
     class Meta:
@@ -77,8 +73,34 @@ class UserType(DjangoObjectType):
         model = CustomUser
         fields = "__all__"
 
+ 
+
+ 
+class ProductType(DjangoObjectType):
+    class Meta:
+        model = Product
+        fields = "__all__"
 
 class StoreType(DjangoObjectType):
+    display_quantity = graphene.String()
+    total_rejects = graphene.Int()
+    
     class Meta:
         model = Store
+        fields = "__all__"
+    
+    def resolve_display_quantity(self, info):
+        return self.display_quantity
+    
+    def resolve_total_rejects(self, info):
+        return self.total_rejects
+
+class SaleType(DjangoObjectType):
+    class Meta:
+        model = Sale
+        fields = "__all__"
+
+class OrderType(DjangoObjectType):
+    class Meta:
+        model = Order
         fields = "__all__"

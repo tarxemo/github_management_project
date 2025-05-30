@@ -53,6 +53,10 @@ class Query(graphene.ObjectType):
         return CustomUser.objects.filter(role='doctor')
 
     def resolve_all_customers(root, info):
+        user = info.context.user
+        if user.is_authenticated:
+            print("Authenticated ###########################")
+            print(user.email)
         return CustomUser.objects.filter(role='customer')
 
     def resolve_all_stock_managers(root, info):

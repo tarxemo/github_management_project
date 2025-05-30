@@ -2,6 +2,7 @@ from graphene_django import DjangoObjectType
 from .models import *
 from .models import CustomUser
 
+from django.contrib.auth import get_user_model
 
 import graphene
 from graphene_django import DjangoObjectType
@@ -10,8 +11,15 @@ from .models import CustomUser
 class UserType(DjangoObjectType):
     class Meta:
         model = CustomUser
-        fields = ('id', 'phone_number', 'email', 'role', 'is_verified')
+        fields = ('id', 'phone_number', 'email', 'role', 'is_verified', 'date_joined', 'last_login')
 
+
+CustomUser = get_user_model()
+
+class UserType(DjangoObjectType):
+    class Meta:
+        model = CustomUser
+        fields = ('id', 'email', 'phone_number', 'role', 'first_name', 'last_name')
 class RegisterOutput(graphene.ObjectType):
     success = graphene.Boolean(required=True)
     errors = graphene.String()
@@ -24,9 +32,16 @@ class LoginOutput(graphene.ObjectType):
     token = graphene.String(description="JWT access token")
     refresh_token = graphene.String(description="JWT refresh token")
 
+class WorkerType(DjangoObjectType):
+    class Meta:
+        model = CustomUser
+        fields = ('id', 'first_name', 'last_name', 'email', 'phone_number')
+
+
 class ChickenHouseType(DjangoObjectType):
     class Meta:
         model = ChickenHouse
+        fields = ('id', 'name', 'location', 'capacity', 'worker')
 
 
 
@@ -36,11 +51,7 @@ class EggsCollectionType(DjangoObjectType):
         fields = "__all__"
 
 
-class AssignmentType(DjangoObjectType):
-    class Meta:
-        model = Assignment
-        fields = "__all__"
-
+ 
 
 class HealthRecordType(DjangoObjectType):
     class Meta:
@@ -48,11 +59,7 @@ class HealthRecordType(DjangoObjectType):
         fields = "__all__"
 
 
-class OrderType(DjangoObjectType):
-    class Meta:
-        model = Order
-        fields = "__all__"
-
+ 
 
 class FeedbackType(DjangoObjectType):
     class Meta:
@@ -64,4 +71,36 @@ class FeedbackType(DjangoObjectType):
 class UserType(DjangoObjectType):
     class Meta:
         model = CustomUser
+        fields = "__all__"
+
+ 
+
+ 
+class ProductType(DjangoObjectType):
+    class Meta:
+        model = Product
+        fields = "__all__"
+
+class StoreType(DjangoObjectType):
+    display_quantity = graphene.String()
+    total_rejects = graphene.Int()
+    
+    class Meta:
+        model = Store
+        fields = "__all__"
+    
+    def resolve_display_quantity(self, info):
+        return self.display_quantity
+    
+    def resolve_total_rejects(self, info):
+        return self.total_rejects
+
+class SaleType(DjangoObjectType):
+    class Meta:
+        model = Sale
+        fields = "__all__"
+
+class OrderType(DjangoObjectType):
+    class Meta:
+        model = Order
         fields = "__all__"

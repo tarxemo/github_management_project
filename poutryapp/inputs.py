@@ -1,3 +1,4 @@
+from ast import Store
 import graphene
 from graphene import InputObjectType
 
@@ -32,16 +33,34 @@ class RegisterInput(graphene.InputObjectType):
     email = graphene.String()
     password = graphene.String(required=True)
 
+
+
+# schema.py or types.py
+class UpdateUserInput(graphene.InputObjectType):
+    id = graphene.ID(required=True)
+    email = graphene.String()
+    password=graphene.String()
+    phone_number = graphene.String()
+    role = graphene.String()
+    first_name = graphene.String()  # New field
+    last_name = graphene.String()   # New field
+
 class LoginInput(graphene.InputObjectType):
     phone_number = graphene.String(required=True)
     password = graphene.String(required=True)
 
-class ChickenHouseInput(graphene.InputObjectType):
+class CreateChickenHouseInput(graphene.InputObjectType):
     name = graphene.String(required=True)
     location = graphene.String()
     capacity = graphene.Int(required=True)
-    worker_ids = graphene.List(graphene.ID, required=True)  # list of worker IDs
+    worker_id = graphene.ID(required=True)  # Optional worker assignment
 
+class UpdateChickenHouseInput(graphene.InputObjectType):
+    id = graphene.ID(required=True)
+    name = graphene.String()
+    location = graphene.String()
+    capacity = graphene.Int()
+    worker_id = graphene.ID(required=False)
 
 class EggsCollectionInput(InputObjectType):
     worker_id = graphene.ID(required=True)
@@ -50,10 +69,7 @@ class EggsCollectionInput(InputObjectType):
     quantity = graphene.Int(required=True)
 
 
-class AssignmentInput(InputObjectType):
-    worker_id = graphene.ID(required=True)
-    chicken_house_id = graphene.ID(required=True)
-
+ 
 
 class HealthRecordInput(InputObjectType):
     doctor_id = graphene.ID(required=True)
@@ -64,11 +80,7 @@ class HealthRecordInput(InputObjectType):
     deaths = graphene.Int(required=True)
 
 
-class OrderInput(InputObjectType):
-    customer_id = graphene.ID(required=True)
-    product_id = graphene.ID(required=True)
-    quantity = graphene.Int(required=True)
-
+ 
 
 class FeedbackInput(InputObjectType):
     customer_id = graphene.ID(required=True)
@@ -77,3 +89,47 @@ class FeedbackInput(InputObjectType):
     comment = graphene.String(required=True)
 
 
+
+
+class StoreInput(graphene.InputObjectType):
+    entry_type = graphene.String(required=True)
+    good_eggs = graphene.Int(required=False, default_value=0)
+    broken_eggs = graphene.Int(required=False, default_value=0)
+    cracked_eggs = graphene.Int(required=False, default_value=0)
+    dirty_eggs = graphene.Int(required=False, default_value=0)
+    unit = graphene.String(required=True)
+    quantity = graphene.Float(required=True)
+    eggs_collection_id = graphene.ID(required=False)
+    product_id = graphene.ID(required=False)
+    quality_checker_id = graphene.ID(required=False)
+    notes = graphene.String(required=False)
+
+
+
+import graphene
+from graphene_django.types import DjangoObjectType
+from .models import Store, Sale, Order
+
+class StoreInput(graphene.InputObjectType):
+    entry_type = graphene.String(required=True)
+    product_id = graphene.ID()
+    eggs_collection_id = graphene.ID()
+    quantity = graphene.Decimal(required=True)
+    unit = graphene.String(required=True)
+    good_eggs = graphene.Int()
+    broken_eggs = graphene.Int()
+    cracked_eggs = graphene.Int()
+    dirty_eggs = graphene.Int()
+    quality_checker_id = graphene.ID()
+    notes = graphene.String()
+
+class SaleInput(graphene.InputObjectType):
+    product_id = graphene.ID(required=True)
+    quantity = graphene.Decimal(required=True)
+    stock_manager_id = graphene.ID(required=True)
+
+class OrderInput(graphene.InputObjectType):
+    customer_id = graphene.ID(required=True)
+    product_id = graphene.ID(required=True)
+    quantity = graphene.Decimal(required=True)
+    status = graphene.String()

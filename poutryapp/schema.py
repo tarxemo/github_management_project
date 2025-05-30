@@ -2,6 +2,8 @@ from ast import Store
 import graphene
 from graphql import GraphQLError
 
+from poutryapp.decorators import role_required
+
 from  .views import Mutation
 from .models import ChickenHouse, EggsCollection, HealthRecord, Order, Feedback, CustomUser, Product, Sale,Store
 from .outputs import (
@@ -53,40 +55,20 @@ class Query(graphene.ObjectType):
 
     all_users = graphene.List(UserType)
 
+    # @role_required(['admin']) 
     def resolve_all_users(root, info):
         return CustomUser.objects.all()
     
 
     all_users_by_role = graphene.List(UserType, role=graphene.String())
 
+    # @role_required(['admin']) 
     def resolve_all_users_by_role(root, info, role=None):
         if role:
             return CustomUser.objects.filter(role__iexact=role)
         return CustomUser.objects.all()
     
-    # Update the resolver with correct parameter name
-    def resolve_all_eggs_collections(self, info, **kwargs):
-        worker_id = kwargs.get('worker_id')
-        user = info.context.user
-
-        queryset = EggsCollection.objects.select_related('worker', 'chickenHouse')
-        
-        # If worker_id parameter is provided
-        if worker_id:
-            return queryset.filter(worker_id=worker_id)
-        
-        # If user is authenticated worker, show only their records
-        if user.is_authenticated and user.role == 'worker':
-            return queryset.filter(worker=user)
-        
-        # For admins/managers, return all records
-        if user.is_authenticated and user.role in ['admin', 'manager']:
-            return queryset.all()
-        
-        # Default case (unauthenticated)
-        return queryset.none()
-
-
+    # @role_required(['admin']) 
     def resolve_all_chicken_houses(root, info):
         return ChickenHouse.objects.select_related('worker').all()
 
@@ -106,7 +88,7 @@ class Query(graphene.ObjectType):
 
 
 
-
+    # @role_required(['admin']) 
     def resolve_all_chicken_houses(root, info):
         return ChickenHouse.objects.all()
 
@@ -124,6 +106,8 @@ class Query(graphene.ObjectType):
 
     def resolve_all_stock_managers(root, info):
         return CustomUser.objects.filter(role='stock_manager')
+    
+    # @role_required(['admin','worker']) 
     def resolve_all_eggs_collections(root, info):
         return EggsCollection.objects.all()
 

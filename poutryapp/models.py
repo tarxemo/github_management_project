@@ -1,417 +1,298 @@
-from decimal import Decimal
 from django.db import models
 from django.contrib.auth.models import AbstractUser
-from django.core.validators import MinValueValidator
-from django.conf import settings
-
-from django.contrib.auth.models import AbstractUser, BaseUserManager
-from django.forms import ValidationError
-from django.db import models
+from django.db.models.signals import post_save, post_delete, pre_save
+from django.dispatch import receiver
 from django.core.exceptions import ValidationError
-from django.db import transaction
-from django.db.models import Sum  # Add this import
-
-
-
-
-class CustomUserManager(BaseUserManager):
-    def create_user(self, phone_number, password=None, **extra_fields):
-        if not phone_number:
-            raise ValueError('Phone number must be set')
-        user = self.model(phone_number=phone_number, **extra_fields)
-        user.set_password(password)
-        user.save()
-        return user
-
-    def create_superuser(self, phone_number, password, **extra_fields):
-        extra_fields.setdefault('is_staff', True)
-        extra_fields.setdefault('is_superuser', True)
-        extra_fields.setdefault('role', 'admin')
-        return self.create_user(phone_number, password, **extra_fields)
-
-class CustomUser(AbstractUser):
-    ROLE_CHOICES = [
-        ('admin', 'Admin'),
-        ('worker', 'Worker'),
-        ('doctor', 'Doctor'),
-        ('customer', 'Customer'),
-        ('stock_manager', 'Stock Manager'),
-    ]
-    
-    # Remove username and use phone_number instead
-    username = None
-    phone_number = models.CharField(max_length=15, unique=True)
-    role = models.CharField(max_length=20, choices=ROLE_CHOICES, default='customer')
-    profile_picture = models.ImageField(upload_to='profile_pictures/', blank=True, null=True)
-    date_of_birth = models.DateField(blank=True, null=True)
-    is_verified = models.BooleanField(default=False)
-
-    USERNAME_FIELD = 'phone_number'
-    REQUIRED_FIELDS = []
-
-    objects = CustomUserManager()
-
-    def __str__(self):
-        return f"{self.phone_number} ({self.role})"
-
-# -------------------------------
-# Chicken Houses
-# -------------------------------
-class ChickenHouse(models.Model):
-    name = models.CharField(max_length=100)
-    location = models.CharField(max_length=255, blank=True)
-    capacity = models.PositiveIntegerField(validators=[MinValueValidator(1)])
-
-    # Assign a worker directly
-    worker = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-        limit_choices_to={'role': 'worker'},
-        related_name='chicken_houses',
-        help_text="Assign a worker to this chicken house"
-    )
-
-    def __str__(self):
-        return self.name
- 
-# -------------------------------
-# Egg Collection
-# -------------------------------
-
-class EggsCollection(models.Model):
-    worker = models.ForeignKey(CustomUser, limit_choices_to={'role': 'worker'}, on_delete=models.CASCADE)
-    chicken_house = models.ForeignKey(ChickenHouse, on_delete=models.CASCADE)
-    date_collected = models.DateField()
-    quantity = models.PositiveIntegerField(help_text="Number of eggs collected")
-
-    def __str__(self):
-        return f"{self.date_collected}: {self.quantity} eggs"
-
-# -------------------------------
-# Health Records
-# -------------------------------
-
-class HealthRecord(models.Model):
-    doctor = models.ForeignKey(CustomUser, limit_choices_to={'role': 'doctor'}, on_delete=models.CASCADE)
-    chicken_house = models.ForeignKey(ChickenHouse, on_delete=models.CASCADE)
-    date = models.DateField()
-    health_issue = models.TextField()
-    treatment = models.TextField(blank=True, null=True)
-    deaths = models.PositiveIntegerField(default=0)
-
-    def __str__(self):
-        return f"{self.date} - {self.health_issue}"
-
-# -------------------------------
-# Product and Inventory
-# -------------------------------
-
-class Product(models.Model):
-    PRODUCT_TYPE_CHOICES = [
-        ('meat', 'Meat'),
-        ('eggs', 'Eggs'),
-        ('layer', 'Layer'),
-        ('dual', 'Dual'),
-        ('broiler', 'Broiler'),
-    ]
-    
-    name = models.CharField(max_length=100)
-    description = models.TextField(blank=True)
-    price = models.DecimalField(max_digits=10, decimal_places=2)
-    product_type = models.CharField(max_length=20, choices=PRODUCT_TYPE_CHOICES, default='meat')
-    
-    # ✅ New image field
-    image = models.ImageField(upload_to='product_images/', blank=True, null=True)
-
-    def __str__(self):
-        return self.name
-
-
-
-from django.db import models
-from django.core.exceptions import ValidationError
-from django.db import transaction
+from django.utils import timezone
 from decimal import Decimal
-from django.db.models import Sum
 
-class Store(models.Model):
-    UNIT_CHOICES = [
-        ('number', 'Number'),       # Simple count (whole numbers)
-        ('egg', 'Egg'),             # Individual eggs
-        ('tray', 'Tray (36 eggs)'), # Standard egg tray
-        ('crate', 'Crate'),         # Larger container
-        ('kg', 'Kilogram'),         # Weight measurement
-        ('liter', 'Liter'),         # Volume measurement
-        ('box', 'Box'),             # Generic container
-        ('pack', 'Pack'),           # Packaged units
-    ]
-
-    # Relationships
-    eggs_collection = models.ForeignKey(
-        'EggsCollection',
-        on_delete=models.CASCADE,
-        related_name='store_entries',
-        null=True,
-        blank=True
+class User(AbstractUser):
+    USER_TYPES = (
+        ('ADMIN', 'Admin'),
+        ('DOCTOR', 'Doctor'),
+        ('WORKER', 'Worker'),
+        ('SALES_MANAGER', 'Sales Manager'),
+        ('CUSTOMER', 'Customer'),
     )
-    product = models.ForeignKey(
-        'Product',
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True
-    )
-
-    # Entry Type
-    ENTRY_TYPES = [
-        ('egg', 'Egg'),
-        ('product', 'Product'),
-    ]
-    entry_type = models.CharField(
-        max_length=20,
-        choices=ENTRY_TYPES,
-        default='product'
-    )
-
-    # Inventory Tracking
-    quantity = models.DecimalField(
-        max_digits=10,
-        decimal_places=2,
-        default=0,
-        validators=[MinValueValidator(Decimal('0.00'))]
-    )
-    unit = models.CharField(
-        max_length=10,
-        choices=UNIT_CHOICES,
-        default='number'
-    )
-
-    # Egg-Specific Fields (only relevant when entry_type='egg')
-    good_eggs = models.PositiveIntegerField(default=0)
-    good_trays = models.PositiveIntegerField(default=0, editable=False)
-    good_loose = models.PositiveIntegerField(default=0, editable=False)
-    broken_eggs = models.PositiveIntegerField(default=0)
-    cracked_eggs = models.PositiveIntegerField(default=0)
-    dirty_eggs = models.PositiveIntegerField(default=0)
-
-    # Metadata
-    date_recorded = models.DateField(auto_now_add=True)
-    quality_checker = models.ForeignKey(
-        'CustomUser',
-        on_delete=models.SET_NULL,
-        null=True,
-        limit_choices_to={'role__in': ['worker', 'admin']}
-    )
-    notes = models.TextField(blank=True)
-
-    class Meta:
-        ordering = ['-date_recorded']
-        verbose_name = "Inventory Record"
-        verbose_name_plural = "Inventory Records"
-        indexes = [
-            models.Index(fields=['entry_type']),
-            models.Index(fields=['product']),
-        ]
-
+    
+    user_type = models.CharField(max_length=20, choices=USER_TYPES)
+    phone_number = models.CharField(max_length=20, unique=True)
+    address = models.TextField(blank=True, null=True)
+    
     def __str__(self):
-        if self.entry_type == 'egg':
-            return f"Eggs: {self.good_trays}t {self.good_loose}l (Total: {self.good_eggs})"
-        unit_display = '' if self.unit == 'number' else f" {self.unit}"
-        return f"{self.product.name}: {self.quantity}{unit_display}"
+        return f"{self.username} ({self.get_user_type_display()})"
 
+class ChickenHouse(models.Model):
+    HOUSE_TYPES = (
+        ('BROILER', 'Broiler'),
+        ('LAYER', 'Layer'),
+        ('BROODER', 'Brooder'),
+    )
+    
+    name = models.CharField(max_length=100)
+    house_type = models.CharField(max_length=20, choices=HOUSE_TYPES)
+    capacity = models.PositiveIntegerField(help_text="Maximum number of chickens this house can hold")
+    current_chicken_count = models.PositiveIntegerField(default=0)
+    worker = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, 
+                              limit_choices_to={'user_type': 'WORKER'})
+    created_at = models.DateTimeField(auto_now_add=True)
+    last_cleaned = models.DateTimeField(null=True, blank=True)
+    notes = models.TextField(blank=True, null=True)
+    
     def clean(self):
-        """Validate the inventory record before saving"""
-        if self.entry_type == 'egg':
-            if not self.eggs_collection:
-                raise ValidationError("Egg entries require an eggs collection reference")
-            if self.product:
-                raise ValidationError("Egg entries shouldn't have a product association")
-            
-            # Validate egg quantities
-            if self.good_eggs < 0 or self.broken_eggs < 0 or self.cracked_eggs < 0 or self.dirty_eggs < 0:
-                raise ValidationError("Egg counts cannot be negative")
-        else:
-            if not self.product:
-                raise ValidationError("Product entries require a product selection")
-            if self.eggs_collection:
-                raise ValidationError("Product entries shouldn't have an eggs collection reference")
-            
-            # Validate quantity for 'number' units
-            if self.unit == 'number' and self.quantity != self.quantity.to_integral_value():
-                raise ValidationError({"quantity": "Quantity must be a whole number when unit is 'Number'"})
+        if self.current_chicken_count > self.capacity:
+            raise ValidationError("Current chicken count cannot exceed house capacity")
+    
+    def __str__(self):
+        return f"{self.name} ({self.get_house_type_display()}) - {self.current_chicken_count}/{self.capacity}"
 
-    def save(self, *args, **kwargs):
-        """Custom save logic"""
-        self.clean()  # Run validation before saving
-        
-        # Egg-specific calculations
-        if self.entry_type == 'egg':
-            self.good_trays = self.good_eggs // 36
-            self.good_loose = self.good_eggs % 36
-            
-            total_recorded = (self.good_eggs + self.broken_eggs + 
-                            self.cracked_eggs + self.dirty_eggs)
-            if self.eggs_collection and total_recorded > self.eggs_collection.quantity:
-                raise ValidationError("Total eggs recorded exceeds collected quantity")
-        
-        # Ensure whole numbers for 'number' units
-        if self.unit == 'number':
-            self.quantity = self.quantity.to_integral_value()
-            
-        super().save(*args, **kwargs)
+class Chicken(models.Model):
+    CHICKEN_TYPES = (
+        ('BROILER', 'Broiler'),
+        ('LAYER', 'Layer'),
+    )
+    
+    GENDER_CHOICES = (
+        ('MALE', 'Male'),
+        ('FEMALE', 'Female'),
+        ('UNKNOWN', 'Unknown'),
+    )
+    
+    chicken_house = models.ForeignKey(ChickenHouse, on_delete=models.CASCADE, related_name='chickens')
+    chicken_type = models.CharField(max_length=20, choices=CHICKEN_TYPES)
+    gender = models.CharField(max_length=10, choices=GENDER_CHOICES, default='UNKNOWN')
+    date_added = models.DateField(auto_now_add=True)
+    date_of_birth = models.DateField(null=True, blank=True)
+    is_alive = models.BooleanField(default=True)
+    date_of_death = models.DateField(null=True, blank=True)
+    cause_of_death = models.CharField(max_length=100, blank=True, null=True)
+    notes = models.TextField(blank=True, null=True)
+    
+    def __str__(self):
+        status = "Alive" if self.is_alive else f"Died on {self.date_of_death}"
+        return f"{self.get_chicken_type_display()} - {status} (House: {self.chicken_house.name})"
 
+class Vaccine(models.Model):
+    name = models.CharField(max_length=100)
+    description = models.TextField(blank=True, null=True)
+    recommended_age_days = models.PositiveIntegerField(help_text="Recommended age in days for vaccination")
+    
+    def __str__(self):
+        return self.name
+
+class VaccinationRecord(models.Model):
+    chicken_house = models.ForeignKey(ChickenHouse, on_delete=models.CASCADE, related_name='vaccinations')
+    vaccine = models.ForeignKey(Vaccine, on_delete=models.CASCADE)
+    date_administered = models.DateField()
+    administered_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, 
+                                      limit_choices_to={'user_type': 'DOCTOR'})
+    notes = models.TextField(blank=True, null=True)
+    
+    def __str__(self):
+        return f"{self.vaccine.name} for {self.chicken_house.name} on {self.date_administered}"
+
+class EggCollection(models.Model):
+    chicken_house = models.ForeignKey(ChickenHouse, on_delete=models.CASCADE, related_name='egg_collections')
+    collection_date = models.DateField(default=timezone.now)
+    collected_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, 
+                                    limit_choices_to={'user_type': 'WORKER'})
+    total_eggs = models.PositiveIntegerField()
+    broken_eggs = models.PositiveIntegerField(default=0)
+    notes = models.TextField(blank=True, null=True)
+    
+    def clean(self):
+        if self.broken_eggs > self.total_eggs:
+            raise ValidationError("Broken eggs cannot exceed total eggs collected")
+    
+    def calculate_full_trays(self):
+        return self.total_eggs // 30
+    
+    def calculate_remaining_eggs(self):
+        return self.total_eggs % 30
+    
+    def __str__(self):
+        return f"{self.total_eggs} eggs from {self.chicken_house.name} on {self.collection_date}"
+
+class Food(models.Model):
+    name = models.CharField(max_length=100)
+    description = models.TextField(blank=True, null=True)
+    unit = models.CharField(max_length=20, default='kg')
+    
+    def __str__(self):
+        return self.name
+
+class FoodPurchase(models.Model):
+    food = models.ForeignKey(Food, on_delete=models.CASCADE)
+    quantity = models.DecimalField(max_digits=10, decimal_places=2)
+    unit_price = models.DecimalField(max_digits=10, decimal_places=2)
+    purchase_date = models.DateField(default=timezone.now)
+    supplier = models.CharField(max_length=100, blank=True, null=True)
+    receipt_number = models.CharField(max_length=50, blank=True, null=True)
+    notes = models.TextField(blank=True, null=True)
+    
     @property
-    def total_rejects(self):
-        """Calculate total rejected eggs"""
-        return self.broken_eggs + self.cracked_eggs + self.dirty_eggs if self.entry_type == 'egg' else 0
+    def total_cost(self):
+        return self.quantity * self.unit_price
+    
+    def __str__(self):
+        return f"{self.quantity}{self.food.unit} of {self.food.name} on {self.purchase_date}"
 
-    @property
-    def display_quantity(self):
-        """Formatted quantity display"""
-        if self.entry_type == 'egg':
-            return f"{self.good_eggs} eggs"
-        return f"{self.quantity} {self.unit}" if self.unit != 'number' else f"{self.quantity}"
+class FoodDistribution(models.Model):
+    chicken_house = models.ForeignKey(ChickenHouse, on_delete=models.CASCADE, related_name='food_distributions')
+    food = models.ForeignKey(Food, on_delete=models.CASCADE)
+    quantity = models.DecimalField(max_digits=10, decimal_places=2)
+    distribution_date = models.DateTimeField(default=timezone.now)
+    distributed_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, 
+                                      limit_choices_to={'user_type__in': ['ADMIN', 'WORKER']})
+    notes = models.TextField(blank=True, null=True)
+    
+    def __str__(self):
+        return f"{self.quantity}{self.food.unit} of {self.food.name} to {self.chicken_house.name}"
 
-    @classmethod
-    @transaction.atomic
-    def deduct_inventory(cls, product, quantity):
-        """Deduct inventory with proper type handling"""
-        try:
-            quantity = Decimal(str(quantity))
-            
-            if product.product_type == 'eggs':
-                entries = cls.objects.filter(
-                    entry_type='egg',
-                    good_eggs__gt=0
-                ).order_by('date_recorded')
-                
-                total_available = sum(Decimal(str(e.good_eggs)) for e in entries)
-                if total_available < quantity:
-                    raise ValidationError(f"Insufficient eggs. Available: {total_available}, Requested: {quantity}")
-                
-                remaining = quantity
-                for entry in entries:
-                    if remaining <= 0:
-                        break
-                    deduct = min(remaining, Decimal(str(entry.good_eggs)))
-                    entry.good_eggs -= int(deduct)
-                    remaining -= deduct
-                    entry.save()
-            else:
-                entries = cls.objects.filter(
-                    entry_type='product',
-                    product=product,
-                    quantity__gt=0
-                ).order_by('date_recorded')
-                
-                total_available = sum(e.quantity for e in entries)
-                if total_available < quantity:
-                    raise ValidationError(f"Insufficient {product.name}. Available: {total_available}, Requested: {quantity}")
-                
-                remaining = quantity
-                for entry in entries:
-                    if remaining <= 0:
-                        break
-                    deduct = min(remaining, entry.quantity)
-                    entry.quantity -= deduct
-                    if entry.unit == 'number':
-                        entry.quantity = entry.quantity.to_integral_value()
-                    remaining -= deduct
-                    entry.save()
-                    
-        except Exception as e:
-            raise ValidationError(str(e))
-
+class Inventory(models.Model):
+    egg_count = models.PositiveIntegerField(default=0)
+    last_updated = models.DateTimeField(auto_now=True)
+    
+    def __str__(self):
+        return f"Inventory: {self.egg_count} eggs as of {self.last_updated}"
 
 class Sale(models.Model):
-    product = models.ForeignKey(Product, on_delete=models.PROTECT)
-    quantity = models.DecimalField(
-    max_digits=10,
-    decimal_places=2,
-    validators=[MinValueValidator(Decimal('0.01'))]
+    SALE_TYPES = (
+        ('EGG', 'Egg'),
+        ('CHICKEN', 'Chicken'),
+        ('MEAT', 'Meat'),
+        ('OTHER', 'Other'),
     )
-    quantity = models.DecimalField(max_digits=10, decimal_places=2)
-    sale_date = models.DateTimeField(auto_now_add=True)
-    stock_manager = models.ForeignKey(
-        'CustomUser',
-        on_delete=models.SET_NULL,
-        null=True,
-        limit_choices_to={'role': 'stock_manager'}
-    )
-    stock_deducted = models.BooleanField(default=False)
-
-    def clean(self):
-        if self.product.product_type == 'eggs' and self.quantity != int(self.quantity):
-            raise ValidationError("Egg quantity must be a whole number")
-
-    def save(self, *args, **kwargs):
-        if not self.pk or not self.stock_deducted:
-            Store.deduct_inventory(self.product, self.quantity)
-            self.stock_deducted = True
-        super().save(*args, **kwargs)
-
-    def __str__(self):
-        return f"Sale {self.id} - {self.product.name}"
     
-
-
-class Order(models.Model):
-    STATUS_CHOICES = [
-        ('pending', 'Pending'),
-        ('processing', 'Processing'),
-        ('shipped', 'Shipped'),
-        ('delivered', 'Delivered'),
-        ('completed', 'Completed'),
-        ('cancelled', 'Cancelled'),
-    ]
-
-    customer = models.ForeignKey(
-        'CustomUser',
-        limit_choices_to={'role': 'customer'},
-        on_delete=models.PROTECT
-    )
-    product = models.ForeignKey(Product, on_delete=models.PROTECT)
-    quantity = models.DecimalField(max_digits=10, decimal_places=2)
-    order_date = models.DateTimeField(auto_now_add=True)
-    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
-    stock_deducted = models.BooleanField(default=False)
-
-    class Meta:
-        ordering = ['-order_date']
-
+    sale_type = models.CharField(max_length=20, choices=SALE_TYPES)
+    customer = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name="customers",
+                                limit_choices_to={'user_type': 'CUSTOMER'})
+    sales_manager = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name="sellers",
+                                    limit_choices_to={'user_type': 'SALES_MANAGER'})
+    sale_date = models.DateTimeField(default=timezone.now)
+    total_amount = models.DecimalField(max_digits=12, decimal_places=2)
+    payment_received = models.BooleanField(default=False)
+    payment_method = models.CharField(max_length=50, blank=True, null=True)
+    notes = models.TextField(blank=True, null=True)
+    
     def __str__(self):
-        return f"Order {self.id} - {self.product.name}"
+        return f"{self.get_sale_type_display()} sale to {self.customer} on {self.sale_date}"
 
+class SaleItem(models.Model):
+    sale = models.ForeignKey(Sale, on_delete=models.CASCADE, related_name='items')
+    
+    # For egg sales
+    egg_trays = models.PositiveIntegerField(default=0)
+    egg_singles = models.PositiveIntegerField(default=0)
+    egg_price_per_tray = models.DecimalField(max_digits=8, decimal_places=2, default=0)
+    
+    # For chicken sales
+    chicken = models.ForeignKey(Chicken, on_delete=models.SET_NULL, null=True, blank=True)
+    chicken_price = models.DecimalField(max_digits=8, decimal_places=2, default=0)
+    
+    # For other items
+    item_description = models.CharField(max_length=100, blank=True, null=True)
+    quantity = models.DecimalField(max_digits=10, decimal_places=2, default=1)
+    unit_price = models.DecimalField(max_digits=8, decimal_places=2, default=0)
+    
+    @property
+    def total_price(self):
+        if self.sale.sale_type == 'EGG':
+            return (self.egg_trays * self.egg_price_per_tray) + \
+                   (self.egg_singles * (self.egg_price_per_tray / 30))
+        elif self.sale.sale_type == 'CHICKEN' and self.chicken:
+            return self.chicken_price
+        else:
+            return self.quantity * self.unit_price
+    
     def clean(self):
-        if self.product.product_type == 'eggs' and self.quantity != int(self.quantity):
-            raise ValidationError("Egg quantity must be a whole number")
-
-    def save(self, *args, **kwargs):
-        status_changed = False
-        if self.pk:
-            original = Order.objects.get(pk=self.pk)
-            status_changed = original.status != self.status
-        
-        if status_changed and self.status in ['shipped', 'delivered', 'completed']:
-            if not self.stock_deducted:
-                Store.deduct_inventory(self.product, self.quantity)
-                self.stock_deducted = True
-        
-        super().save(*args, **kwargs)
-
-        
-# -------------------------------
-# Feedback
-# -------------------------------
-
-class Feedback(models.Model):
-    customer = models.ForeignKey(CustomUser, limit_choices_to={'role': 'customer'}, on_delete=models.CASCADE)
-    order = models.ForeignKey(Order, on_delete=models.CASCADE)
-    rating = models.PositiveSmallIntegerField(default=5)  # Out of 5
-    comment = models.TextField()
-    submitted_at = models.DateTimeField(auto_now_add=True)
-
+        if self.sale.sale_type == 'EGG' and (self.chicken or self.item_description):
+            raise ValidationError("Egg sale should not have chicken or other items")
+        if self.sale.sale_type == 'CHICKEN' and (self.egg_trays or self.egg_singles or self.item_description):
+            raise ValidationError("Chicken sale should not have eggs or other items")
+    
     def __str__(self):
-        return f"Feedback from {self.customer.name}"
+        if self.sale.sale_type == 'EGG':
+            return f"{self.egg_trays} trays + {self.egg_singles} eggs"
+        elif self.sale.sale_type == 'CHICKEN':
+            return f"Chicken {self.chicken.id if self.chicken else 'N/A'}"
+        else:
+            return self.item_description or "Other item"
 
+class Expense(models.Model):
+    EXPENSE_TYPES = (
+        ('FOOD', 'Food'),
+        ('VACCINE', 'Vaccine'),
+        ('EQUIPMENT', 'Equipment'),
+        ('UTILITY', 'Utility'),
+        ('SALARY', 'Salary'),
+        ('OTHER', 'Other'),
+    )
+    
+    expense_type = models.CharField(max_length=20, choices=EXPENSE_TYPES)
+    amount = models.DecimalField(max_digits=12, decimal_places=2)
+    date = models.DateField(default=timezone.now)
+    description = models.TextField()
+    recorded_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True,
+                                  limit_choices_to={'user_type__in': ['ADMIN', 'SALES_MANAGER']})
+    
+    def __str__(self):
+        return f"{self.get_expense_type_display()} - {self.amount} on {self.date}"
+
+class HealthReport(models.Model):
+    chicken_house = models.ForeignKey(ChickenHouse, on_delete=models.CASCADE, related_name='health_reports')
+    report_date = models.DateField(default=timezone.now)
+    reported_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True,
+                                   limit_choices_to={'user_type': 'DOCTOR'})
+    healthy_count = models.PositiveIntegerField()
+    sick_count = models.PositiveIntegerField()
+    symptoms = models.TextField(blank=True, null=True)
+    treatment = models.TextField(blank=True, null=True)
+    notes = models.TextField(blank=True, null=True)
+    
+    def __str__(self):
+        return f"Health report for {self.chicken_house.name} on {self.report_date}"
+
+# Signals
+@receiver(post_save, sender=EggCollection)
+def update_inventory_on_egg_collection(sender, instance, created, **kwargs):
+    inventory, _ = Inventory.objects.get_or_create(pk=1)
+    if created:
+        inventory.egg_count += instance.total_eggs
+        inventory.save()
+
+@receiver(post_save, sender=SaleItem)
+def update_inventory_on_sale(sender, instance, created, **kwargs):
+    if instance.sale.sale_type == 'EGG':
+        inventory, _ = Inventory.objects.get_or_create(pk=1)
+        eggs_sold = (instance.egg_trays * 30) + instance.egg_singles
+        inventory.egg_count -= eggs_sold
+        inventory.save()
+    elif instance.sale.sale_type == 'CHICKEN' and instance.chicken:
+        instance.chicken.is_alive = False
+        instance.chicken.date_of_death = instance.sale.sale_date.date()
+        instance.chicken.save()
+        
+        # Update chicken house count
+        chicken_house = instance.chicken.chicken_house
+        chicken_house.current_chicken_count -= 1
+        chicken_house.save()
+
+@receiver(post_save, sender=Chicken)
+def update_chicken_house_count(sender, instance, created, **kwargs):
+    if created and instance.is_alive:
+        chicken_house = instance.chicken_house
+        chicken_house.current_chicken_count += 1
+        chicken_house.save()
+
+@receiver(post_delete, sender=Chicken)
+def update_chicken_house_count_on_delete(sender, instance, **kwargs):
+    if instance.is_alive:
+        chicken_house = instance.chicken_house
+        chicken_house.current_chicken_count -= 1
+        chicken_house.save()
+
+@receiver(pre_save, sender=FoodDistribution)
+def check_food_availability(sender, instance, **kwargs):
+    # This would need to be implemented with actual food inventory tracking
+    pass

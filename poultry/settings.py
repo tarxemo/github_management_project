@@ -53,7 +53,7 @@ INSTALLED_APPS = [
  
 
 GRAPHENE = {
-    "SCHEMA": "poultryapp.schema.schema",
+    "SCHEMA": "poultry.main_schema.schema",
     "MIDDLEWARE": [
         "graphql_jwt.middleware.JSONWebTokenMiddleware",
         "poutryapp.middleware.JWTAuthenticationMiddleware",
@@ -74,7 +74,7 @@ SIMPLE_JWT = {
 }
 
 
-AUTH_USER_MODEL = 'poutryapp.CustomUser'
+AUTH_USER_MODEL = 'poutryapp.User'
 
 
 MIDDLEWARE = [

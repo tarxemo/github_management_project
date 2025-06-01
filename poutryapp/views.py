@@ -1,674 +1,382 @@
-from django.forms import ValidationError
-import graphql_jwt
-from rest_framework import viewsets
-from .models import Product
-from .serializers import ProductSerializer
 import graphene
+from graphene import Mutation, Field
+from graphql import GraphQLError
+from django.db import transaction
 from .models import *
 from .inputs import *
 from .outputs import *
-from django.contrib.auth import authenticate
-from .inputs import RegisterInput, LoginInput
-from .outputs import UserType
-from .outputs import ChickenHouseType
- 
-from graphql import GraphQLError
-from django.contrib.auth import authenticate, login
-from django.contrib.auth.models import Group
-from django.core.exceptions import ValidationError
-from .inputs import RegisterInput
-from .outputs import RegisterOutput, LoginOutput
-from .models import CustomUser
-from rest_framework_simplejwt.tokens import RefreshToken
-from graphql import GraphQLError
+from django.contrib.auth import get_user_model
+from django.contrib.auth.hashers import make_password
 
-from rest_framework_simplejwt.tokens import RefreshToken
+User = get_user_model()
 
-class RegisterMutation(graphene.Mutation):
+class CreateUser(Mutation):
     class Arguments:
-        input = RegisterInput(required=True)
-    
-    Output = RegisterOutput
+        input = UserInput(required=True)
 
+    user = Field(UserOutput)
+    
     @classmethod
     def mutate(cls, root, info, input):
         try:
-            # Convert Graphene input to dict and validate
-            input_dict = {
-                'phone_number': input.phone_number,
-                'password': input.password,
-                'email': input.email,
-                # 'date_of_birth': input.date_of_birth
-            }
-            validate_register_input(input_dict)
-            
-            # Create user with default 'customer' role
-            user = CustomUser.objects.create_user(
-                phone_number=input.phone_number,
-                email=input.email,
-                password=input.password,
-                role='customer',  # Set default role here
-                # date_of_birth=input.date_of_birth
-            )
-            
-            # Add to customer group
-            group, _ = Group.objects.get_or_create(name='customer')
-            user.groups.add(group)
-            
-            return RegisterOutput(
-                success=True,
-                user=user,
-                errors=None
-            )
-            
-        except ValidationError as e:
-            error_messages = []
-            for field, messages in e.message_dict.items():
-                error_messages.extend([f"{field}: {msg}" for msg in messages])
-            
-            return RegisterOutput(
-                success=False,
-                errors="; ".join(error_messages),
-                user=None
-            )
-        
-
-class LoginMutation(graphene.Mutation):
-    class Arguments:
-        input = LoginInput(required=True)
-    
-    Output = LoginOutput
-
-    @classmethod
-    def mutate(cls, root, info, input):
-        try:
-            # Authenticate user
-            user = authenticate(
-                request=info.context,
-                phone_number=input.phone_number,
-                password=input.password
-            )
-            
-            if user is None:
-                raise GraphQLError("Invalid phone number or password")
-            
-            # Generate JWT tokens
-            refresh = RefreshToken.for_user(user)
-            
-            # Add role to the token's payload
-            refresh["role"] = user.role  # Include role in the payload
-            
-            access_token = str(refresh.access_token)
-            refresh_token = str(refresh)
-            
-            # Login the user (optional - only needed if using session auth)
-            login(info.context, user)
-            
-            return LoginOutput(
-                success=True,
-                user=user,
-                token=access_token,
-                refresh_token=refresh_token,
-                errors=None
-            )
-            
+            with transaction.atomic():
+                # Hash password before saving
+                input['password'] = make_password(input['password'])
+                user = User.objects.create(**input)
+                return CreateUser(user=user)
         except Exception as e:
-            return LoginOutput(
-                success=False,
-                errors=str(e),
-                user=None,
-                token=None,
-                refresh_token=None
-            )
+            raise GraphQLError(f"Error creating user: {str(e)}")
 
-
-
-class UpdateUserMutation(graphene.Mutation):
+class UpdateUser(Mutation):
     class Arguments:
-        input = UpdateUserInput(required=True)
+        id = ID(required=True)
+        input = UserInput(required=True)
 
-    user = graphene.Field(UserType)
-    success = graphene.Boolean()
-    errors = graphene.String()
-
+    user = Field(UserOutput)
+    
     @classmethod
-    def mutate(cls, root, info, input):
+    def mutate(cls, root, info, id, input):
         try:
-            user = CustomUser.objects.get(pk=input.id)
-
-            if input.email:
-                user.email = input.email
-            if input.phone_number:
-                user.phone_number = input.phone_number
-            if input.password:
-                user.set_password(input.password)
-            if input.role:
-                user.role = input.role
-            if input.first_name:    # New: Update first_name
-                user.first_name = input.first_name
-            if input.last_name:     # New: Update last_name
-                user.last_name = input.last_name
-
+            user = User.objects.get(pk=id)
+            for key, value in input.items():
+                if key == 'password' and value:
+                    user.password = make_password(value)
+                else:
+                    setattr(user, key, value)
             user.save()
-            return UpdateUserMutation(user=user, success=True)
-        except CustomUser.DoesNotExist:
-            return UpdateUserMutation(success=False, errors="User not found")
+            return UpdateUser(user=user)
+        except User.DoesNotExist:
+            raise GraphQLError("User not found")
         except Exception as e:
-            return UpdateUserMutation(success=False, errors=str(e))
+            raise GraphQLError(f"Error updating user: {str(e)}")
 
-
-
-class DeleteUserMutation(graphene.Mutation):
+class CreateChickenHouse(Mutation):
     class Arguments:
-        id = graphene.ID(required=True)
+        input = ChickenHouseInput(required=True)
 
-    success = graphene.Boolean()
-    errors = graphene.String()
-
+    chicken_house = Field(ChickenHouseOutput)
+    
     @classmethod
-    def mutate(cls, root, info, id):
+    def mutate(cls, root, info, input):
         try:
-            user = CustomUser.objects.get(pk=id)
-            user.delete()
-            return DeleteUserMutation(success=True)
-        except CustomUser.DoesNotExist:
-            return DeleteUserMutation(success=False, errors="User not found")
+            worker_id = input.pop('worker_id', None)
+            chicken_house = ChickenHouse.objects.create(**input)
+            if worker_id:
+                worker = User.objects.get(pk=worker_id, user_type='WORKER')
+                chicken_house.worker = worker
+                chicken_house.save()
+            return CreateChickenHouse(chicken_house=chicken_house)
         except Exception as e:
-            return DeleteUserMutation(success=False, errors=str(e))
+            raise GraphQLError(f"Error creating chicken house: {str(e)}")
 
+class RecordEggCollection(Mutation):
+    class Arguments:
+        input = EggCollectionInput(required=True)
 
-
-class ProductViewSet(viewsets.ModelViewSet):
-    queryset = Product.objects.all()
-    serializer_class = ProductSerializer
-  
-
- 
- 
+    egg_collection = Field(EggCollectionOutput)
+    inventory = Field(InventoryOutput)
     
-# Create
-
-
-class CreateChickenHouse(graphene.Mutation):
-    class Arguments:
-        input = CreateChickenHouseInput(required=True)
-
-    chicken_house = graphene.Field(ChickenHouseType)
-
-    def mutate(self, info, input):
-        worker = CustomUser.objects.get(pk=input.worker_id)
-
-        chicken_house = ChickenHouse.objects.create(
-            name=input.name,
-            location=input.location or '',
-            capacity=input.capacity,
-            worker=worker
-        )
-        return CreateChickenHouse(chicken_house=chicken_house)
-
-
-class UpdateChickenHouse(graphene.Mutation):
-    class Arguments:
-        input = UpdateChickenHouseInput(required=True)
-
-    chicken_house = graphene.Field(ChickenHouseType)
-
-    def mutate(self, info, input):
+    @classmethod
+    def mutate(cls, root, info, input):
         try:
-            chicken_house = ChickenHouse.objects.get(pk=input.id)
-        except ChickenHouse.DoesNotExist:
-            raise Exception("Chicken house not found")
-
-        if input.name is not None:
-            chicken_house.name = input.name
-        if input.location is not None:
-            chicken_house.location = input.location
-        if input.capacity is not None:
-            chicken_house.capacity = input.capacity
-        if input.worker_id is not None:
-            chicken_house.worker = CustomUser.objects.get(pk=input.worker_id)
-
-        chicken_house.save()
-        return UpdateChickenHouse(chicken_house=chicken_house)
-
-
-class DeleteChickenHouse(graphene.Mutation):
-    class Arguments:
-        id = graphene.ID(required=True)
-
-    ok = graphene.Boolean()
-
-    def mutate(self, info, id):
-        try:
-            house = ChickenHouse.objects.get(pk=id)
-            house.delete()
-            return DeleteChickenHouse(ok=True)
-        except ChickenHouse.DoesNotExist:
-            return DeleteChickenHouse(ok=False)
-
-# Eggs Collection
-class CreateEggsCollection(graphene.Mutation):
-    class Arguments:
-        input = EggsCollectionInput(required=True)
-
-    collection = graphene.Field(EggsCollectionType)
-
-    def mutate(self, info, input):
-        worker = CustomUser.objects.get(pk=input.worker_id)
-        chicken_house = ChickenHouse.objects.get(pk=input.chicken_house_id)
-
-        collection = EggsCollection.objects.create(
-            worker=worker,
-            chicken_house=chicken_house,
-            date_collected=input.date_collected,
-            quantity=input.quantity
-        )
-        return CreateEggsCollection(collection=collection)
-
-
-class UpdateEggsCollection(graphene.Mutation):
-    class Arguments:
-        id = graphene.ID(required=True)
-        input = EggsCollectionInput(required=True)
-
-    collection = graphene.Field(EggsCollectionType)
-
-    def mutate(self, info, id, input):
-        collection = EggsCollection.objects.get(pk=id)
-        collection.worker = CustomUser.objects.get(pk=input.worker_id)
-        collection.chicken_house = ChickenHouse.objects.get(pk=input.chicken_house_id)
-        collection.date_collected = input.date_collected
-        collection.quantity = input.quantity
-        collection.save()
-        return UpdateEggsCollection(collection=collection)
-
-
-class DeleteEggsCollection(graphene.Mutation):
-    class Arguments:
-        id = graphene.ID(required=True)
-
-    ok = graphene.Boolean()
-
-    def mutate(self, info, id):
-        try:
-            collection = EggsCollection.objects.get(pk=id)
-            collection.delete()
-            return DeleteEggsCollection(ok=True)
-        except EggsCollection.DoesNotExist:
-            return DeleteEggsCollection(ok=False)
-
-
-# Assignment
- 
- 
-
- 
-# Health Record
-class CreateHealthRecord(graphene.Mutation):
-    class Arguments:
-        input = HealthRecordInput(required=True)
-
-    record = graphene.Field(HealthRecordType)
-
-    def mutate(self, info, input):
-        doctor = CustomUser.objects.get(pk=input.doctor_id)
-        chicken_house = ChickenHouse.objects.get(pk=input.chicken_house_id)
-        record = HealthRecord.objects.create(
-            doctor=doctor,
-            chicken_house=chicken_house,
-            date=input.date,
-            health_issue=input.health_issue,
-            treatment=input.treatment,
-            deaths=input.deaths
-        )
-        return CreateHealthRecord(record=record)
-
-
-class UpdateHealthRecord(graphene.Mutation):
-    class Arguments:
-        id = graphene.ID(required=True)
-        input = HealthRecordInput(required=True)
-
-    record = graphene.Field(HealthRecordType)
-
-    def mutate(self, info, id, input):
-        record = HealthRecord.objects.get(pk=id)
-        record.doctor = CustomUser.objects.get(pk=input.doctor_id)
-        record.chicken_house = ChickenHouse.objects.get(pk=input.chicken_house_id)
-        record.date = input.date
-        record.health_issue = input.health_issue
-        record.treatment = input.treatment
-        record.deaths = input.deaths
-        record.save()
-        return UpdateHealthRecord(record=record)
-
-
-class DeleteHealthRecord(graphene.Mutation):
-    class Arguments:
-        id = graphene.ID(required=True)
-
-    ok = graphene.Boolean()
-
-    def mutate(self, info, id):
-        try:
-            record = HealthRecord.objects.get(pk=id)
-            record.delete()
-            return DeleteHealthRecord(ok=True)
-        except HealthRecord.DoesNotExist:
-            return DeleteHealthRecord(ok=False)
-
-
-# Order
-class CreateStore(graphene.Mutation):
-    class Arguments:
-        input = StoreInput(required=True)
-
-    store = graphene.Field(StoreType)
-    success = graphene.Boolean()
-    errors = graphene.String()
-
-    def mutate(self, info, input):
-        try:
-            store = Store.objects.create(
-                entry_type=input.entry_type,
-                product_id=input.product_id,
-                eggs_collection_id=input.eggs_collection_id,
-                quantity=input.quantity,
-                unit=input.unit,
-                good_eggs=input.good_eggs or 0,
-                broken_eggs=input.broken_eggs or 0,
-                cracked_eggs=input.cracked_eggs or 0,
-                dirty_eggs=input.dirty_eggs or 0,
-                quality_checker_id=input.quality_checker_id,
-                notes=input.notes or ''
-            )
-            return CreateStore(store=store, success=True)
+            with transaction.atomic():
+                chicken_house_id = input.pop('chicken_house_id')
+                collected_by_id = input.pop('collected_by_id', None)
+                
+                chicken_house = ChickenHouse.objects.get(pk=chicken_house_id)
+                collected_by = User.objects.get(pk=collected_by_id) if collected_by_id else None
+                
+                egg_collection = EggCollection.objects.create(
+                    chicken_house=chicken_house,
+                    collected_by=collected_by,
+                    **input
+                )
+                
+                # Update inventory
+                inventory, _ = Inventory.objects.get_or_create(pk=1)
+                inventory.egg_count += egg_collection.total_eggs
+                inventory.save()
+                
+                return RecordEggCollection(egg_collection=egg_collection, inventory=inventory)
         except Exception as e:
-            return CreateStore(success=False, errors=str(e))
+            raise GraphQLError(f"Error recording egg collection: {str(e)}")
 
-class UpdateStore(graphene.Mutation):
+class RecordVaccination(Mutation):
     class Arguments:
-        id = graphene.ID(required=True)
-        input = StoreInput(required=True)
+        input = VaccinationRecordInput(required=True)
 
-    store = graphene.Field(StoreType)
-    success = graphene.Boolean()
-    errors = graphene.String()
-
-    def mutate(self, info, id, input):
+    vaccination = Field(VaccinationRecordOutput)
+    
+    @classmethod
+    def mutate(cls, root, info, input):
         try:
-            store = Store.objects.get(pk=id)
-            for field, value in input.items():
-                if value is not None:
-                    setattr(store, field, value)
-            store.save()
-            return UpdateStore(store=store, success=True)
+            with transaction.atomic():
+                chicken_house_id = input.pop('chicken_house_id')
+                vaccine_id = input.pop('vaccine_id')
+                administered_by_id = input.pop('administered_by_id', None)
+                
+                chicken_house = ChickenHouse.objects.get(pk=chicken_house_id)
+                vaccine = Vaccine.objects.get(pk=vaccine_id)
+                administered_by = User.objects.get(pk=administered_by_id) if administered_by_id else None
+                
+                vaccination = VaccinationRecord.objects.create(
+                    chicken_house=chicken_house,
+                    vaccine=vaccine,
+                    administered_by=administered_by,
+                    **input
+                )
+                
+                return RecordVaccination(vaccination=vaccination)
         except Exception as e:
-            return UpdateStore(success=False, errors=str(e))
+            raise GraphQLError(f"Error recording vaccination: {str(e)}")
 
-class DeleteStore(graphene.Mutation):
-    class Arguments:
-        id = graphene.ID(required=True)
-
-    success = graphene.Boolean()
-    errors = graphene.String()
-
-    def mutate(self, info, id):
-        try:
-            store = Store.objects.get(pk=id)
-            store.delete()
-            return DeleteStore(success=True)
-        except Exception as e:
-            return DeleteStore(success=False, errors=str(e))
-
-# ========== SALE ==========
-
-class CreateSale(graphene.Mutation):
+class ProcessSale(Mutation):
     class Arguments:
         input = SaleInput(required=True)
+        items = List(SaleItemInput, required=True)
 
-    sale = graphene.Field(SaleType)
-    success = graphene.Boolean()
-    errors = graphene.String()
-
-    def mutate(self, info, input):
-        try:
-            sale = Sale.objects.create(
-                product_id=input.product_id,
-                quantity=input.quantity,
-                stock_manager_id=input.stock_manager_id
-            )
-            return CreateSale(sale=sale, success=True)
-        except Exception as e:
-            return CreateSale(success=False, errors=str(e))
-
-class UpdateSale(graphene.Mutation):
-    class Arguments:
-        id = graphene.ID(required=True)
-        input = SaleInput(required=True)
-
-    sale = graphene.Field(SaleType)
-    success = graphene.Boolean()
-    errors = graphene.String()
-
-    def mutate(self, info, id, input):
-        try:
-            sale = Sale.objects.get(pk=id)
-            for field, value in input.items():
-                if value is not None:
-                    setattr(sale, field, value)
-            sale.save()
-            return UpdateSale(sale=sale, success=True)
-        except Exception as e:
-            return UpdateSale(success=False, errors=str(e))
-
-class DeleteSale(graphene.Mutation):
-    class Arguments:
-        id = graphene.ID(required=True)
-
-    success = graphene.Boolean()
-    errors = graphene.String()
-
-    def mutate(self, info, id):
-        try:
-            sale = Sale.objects.get(pk=id)
-            sale.delete()
-            return DeleteSale(success=True)
-        except Exception as e:
-            return DeleteSale(success=False, errors=str(e))
-
-# ========== ORDER ==========
-
-class CreateOrder(graphene.Mutation):
-    class Arguments:
-        input = OrderInput(required=True)
-
-    order = graphene.Field(OrderType)
-    success = graphene.Boolean()
-    errors = graphene.String()
-
-    def mutate(self, info, input):
-        try:
-            order = Order.objects.create(**input)
-            return CreateOrder(order=order, success=True)
-        except Exception as e:
-            return CreateOrder(success=False, errors=str(e))
-
-class UpdateOrder(graphene.Mutation):
-    class Arguments:
-        id = graphene.ID(required=True)
-        input = OrderInput(required=True)
-
-    order = graphene.Field(OrderType)
-    success = graphene.Boolean()
-    errors = graphene.String()
-
+    sale = Field(SaleOutput)
+    inventory = Field(InventoryOutput)
     
-    def mutate(self, info, id, input):
+    @classmethod
+    def mutate(cls, root, info, input, items):
         try:
-            order = Order.objects.get(pk=id)
-            for field, value in input.items():
-                if value is not None:
-                    setattr(order, field, value)
-            order.save()
-            return UpdateOrder(order=order, success=True)
+            with transaction.atomic():
+                # Create the sale
+                customer_id = input.pop('customer_id', None)
+                sales_manager_id = input.pop('sales_manager_id')
+                
+                customer = User.objects.get(pk=customer_id) if customer_id else None
+                sales_manager = User.objects.get(pk=sales_manager_id, user_type='SALES_MANAGER')
+                
+                sale = Sale.objects.create(
+                    customer=customer,
+                    sales_manager=sales_manager,
+                    **input
+                )
+                
+                # Process sale items
+                inventory, _ = Inventory.objects.get_or_create(pk=1)
+                
+                for item in items:
+                    sale_id = item.pop('sale_id', None)
+                    chicken_id = item.pop('chicken_id', None)
+                    
+                    if sale.sale_type == 'EGG':
+                        eggs_sold = (item['egg_trays'] * 30) + item['egg_singles']
+                        if eggs_sold > inventory.egg_count:
+                            raise GraphQLError("Not enough eggs in inventory")
+                        inventory.egg_count -= eggs_sold
+                    elif sale.sale_type == 'CHICKEN' and chicken_id:
+                        chicken = Chicken.objects.get(pk=chicken_id, is_alive=True)
+                        chicken.is_alive = False
+                        chicken.date_of_death = sale.sale_date.date()
+                        chicken.save()
+                        
+                        # Update chicken house count
+                        chicken_house = chicken.chicken_house
+                        chicken_house.current_chicken_count -= 1
+                        chicken_house.save()
+                    
+                    SaleItem.objects.create(sale=sale, **item)
+                
+                inventory.save()
+                return ProcessSale(sale=sale, inventory=inventory)
         except Exception as e:
-            return UpdateOrder(success=False, errors=str(e))
+            raise GraphQLError(f"Error processing sale: {str(e)}")
 
-class DeleteOrder(graphene.Mutation):
+class RecordFoodPurchase(Mutation):
     class Arguments:
-        id = graphene.ID(required=True)
+        input = FoodPurchaseInput(required=True)
 
-    success = graphene.Boolean()
-    errors = graphene.String()
-
-    def mutate(self, info, id):
-        try:
-            order = Order.objects.get(pk=id)
-            order.delete()
-            return DeleteOrder(success=True)
-        except Exception as e:
-            return DeleteOrder(success=False, errors=str(e))
-
-# Feedback
-class CreateFeedback(graphene.Mutation):
-    class Arguments:
-        input = FeedbackInput(required=True)
-
-    feedback = graphene.Field(FeedbackType)
-
-    def mutate(self, info, input):
-        customer = CustomUser.objects.get(pk=input.customer_id)
-        order = Order.objects.get(pk=input.order_id)
-        feedback = Feedback.objects.create(
-            customer=customer,
-            order=order,
-            rating=input.rating,
-            comment=input.comment
-        )
-        return CreateFeedback(feedback=feedback)
-
-
-class UpdateFeedback(graphene.Mutation):
-    class Arguments:
-        id = graphene.ID(required=True)
-        input = FeedbackInput(required=True)
-
-    feedback = graphene.Field(FeedbackType)
-
-    def mutate(self, info, id, input):
-        feedback = Feedback.objects.get(pk=id)
-        feedback.customer = CustomUser.objects.get(pk=input.customer_id)
-        feedback.order = Order.objects.get(pk=input.order_id)
-        feedback.rating = input.rating
-        feedback.comment = input.comment
-        feedback.save()
-        return UpdateFeedback(feedback=feedback)
-
-
-class DeleteFeedback(graphene.Mutation):
-    class Arguments:
-        id = graphene.ID(required=True)
-
-    ok = graphene.Boolean()
-
-    def mutate(self, info, id):
-        try:
-            feedback = Feedback.objects.get(pk=id)
-            feedback.delete()
-            return DeleteFeedback(ok=True)
-        except Feedback.DoesNotExist:
-            return DeleteFeedback(ok=False)
-
-class RegisterUser(graphene.Mutation):
-    class Arguments:
-        input = RegisterInput(required=True)
-
-    user = graphene.Field(UserType)
-
-    def mutate(self, info, input):
-        if CustomUser.objects.filter(phone_number=input.phone_number).exists():
-            raise Exception("User with this phone number already exists")
-
-        # Force role to 'customer' on registration
-        user = CustomUser.objects.create_user(
-            phone_number=input.phone_number,
-            password=input.password,
-            name=input.name,
-            role='customer',  # Default role enforced
-            email=input.email,
-        )
-        return RegisterUser(user=user)
+    food_purchase = Field(FoodPurchaseOutput)
     
+    @classmethod
+    def mutate(cls, root, info, input):
+        try:
+            with transaction.atomic():
+                food_id = input.pop('food_id')
+                food = Food.objects.get(pk=food_id)
+                
+                food_purchase = FoodPurchase.objects.create(
+                    food=food,
+                    **input
+                )
+                
+                return RecordFoodPurchase(food_purchase=food_purchase)
+        except Exception as e:
+            raise GraphQLError(f"Error recording food purchase: {str(e)}")
 
- 
-from graphql_jwt.utils import jwt_payload, jwt_encode
-class LoginUser(graphene.Mutation):
+class DistributeFood(Mutation):
     class Arguments:
-        input = LoginInput(required=True)
+        input = FoodDistributionInput(required=True)
 
-    user = graphene.Field(UserType)
-    token = graphene.String()
+    distribution = Field(FoodDistributionOutput)
+    
+    @classmethod
+    def mutate(cls, root, info, input):
+        try:
+            with transaction.atomic():
+                chicken_house_id = input.pop('chicken_house_id')
+                food_id = input.pop('food_id')
+                distributed_by_id = input.pop('distributed_by_id', None)
+                
+                chicken_house = ChickenHouse.objects.get(pk=chicken_house_id)
+                food = Food.objects.get(pk=food_id)
+                distributed_by = User.objects.get(pk=distributed_by_id) if distributed_by_id else None
+                
+                distribution = FoodDistribution.objects.create(
+                    chicken_house=chicken_house,
+                    food=food,
+                    distributed_by=distributed_by,
+                    **input
+                )
+                
+                return DistributeFood(distribution=distribution)
+        except Exception as e:
+            raise GraphQLError(f"Error distributing food: {str(e)}")
 
-    def mutate(self, info, input):
-        user = authenticate(phone_number=input.phone_number, password=input.password)
-        if not user:
-            raise Exception("Invalid credentials")
+class RecordExpense(Mutation):
+    class Arguments:
+        input = ExpenseInput(required=True)
 
-        payload = jwt_payload(user)
-        payload['role'] = user.role  # 👈 Add this line
-        token = jwt_encode(payload)
+    expense = Field(ExpenseOutput)
+    
+    @classmethod
+    def mutate(cls, root, info, input):
+        try:
+            with transaction.atomic():
+                recorded_by_id = input.pop('recorded_by_id', None)
+                recorded_by = User.objects.get(pk=recorded_by_id) if recorded_by_id else None
+                
+                expense = Expense.objects.create(
+                    recorded_by=recorded_by,
+                    **input
+                )
+                
+                return RecordExpense(expense=expense)
+        except Exception as e:
+            raise GraphQLError(f"Error recording expense: {str(e)}")
 
-        return LoginUser(user=user, token=token)
+class RecordHealthReport(Mutation):
+    class Arguments:
+        input = HealthReportInput(required=True)
 
+    health_report = Field(HealthReportOutput)
+    
+    @classmethod
+    def mutate(cls, root, info, input):
+        try:
+            with transaction.atomic():
+                chicken_house_id = input.pop('chicken_house_id')
+                reported_by_id = input.pop('reported_by_id', None)
+                
+                chicken_house = ChickenHouse.objects.get(pk=chicken_house_id)
+                reported_by = User.objects.get(pk=reported_by_id, user_type='DOCTOR') if reported_by_id else None
+                
+                health_report = HealthReport.objects.create(
+                    chicken_house=chicken_house,
+                    reported_by=reported_by,
+                    **input
+                )
+                
+                return RecordHealthReport(health_report=health_report)
+        except Exception as e:
+            raise GraphQLError(f"Error recording health report: {str(e)}")
 
+class AddChickensToHouse(Mutation):
+    class Arguments:
+        chicken_house_id = ID(required=True)
+        count = Int(required=True)
+        chicken_type = String(required=True)
 
+    chicken_house = Field(ChickenHouseOutput)
+    
+    @classmethod
+    def mutate(cls, root, info, chicken_house_id, count, chicken_type):
+        try:
+            with transaction.atomic():
+                chicken_house = ChickenHouse.objects.get(pk=chicken_house_id)
+                
+                if chicken_house.current_chicken_count + count > chicken_house.capacity:
+                    raise GraphQLError("Adding these chickens would exceed house capacity")
+                
+                # Create chickens in bulk
+                chickens = [
+                    Chicken(
+                        chicken_house=chicken_house,
+                        chicken_type=chicken_type,
+                        gender='UNKNOWN'  # Default, can be updated later
+                    )
+                    for _ in range(count)
+                ]
+                Chicken.objects.bulk_create(chickens)
+                
+                # Update house count
+                chicken_house.current_chicken_count += count
+                chicken_house.save()
+                
+                return AddChickensToHouse(chicken_house=chicken_house)
+        except Exception as e:
+            raise GraphQLError(f"Error adding chickens to house: {str(e)}")
 
+class RecordChickenDeath(Mutation):
+    class Arguments:
+        chicken_id = ID(required=True)
+        cause_of_death = String(required=True)
+        date_of_death = Date()
 
+    chicken = Field(ChickenOutput)
+    chicken_house = Field(ChickenHouseOutput)
+    
+    @classmethod
+    def mutate(cls, root, info, chicken_id, cause_of_death, date_of_death=None):
+        try:
+            with transaction.atomic():
+                chicken = Chicken.objects.get(pk=chicken_id, is_alive=True)
+                chicken.is_alive = False
+                chicken.cause_of_death = cause_of_death
+                chicken.date_of_death = date_of_death or timezone.now().date()
+                chicken.save()
+                
+                # Update chicken house count
+                chicken_house = chicken.chicken_house
+                chicken_house.current_chicken_count -= 1
+                chicken_house.save()
+                
+                return RecordChickenDeath(chicken=chicken, chicken_house=chicken_house)
+        except Chicken.DoesNotExist:
+            raise GraphQLError("Chicken not found or already dead")
+        except Exception as e:
+            raise GraphQLError(f"Error recording chicken death: {str(e)}")
 
-# Root Mutation
+class UpdateInventory(Mutation):
+    class Arguments:
+        input = InventoryUpdateInput(required=True)
+
+    inventory = Field(InventoryOutput)
+    
+    @classmethod
+    def mutate(cls, root, info, input):
+        try:
+            inventory, _ = Inventory.objects.get_or_create(pk=1)
+            inventory.egg_count = input['egg_count']
+            inventory.save()
+            return UpdateInventory(inventory=inventory)
+        except Exception as e:
+            raise GraphQLError(f"Error updating inventory: {str(e)}")
+
 class Mutation(graphene.ObjectType):
-
-  
-
-    register = RegisterMutation.Field()
-    login = LoginMutation.Field()
-    update_user = UpdateUserMutation.Field()
-    delete_user = DeleteUserMutation.Field()
-
-    # JWT Authentication
-    token_auth = graphql_jwt.ObtainJSONWebToken.Field()
-    refresh_token = graphql_jwt.Refresh.Field()
-    verify_token = graphql_jwt.Verify.Field()
- 
+    create_user = CreateUser.Field()
+    update_user = UpdateUser.Field()
     create_chicken_house = CreateChickenHouse.Field()
-    update_chicken_house = UpdateChickenHouse.Field()
-    delete_chicken_house = DeleteChickenHouse.Field()
-
-    create_eggs_collection = CreateEggsCollection.Field()
-    update_eggs_collection = UpdateEggsCollection.Field()
-    delete_eggs_collection = DeleteEggsCollection.Field()
-
-     
-
-    create_health_record = CreateHealthRecord.Field()
-    update_health_record = UpdateHealthRecord.Field()
-    delete_health_record = DeleteHealthRecord.Field()
-
-     
-    create_feedback = CreateFeedback.Field()
-    update_feedback = UpdateFeedback.Field()
-    delete_feedback = DeleteFeedback.Field()
-
-
-    create_store = CreateStore.Field()
-    update_store = UpdateStore.Field()
-    delete_store = DeleteStore.Field()
-
-    create_sale = CreateSale.Field()
-    update_sale = UpdateSale.Field()
-    delete_sale = DeleteSale.Field()
-
-    create_order = CreateOrder.Field()
-    update_order = UpdateOrder.Field()
-    delete_order = DeleteOrder.Field()
+    record_egg_collection = RecordEggCollection.Field()
+    record_vaccination = RecordVaccination.Field()
+    process_sale = ProcessSale.Field()
+    record_food_purchase = RecordFoodPurchase.Field()
+    distribute_food = DistributeFood.Field()
+    record_expense = RecordExpense.Field()
+    record_health_report = RecordHealthReport.Field()
+    add_chickens_to_house = AddChickensToHouse.Field()
+    record_chicken_death = RecordChickenDeath.Field()
+    update_inventory = UpdateInventory.Field()

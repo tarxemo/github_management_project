@@ -18,7 +18,7 @@ class Query(graphene.ObjectType):
     users = graphene.List(UserOutput)
 
     def resolve_users(self, info):
-        return User.objects.select_related('chicken_house').all()
+        return User.objects.select_related('chicken_house').exclude(is_superuser = True)
     
     current_user = graphene.Field(UserOutput)
     
@@ -38,7 +38,7 @@ class Query(graphene.ObjectType):
         if not info.context.user.is_authenticated or info.context.user.user_type != 'ADMIN':
             raise GraphQLError("Only admin can view users")
         
-        queryset = User.objects.all()
+        queryset = User.objects.exclude(is_superuser=True)
         
         if user_type:
             queryset = queryset.filter(user_type=user_type)

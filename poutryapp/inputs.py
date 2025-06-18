@@ -1,102 +1,93 @@
 import graphene
-from graphene import InputObjectType, ID, String, Int, Float, Boolean, Date, DateTime, List
+from django.contrib.auth import get_user_model
 
-class UserInput(InputObjectType):
-    username = String(required=True)
-    email = String(required=True)
-    password = String(required=True)
-    user_type = String(required=True)
-    phone_number = String()
-    address = String()
+UserModel = get_user_model()
 
-class ChickenHouseInput(InputObjectType):
-    name = String(required=True)
-    house_type = String(required=True)
-    capacity = Int(required=True)
-    worker_id = ID()
-    notes = String()
+# ------------------- Input Types -------------------
 
-class ChickenInput(InputObjectType):
-    chicken_house_id = ID(required=True)
-    chicken_type = String(required=True)
-    gender = String()
-    date_of_birth = Date()
-    notes = String()
+class UserInput(graphene.InputObjectType):
+    phone_number = graphene.String(required=True)
+    password = graphene.String(required=True)
+    first_name = graphene.String()
+    last_name = graphene.String()
+    user_type = graphene.String(required=True)
+    chicken_house_id = graphene.ID()
 
-class VaccineInput(InputObjectType):
-    name = String(required=True)
-    description = String()
-    recommended_age_days = Int(required=True)
+class ChickenHouseInput(graphene.InputObjectType):
+    name = graphene.String(required=True)
+    capacity = graphene.Int(required=True)
+    is_active = graphene.Boolean()
 
-class VaccinationRecordInput(InputObjectType):
-    chicken_house_id = ID(required=True)
-    vaccine_id = ID(required=True)
-    date_administered = Date(required=True)
-    notes = String()
+class EggCollectionInput(graphene.InputObjectType):
+    chicken_house_id = graphene.ID(required=True)
+    full_trays = graphene.Int(required=True)
+    loose_eggs = graphene.Int(default_value=0)
+    rejected_eggs = graphene.Int(default_value=0)
+    notes = graphene.String()
 
-class EggCollectionInput(InputObjectType):
-    chicken_house_id = ID(required=True)
-    collection_date = Date(required=True)
-    total_eggs = Int(required=True)
-    broken_eggs = Int()
-    notes = String()
+class EggCollectionConfirmationInput(graphene.InputObjectType):
+    collection_id = graphene.ID(required=True)
+    confirmed = graphene.Boolean(required=True)
 
-class FoodInput(InputObjectType):
-    name = String(required=True)
-    description = String()
-    unit = String(required=True)
+class EggSaleInput(graphene.InputObjectType):
+    quantity = graphene.Int(required=True)
+    price_per_egg = graphene.Decimal(required=True)
+    buyer_name = graphene.String(required=True)
+    buyer_contact = graphene.String()
 
-class FoodPurchaseInput(InputObjectType):
-    food_id = ID(required=True)
-    quantity = Float(required=True)
-    unit_price = Float(required=True)
-    purchase_date = Date()
-    supplier = String()
-    receipt_number = String()
-    notes = String()
+class FoodTypeInput(graphene.InputObjectType):
+    name = graphene.String(required=True)
+    description = graphene.String()
 
-class FoodDistributionInput(InputObjectType):
-    chicken_house_id = ID(required=True)
-    food_id = ID(required=True)
-    quantity = Float(required=True)
-    distribution_date = DateTime()
-    notes = String()
+class FoodPurchaseInput(graphene.InputObjectType):
+    food_type_id = graphene.ID(required=True)
+    sacks_purchased = graphene.Int(required=True)
+    price_per_sack = graphene.Decimal(required=True)
+    supplier = graphene.String(required=True)
+    purchase_date = graphene.Date()
 
-class SaleInput(InputObjectType):
-    sale_type = String(required=True)
-    customer_id = ID()
-    sales_manager_id = ID(required=True)
-    sale_date = DateTime()
-    total_amount = Float(required=True)
-    payment_received = Boolean()
-    payment_method = String()
-    notes = String()
+class FoodDistributionInput(graphene.InputObjectType):
+    food_type_id = graphene.ID(required=True)
+    chicken_house_id = graphene.ID(required=True)
+    sacks_distributed = graphene.Int(required=True)
+    worker_id = graphene.ID(required=True)  # Who is receiving
 
-class SaleItemInput(InputObjectType):
-    sale_id = ID(required=True)
-    egg_trays = Int()
-    egg_singles = Int()
-    egg_price_per_tray = Float()
-    chicken_id = ID()
-    chicken_price = Float()
-    item_description = String()
-    quantity = Float()
-    unit_price = Float()
+class FoodDistributionConfirmationInput(graphene.InputObjectType):
+    distribution_id = graphene.ID(required=True)
+    confirmed = graphene.Boolean(required=True)
 
-class ExpenseInput(InputObjectType):
-    expense_type = String(required=True)
-    amount = Float(required=True)
-    date = Date()
-    description = String(required=True)
+class MedicineInput(graphene.InputObjectType):
+    name = graphene.String(required=True)
+    description = graphene.String()
+    unit_of_measure = graphene.String(required=True)
 
-class HealthReportInput(InputObjectType):
-    chicken_house_id = ID(required=True)
-    report_date = Date()
-    healthy_count = Int(required=True)
-    sick_count = Int(required=True)
-    symptoms = String()
-    treatment = String()
-    notes = String()
+class MedicinePurchaseInput(graphene.InputObjectType):
+    medicine_id = graphene.ID(required=True)
+    quantity = graphene.Decimal(required=True)
+    price_per_unit = graphene.Decimal(required=True)
+    supplier = graphene.String(required=True)
+    purchase_date = graphene.Date()
+    expiry_date = graphene.Date(required=True)
 
-class InventoryUpdateInput(InputObjectType):
-    egg_count = Int(required=True)
+class MedicineDistributionInput(graphene.InputObjectType):
+    medicine_id = graphene.ID(required=True)
+    chicken_house_id = graphene.ID(required=True)
+    quantity = graphene.Decimal(required=True)
+    purpose = graphene.String()
+    worker_id = graphene.ID(required=True)  # Who is receiving
+
+class MedicineConfirmationInput(graphene.InputObjectType):
+    distribution_id = graphene.ID(required=True)
+    doctor_confirmed = graphene.Boolean()
+    worker_confirmed = graphene.Boolean()
+
+class ChickenDeathRecordInput(graphene.InputObjectType):
+    chicken_house_id = graphene.ID(required=True)
+    number_dead = graphene.Int(required=True)
+    possible_cause = graphene.String()
+    notes = graphene.String()
+
+class DeathRecordConfirmationInput(graphene.InputObjectType):
+    record_id = graphene.ID(required=True)
+    confirmed = graphene.Boolean(required=True)
+    doctor_notes = graphene.String()

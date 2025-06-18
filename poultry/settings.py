@@ -45,9 +45,12 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    
     'poutryapp',
     'graphene_django',
-    'rest_framework'
+    'rest_framework',
+    'graphql_jwt.refresh_token'
+
 ]
 
  

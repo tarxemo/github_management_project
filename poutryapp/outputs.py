@@ -1,191 +1,214 @@
 import graphene
-from graphene import ObjectType, ID, String, Int, Float, Boolean, Date, DateTime, List, Field
-from graphene_django.types import DjangoObjectType
+from graphene_django import DjangoObjectType
+from django.contrib.auth import get_user_model
 from .models import (
-    User, ChickenHouse, Chicken, Vaccine, VaccinationRecord,
-    EggCollection, Food, FoodPurchase, FoodDistribution,
-    Inventory, Sale, SaleItem, Expense, HealthReport
+    User, ChickenHouse, EggCollection, EggInventory, EggSale,
+    FoodType, FoodInventory, FoodPurchase, FoodDistribution,
+    Medicine, MedicineInventory, MedicinePurchase, MedicineDistribution,
+    ChickenDeathRecord
 )
+from datetime import date
 
-class UserOutput(ObjectType):
-    id = ID()
-    username = String()
-    email = String()
-    user_type = String()
-    phone_number = String()
-    address = String()
-    date_joined = DateTime()
-    last_login = DateTime()
+UserModel = get_user_model()
+# ------------------- Output Types -------------------
+
+class UserOutput(DjangoObjectType):
+    class Meta:
+        model = UserModel
+        only_fields = (
+            'id', 'phone_number', 'first_name', 'last_name', 
+            'user_type', 'chicken_house'
+        )
     
-    def resolve_user_type(self, info):
+    user_type_display = graphene.String()
+    
+    def resolve_user_type_display(self, info):
         return self.get_user_type_display()
-
-class ChickenHouseOutput(ObjectType):
-    id = ID()
-    name = String()
-    house_type = String()
-    capacity = Int()
-    current_chicken_count = Int()
-    worker = Field(lambda: UserOutput)
-    created_at = DateTime()
-    last_cleaned = DateTime()
-    notes = String()
     
-    def resolve_house_type(self, info):
-        return self.get_house_type_display()
+    def resolve_chicken_house(self, info):
+        if self.chicken_house:
+            return ChickenHouseOutput.from_orm(self.chicken_house)
+        return None
 
-class ChickenOutput(ObjectType):
-    id = ID()
-    chicken_house = Field(lambda: ChickenHouseOutput)
-    chicken_type = String()
-    gender = String()
-    date_added = Date()
-    date_of_birth = Date()
-    is_alive = Boolean()
-    date_of_death = Date()
-    cause_of_death = String()
-    notes = String()
+class ChickenHouseOutput(DjangoObjectType):
+    class Meta:
+        model = ChickenHouse
+        fields = '__all__'
     
-    def resolve_chicken_type(self, info):
-        return self.get_chicken_type_display()
+    current_worker = graphene.Field(lambda: UserOutput)
     
-    def resolve_gender(self, info):
-        return self.get_gender_display()
+    def resolve_current_worker(self, info):
+        worker = UserModel.objects.filter(
+            chicken_house=self, 
+            user_type='WORKER'
+        ).first()
+        if worker:
+            return UserOutput.from_orm(worker)
+        return None
 
-class VaccineOutput(ObjectType):
-    id = ID()
-    name = String()
-    description = String()
-    recommended_age_days = Int()
-
-class VaccinationRecordOutput(ObjectType):
-    id = ID()
-    chicken_house = Field(lambda: ChickenHouseOutput)
-    vaccine = Field(lambda: VaccineOutput)
-    date_administered = Date()
-    administered_by = Field(lambda: UserOutput)
-    notes = String()
-
-class EggCollectionOutput(ObjectType):
-    id = ID()
-    chicken_house = Field(lambda: ChickenHouseOutput)
-    collection_date = Date()
-    collected_by = Field(lambda: UserOutput)
-    total_eggs = Int()
-    broken_eggs = Int()
-    full_trays = Int()
-    remaining_eggs = Int()
-    notes = String()
+class EggCollectionOutput(DjangoObjectType):
+    class Meta:
+        model = EggCollection
+        fields = '__all__'
     
-    def resolve_full_trays(self, info):
+    total_eggs = graphene.Int()
+    chicken_house = graphene.Field(lambda: ChickenHouseOutput)
+    worker = graphene.Field(lambda: UserOutput)
+    
+    def resolve_total_eggs(self, info):
+        return (self.full_trays * 30) + self.loose_eggs
+
+class EggInventoryOutput(DjangoObjectType):
+    class Meta:
+        model = EggInventory
+        fields = '__all__'
+    
+    available_trays = graphene.Int()
+    
+    def resolve_available_trays(self, info):
         return self.total_eggs // 30
+
+class EggSaleOutput(DjangoObjectType):
+    class Meta:
+        model = EggSale
+        fields = '__all__'
     
-    def resolve_remaining_eggs(self, info):
-        return self.total_eggs % 30
-
-class FoodOutput(ObjectType):
-    id = ID()
-    name = String()
-    description = String()
-    unit = String()
-
-class FoodPurchaseOutput(ObjectType):
-    id = ID()
-    food = Field(lambda: FoodOutput)
-    quantity = Float()
-    unit_price = Float()
-    purchase_date = Date()
-    supplier = String()
-    receipt_number = String()
-    notes = String()
-    total_cost = Float()
+    total_amount = graphene.Decimal()
+    recorded_by = graphene.Field(lambda: UserOutput)
     
-    def resolve_total_cost(self, info):
-        return self.quantity * self.unit_price
+    def resolve_total_amount(self, info):
+        return self.quantity * self.price_per_egg
 
-class FoodDistributionOutput(ObjectType):
-    id = ID()
-    chicken_house = Field(lambda: ChickenHouseOutput)
-    food = Field(lambda: FoodOutput)
-    quantity = Float()
-    distribution_date = DateTime()
-    distributed_by = Field(lambda: UserOutput)
-    notes = String()
+class FoodTypeOutput(DjangoObjectType):
+    class Meta:
+        model = FoodType
+        fields = '__all__'
 
-class InventoryOutput(ObjectType):
-    id = ID()
-    egg_count = Int()
-    last_updated = DateTime()
-
-class SaleOutput(ObjectType):
-    id = ID()
-    sale_type = String()
-    customer = Field(lambda: UserOutput)
-    sales_manager = Field(lambda: UserOutput)
-    sale_date = DateTime()
-    total_amount = Float()
-    payment_received = Boolean()
-    payment_method = String()
-    notes = String()
-    items = List(lambda: SaleItemOutput)
+class FoodInventoryOutput(DjangoObjectType):
+    class Meta:
+        model = FoodInventory
+        fields = '__all__'
     
-    def resolve_sale_type(self, info):
-        return self.get_sale_type_display()
+    food_type = graphene.Field(lambda: FoodTypeOutput)
+    total_kg = graphene.Decimal()
     
-    def resolve_items(self, info):
-        return self.items.all()
+    def resolve_total_kg(self, info):
+        return self.sacks_in_stock * 50
 
-class SaleItemOutput(ObjectType):
-    id = ID()
-    sale = Field(lambda: SaleOutput)
-    egg_trays = Int()
-    egg_singles = Int()
-    egg_price_per_tray = Float()
-    chicken = Field(lambda: ChickenOutput)
-    chicken_price = Float()
-    item_description = String()
-    quantity = Float()
-    unit_price = Float()
-    total_price = Float()
+class FoodPurchaseOutput(DjangoObjectType):
+    class Meta:
+        model = FoodPurchase
+        fields = '__all__'
     
-    def resolve_total_price(self, info):
-        if self.sale.sale_type == 'EGG':
-            return (self.egg_trays * self.egg_price_per_tray) + \
-                   (self.egg_singles * (self.egg_price_per_tray / 30))
-        elif self.sale.sale_type == 'CHICKEN' and self.chicken:
-            return self.chicken_price
-        else:
-            return self.quantity * self.unit_price
-
-class ExpenseOutput(ObjectType):
-    id = ID()
-    expense_type = String()
-    amount = Float()
-    date = Date()
-    description = String()
-    recorded_by = Field(lambda: UserOutput)
+    food_type = graphene.Field(lambda: FoodTypeOutput)
+    recorded_by = graphene.Field(lambda: UserOutput)
+    total_amount = graphene.Decimal()
     
-    def resolve_expense_type(self, info):
-        return self.get_expense_type_display()
+    def resolve_total_amount(self, info):
+        return self.sacks_purchased * self.price_per_sack
 
-class HealthReportOutput(ObjectType):
-    id = ID()
-    chicken_house = Field(lambda: ChickenHouseOutput)
-    report_date = Date()
-    reported_by = Field(lambda: UserOutput)
-    healthy_count = Int()
-    sick_count = Int()
-    symptoms = String()
-    treatment = String()
-    notes = String()
+class FoodDistributionOutput(DjangoObjectType):
+    class Meta:
+        model = FoodDistribution
+        fields = '__all__'
+    
+    food_type = graphene.Field(lambda: FoodTypeOutput)
+    chicken_house = graphene.Field(lambda: ChickenHouseOutput)
+    distributed_by = graphene.Field(lambda: UserOutput)
+    received_by = graphene.Field(lambda: UserOutput)
+    total_kg = graphene.Decimal()
+    
+    def resolve_total_kg(self, info):
+        return self.sacks_distributed * 50
 
-class BusinessMetricsOutput(ObjectType):
-    total_eggs_collected = Int()
-    total_eggs_sold = Int()
-    total_chickens_sold = Int()
-    total_revenue = Float()
-    total_expenses = Float()
-    net_profit = Float()
-    food_costs = Float()
-    health_costs = Float()
-    operational_costs = Float()
+class MedicineOutput(DjangoObjectType):
+    class Meta:
+        model = Medicine
+        fields = '__all__'
+
+class MedicineInventoryOutput(DjangoObjectType):
+    class Meta:
+        model = MedicineInventory
+        fields = '__all__'
+    
+    medicine = graphene.Field(lambda: MedicineOutput)
+
+class MedicinePurchaseOutput(DjangoObjectType):
+    class Meta:
+        model = MedicinePurchase
+        fields = '__all__'
+    
+    medicine = graphene.Field(lambda: MedicineOutput)
+    recorded_by = graphene.Field(lambda: UserOutput)
+    total_amount = graphene.Decimal()
+    days_to_expiry = graphene.Int()
+    
+    def resolve_total_amount(self, info):
+        return float(self.quantity) * float(self.price_per_unit)
+    
+    def resolve_days_to_expiry(self, info):
+        return (self.expiry_date - date.today()).days
+
+class MedicineDistributionOutput(DjangoObjectType):
+    class Meta:
+        model = MedicineDistribution
+        fields = '__all__'
+    
+    medicine = graphene.Field(lambda: MedicineOutput)
+    chicken_house = graphene.Field(lambda: ChickenHouseOutput)
+    distributed_by = graphene.Field(lambda: UserOutput)
+    received_by = graphene.Field(lambda: UserOutput)
+
+class ChickenDeathRecordOutput(DjangoObjectType):
+    class Meta:
+        model = ChickenDeathRecord
+        fields = '__all__'
+    
+    chicken_house = graphene.Field(lambda: ChickenHouseOutput)
+    recorded_by = graphene.Field(lambda: UserOutput)
+    confirmed_by = graphene.Field(lambda: UserOutput)
+    
+    def resolve_confirmed_by(self, info):
+        if self.confirmed_by:
+            return UserOutput.from_orm(self.confirmed_by)
+        return None
+
+# ------------------- Custom Business-Focused Types -------------------
+
+class DailyEggReportOutput(graphene.ObjectType):
+    date = graphene.Date()
+    total_eggs = graphene.Int()
+    total_trays = graphene.Int()
+    total_rejected = graphene.Int()
+    collections = graphene.List(lambda: EggCollectionOutput)
+    
+    def resolve_total_trays(self, info):
+        return self.total_eggs // 30
+
+class ChickenHousePerformanceOutput(graphene.ObjectType):
+    chicken_house = graphene.Field(lambda: ChickenHouseOutput)
+    total_eggs = graphene.Int()
+    avg_eggs_per_day = graphene.Float()
+    mortality_rate = graphene.Float()
+    food_consumption = graphene.Decimal()
+    
+    def resolve_avg_eggs_per_day(self, info):
+        # Business logic to calculate average eggs per day
+        pass
+    
+    def resolve_mortality_rate(self, info):
+        # Business logic to calculate mortality rate
+        pass
+    
+    def resolve_food_consumption(self, info):
+        # Business logic to calculate food consumption
+        pass
+
+class InventorySummaryOutput(graphene.ObjectType):
+    total_eggs = graphene.Int()
+    available_trays = graphene.Int()
+    food_inventory = graphene.List(lambda: FoodInventoryOutput)
+    medicine_inventory = graphene.List(lambda: MedicineInventoryOutput)
+    
+    def resolve_available_trays(self, info):
+        return self.total_eggs // 30

@@ -26,6 +26,7 @@ class JWTAuthenticationMiddleware:
             token = auth_header.split("Bearer ")[1]
             try:
                 decoded_data = jwt.decode(token, settings.SECRET_KEY, algorithms=["HS256"])
+                print(decoded_data)
                 user_id = decoded_data.get("user_id")
                 if not user_id:
                     logger.warning("Token decoded but 'user_id' is missing.")

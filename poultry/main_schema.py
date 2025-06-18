@@ -1,6 +1,6 @@
 import graphene
-from poutryapp.schema import Query
-from poutryapp.views import Mutation
+from poutryapp.queries import Query
+from poutryapp.mutations import Mutation
 
 class RootQuery(Query, graphene.ObjectType):
     pass

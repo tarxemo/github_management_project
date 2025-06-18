@@ -15,6 +15,11 @@ from django.utils import timezone
 
 class Query(graphene.ObjectType):
     # ------------------- Authentication & User Queries -------------------
+    users = graphene.List(UserOutput)
+
+    def resolve_users(self, info):
+        return User.objects.select_related('chicken_house').all()
+    
     current_user = graphene.Field(UserOutput)
     
     def resolve_current_user(self, info):
@@ -267,6 +272,7 @@ class Query(graphene.ObjectType):
         return queryset.order_by('-date_distributed')
 
     # ------------------- Medicine Management Queries -------------------
+    
     medicines = graphene.List(MedicineOutput)
     
     def resolve_medicines(self, info):
@@ -280,9 +286,10 @@ class Query(graphene.ObjectType):
     
     def resolve_medicine_inventory(self, info):
         user = info.context.user
-        if not user.is_authenticated or user.user_type not in ['ADMIN', 'STOCK_MANAGER', 'DOCTOR']:
+        if not user.is_authenticated or user.user_type not in ['ADMIN', 'STOCK_MANAGER', 'DOCTOR', "WORKER"]:
             raise GraphQLError("Only admin, stock managers and doctors can view medicine inventory")
-        
+        if user.user_type == "WORKER":
+            return []
         return MedicineInventory.objects.all()
 
     medicine_purchases = graphene.List(
@@ -293,8 +300,11 @@ class Query(graphene.ObjectType):
     
     def resolve_medicine_purchases(self, info, medicine_id=None, expiring_soon=False):
         user = info.context.user
-        if not user.is_authenticated or user.user_type not in ['ADMIN', 'STOCK_MANAGER', 'DOCTOR']:
+        if not user.is_authenticated or user.user_type not in ['ADMIN', 'STOCK_MANAGER', 'DOCTOR', "WORKER"]:
             raise GraphQLError("Only admin, stock managers and doctors can view medicine purchases")
+        
+        if user.user_type == "WORKER":
+            return []
         
         queryset = MedicinePurchase.objects.all()
         
@@ -331,19 +341,18 @@ class Query(graphene.ObjectType):
             queryset = queryset.filter(date_distributed__gte=start_date)
         if end_date:
             queryset = queryset.filter(date_distributed__lte=end_date)
-        if needs_confirmation:
-            if user.user_type == 'DOCTOR':
-                queryset = queryset.filter(doctor_confirmed=False, distributed_by=user)
-            elif user.user_type == 'WORKER':
-                queryset = queryset.filter(worker_confirmed=False, received_by=user)
+        if user.user_type == 'DOCTOR':
+            queryset = queryset
+        elif user.user_type == 'WORKER':
+            queryset = queryset.filter(received_by=user)
         
         # Workers can only see distributions to their chicken house
         if user.user_type == 'WORKER' and user.chicken_house:
             queryset = queryset.filter(chicken_house=user.chicken_house)
         
         # Doctors can only see distributions they made
-        if user.user_type == 'DOCTOR':
-            queryset = queryset.filter(distributed_by=user)
+        # if user.user_type == 'DOCTOR':
+        #     queryset = queryset.filter(distributed_by=user)
         
         return queryset.order_by('-date_distributed')
 

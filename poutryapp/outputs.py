@@ -1,3 +1,4 @@
+from decimal import Decimal
 import graphene
 from graphene_django import DjangoObjectType
 from django.contrib.auth import get_user_model
@@ -26,9 +27,7 @@ class UserOutput(DjangoObjectType):
         return self.get_user_type_display()
     
     def resolve_chicken_house(self, info):
-        if self.chicken_house:
-            return ChickenHouseOutput.from_orm(self.chicken_house)
-        return None
+        return self.chicken_house if self.chicken_house else None
 
 class ChickenHouseOutput(DjangoObjectType):
     class Meta:
@@ -42,9 +41,7 @@ class ChickenHouseOutput(DjangoObjectType):
             chicken_house=self, 
             user_type='WORKER'
         ).first()
-        if worker:
-            return UserOutput.from_orm(worker)
-        return None
+        return worker 
 
 class EggCollectionOutput(DjangoObjectType):
     class Meta:
@@ -77,7 +74,7 @@ class EggSaleOutput(DjangoObjectType):
     recorded_by = graphene.Field(lambda: UserOutput)
     
     def resolve_total_amount(self, info):
-        return self.quantity * self.price_per_egg
+        return self.quantity * Decimal(f'{self.price_per_egg}')
 
 class FoodTypeOutput(DjangoObjectType):
     class Meta:
@@ -93,7 +90,7 @@ class FoodInventoryOutput(DjangoObjectType):
     total_kg = graphene.Decimal()
     
     def resolve_total_kg(self, info):
-        return self.sacks_in_stock * 50
+        return self.sacks_in_stock * Decimal('50')
 
 class FoodPurchaseOutput(DjangoObjectType):
     class Meta:
@@ -105,7 +102,7 @@ class FoodPurchaseOutput(DjangoObjectType):
     total_amount = graphene.Decimal()
     
     def resolve_total_amount(self, info):
-        return self.sacks_purchased * self.price_per_sack
+        return self.sacks_purchased * Decimal(f'{self.price_per_sack}')
 
 class FoodDistributionOutput(DjangoObjectType):
     class Meta:
@@ -119,7 +116,7 @@ class FoodDistributionOutput(DjangoObjectType):
     total_kg = graphene.Decimal()
     
     def resolve_total_kg(self, info):
-        return self.sacks_distributed * 50
+        return self.sacks_distributed * Decimal('50')
 
 class MedicineOutput(DjangoObjectType):
     class Meta:
@@ -144,7 +141,7 @@ class MedicinePurchaseOutput(DjangoObjectType):
     days_to_expiry = graphene.Int()
     
     def resolve_total_amount(self, info):
-        return float(self.quantity) * float(self.price_per_unit)
+        return Decimal(self.quantity) * Decimal(self.price_per_unit)
     
     def resolve_days_to_expiry(self, info):
         return (self.expiry_date - date.today()).days
@@ -169,9 +166,14 @@ class ChickenDeathRecordOutput(DjangoObjectType):
     confirmed_by = graphene.Field(lambda: UserOutput)
     
     def resolve_confirmed_by(self, info):
-        if self.confirmed_by:
-            return UserOutput.from_orm(self.confirmed_by)
-        return None
+        return self.confirmed_by  # ✅ No .from_orm needed
+
+    def resolve_recorded_by(self, info):
+        return self.recorded_by  # ✅ Same here
+
+    def resolve_chicken_house(self, info):
+        return self.chicken_house  # ✅ And here
+
 
 # ------------------- Custom Business-Focused Types -------------------
 

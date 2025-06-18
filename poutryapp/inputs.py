@@ -13,6 +13,14 @@ class UserInput(graphene.InputObjectType):
     user_type = graphene.String(required=True)
     chicken_house_id = graphene.ID()
 
+class ChangePasswordInput(graphene.InputObjectType):
+    old_password = graphene.String(required=True)
+    new_password = graphene.String(required=True)
+    
+class AddChickensInput(graphene.InputObjectType):
+    chicken_house_id = graphene.ID(required=True)
+    number_of_chickens = graphene.Int(required=True)
+    
 class ChickenHouseInput(graphene.InputObjectType):
     name = graphene.String(required=True)
     capacity = graphene.Int(required=True)
@@ -50,7 +58,6 @@ class FoodDistributionInput(graphene.InputObjectType):
     food_type_id = graphene.ID(required=True)
     chicken_house_id = graphene.ID(required=True)
     sacks_distributed = graphene.Int(required=True)
-    worker_id = graphene.ID(required=True)  # Who is receiving
 
 class FoodDistributionConfirmationInput(graphene.InputObjectType):
     distribution_id = graphene.ID(required=True)
@@ -74,7 +81,6 @@ class MedicineDistributionInput(graphene.InputObjectType):
     chicken_house_id = graphene.ID(required=True)
     quantity = graphene.Decimal(required=True)
     purpose = graphene.String()
-    worker_id = graphene.ID(required=True)  # Who is receiving
 
 class MedicineConfirmationInput(graphene.InputObjectType):
     distribution_id = graphene.ID(required=True)
@@ -82,7 +88,6 @@ class MedicineConfirmationInput(graphene.InputObjectType):
     worker_confirmed = graphene.Boolean()
 
 class ChickenDeathRecordInput(graphene.InputObjectType):
-    chicken_house_id = graphene.ID(required=True)
     number_dead = graphene.Int(required=True)
     possible_cause = graphene.String()
     notes = graphene.String()

@@ -27,17 +27,17 @@ class JWTAuthenticationMiddleware:
             try:
                 decoded_data = jwt.decode(token, settings.SECRET_KEY, algorithms=["HS256"])
                 print(decoded_data)
-                user_id = decoded_data.get("user_id")
-                if not user_id:
-                    logger.warning("Token decoded but 'user_id' is missing.")
+                phone_number = decoded_data.get("phone_number")
+                if not phone_number:
+                    logger.warning("Token decoded but 'phone_number' is missing.")
                 else:
                     User = get_user_model()
-                    user_obj = User.objects.filter(id=user_id).first()
+                    user_obj = User.objects.filter(phone_number=phone_number).first()
                     if user_obj:
                         user = user_obj
                         logger.info(f"Authenticated user: {user.email}")
                     else:
-                        logger.warning(f"No user found with id {user_id} from token.")
+                        logger.warning(f"No user found with id {phone_number} from token.")
             except jwt.ExpiredSignatureError:
                 logger.warning("JWT token has expired.")
             except jwt.InvalidTokenError:

@@ -13,6 +13,7 @@ from .outputs import *
 from .inputs import *
 from datetime import date
 from graphql_jwt.shortcuts import get_token, create_refresh_token
+import graphql_jwt
 
 UserModel = get_user_model()
 
@@ -42,6 +43,25 @@ class AuthMutation(graphene.Mutation):
             user=user
         )
 
+
+class ChangePassword(graphene.Mutation):
+    success = graphene.Boolean()
+    message = graphene.String()
+
+    class Arguments:
+        input = ChangePasswordInput(required=True)
+
+    def mutate(self, info, input):
+        user = info.context.user
+
+        if not user.check_password(input.old_password):
+            return ChangePassword(success=False, message="Old password is incorrect.")
+
+        user.set_password(input.new_password)
+        user.save()
+
+        return ChangePassword(success=True, message="Password changed successfully.")
+    
 class CreateUser(graphene.Mutation):
     class Arguments:
         input = UserInput(required=True)
@@ -93,6 +113,51 @@ class CreateChickenHouse(graphene.Mutation):
         chicken_house.save()
         return CreateChickenHouse(chicken_house=chicken_house)
 
+class AddChickensToHouse(graphene.Mutation):
+    class Arguments:
+        input = AddChickensInput(required=True)
+
+    chicken_house = graphene.Field(ChickenHouseOutput)
+
+    def mutate(self, info, input):
+        user = info.context.user
+        if not user.is_authenticated or user.user_type != "ADMIN":
+            raise GraphQLError("Only admin can add chickens")
+
+        try:
+            house = ChickenHouse.objects.get(pk=input.chicken_house_id)
+        except ChickenHouse.DoesNotExist:
+            raise GraphQLError("Chicken house not found")
+
+        if house.current_chicken_count + input.number_of_chickens > house.capacity:
+            raise GraphQLError("Cannot exceed chicken house capacity")
+
+        house.current_chicken_count += input.number_of_chickens
+        house.save()
+        return AddChickensToHouse(chicken_house=house)
+    
+class UpdateChickenHouse(graphene.Mutation):
+    class Arguments:
+        id = graphene.ID(required=True)
+        input = ChickenHouseInput(required=True)
+
+    success = graphene.Boolean()
+    message = graphene.String()
+    chicken_house = graphene.Field(ChickenHouseOutput)
+
+    def mutate(self, info, id, input):
+        try:
+            house = ChickenHouse.objects.get(pk=id)
+        except ChickenHouse.DoesNotExist:
+            raise GraphQLError("Chicken house not found.")
+
+        house.name = input.name
+        house.capacity = input.capacity
+        house.is_active = input.is_active
+        house.save()
+
+        return UpdateChickenHouse(success=True, message="House updated successfully", chicken_house=house)
+    
 class RecordEggCollection(graphene.Mutation):
     class Arguments:
         input = EggCollectionInput(required=True)
@@ -240,7 +305,7 @@ class DistributeFood(graphene.Mutation):
         try:
             food_type = FoodType.objects.get(pk=input.food_type_id)
             chicken_house = ChickenHouse.objects.get(pk=input.chicken_house_id)
-            worker = UserModel.objects.get(pk=input.worker_id, user_type='WORKER')
+            worker = User.objects.filter(chicken_house=chicken_house).first()
             
             if worker.chicken_house != chicken_house:
                 raise GraphQLError("Worker must be assigned to the target chicken house")
@@ -308,6 +373,20 @@ class CreateMedicine(graphene.Mutation):
         medicine.save()
         return CreateMedicine(medicine=medicine)
 
+class UpdateMedicine(graphene.Mutation):
+    class Arguments:
+        id = graphene.ID(required=True)
+        input = MedicineInput(required=True)
+
+    medicine = graphene.Field(MedicineOutput)
+
+    def mutate(self, info, id, input):
+        med = Medicine.objects.get(pk=id)
+        for key, value in input.items():
+            setattr(med, key, value)
+        med.save()
+        return UpdateMedicine(medicine=med)
+    
 class RecordMedicinePurchase(graphene.Mutation):
     class Arguments:
         input = MedicinePurchaseInput(required=True)
@@ -351,13 +430,13 @@ class DistributeMedicine(graphene.Mutation):
     @transaction.atomic
     def mutate(self, info, input):
         user = info.context.user
-        if not user.is_authenticated or user.user_type != 'DOCTOR':
+        if not user.is_authenticated or user.user_type != 'STOCK_MANAGER':
             raise GraphQLError("Only doctors can distribute medicine")
         
         try:
             medicine = Medicine.objects.get(pk=input.medicine_id)
             chicken_house = ChickenHouse.objects.get(pk=input.chicken_house_id)
-            worker = UserModel.objects.get(pk=input.worker_id, user_type='WORKER')
+            worker = User.objects.filter(chicken_house=chicken_house).first()
             
             if worker.chicken_house != chicken_house:
                 raise GraphQLError("Worker must be assigned to the target chicken house")
@@ -399,7 +478,7 @@ class ConfirmMedicineDistribution(graphene.Mutation):
             
             # Doctor can confirm their own distributions
             if input.doctor_confirmed is not None:
-                if user.user_type != 'DOCTOR' or distribution.distributed_by != user:
+                if user.user_type != 'DOCTOR':
                     raise GraphQLError("Only the distributing doctor can confirm")
                 distribution.doctor_confirmed = input.doctor_confirmed
             
@@ -426,10 +505,7 @@ class RecordChickenDeath(graphene.Mutation):
             raise GraphQLError("Only workers can record chicken deaths")
         
         try:
-            chicken_house = ChickenHouse.objects.get(pk=input.chicken_house_id)
-            if user.chicken_house != chicken_house:
-                raise GraphQLError("You can only record deaths for your assigned chicken house")
-            
+            chicken_house = user.chicken_house
             record = ChickenDeathRecord(
                 chicken_house=chicken_house,
                 number_dead=input.number_dead,
@@ -476,12 +552,17 @@ class ConfirmDeathRecord(graphene.Mutation):
 class Mutation(graphene.ObjectType):
     # Authentication
     login = AuthMutation.Field()
+    change_password = ChangePassword.Field()
+    token_auth = graphql_jwt.ObtainJSONWebToken.Field()
+    refresh_token = graphql_jwt.Refresh.Field()
+    verify_token = graphql_jwt.Verify.Field()
     
     # User Management
     create_user = CreateUser.Field()
     
     # Chicken House Management
     create_chicken_house = CreateChickenHouse.Field()
+    add_chickens_to_house = AddChickensToHouse.Field()
     
     # Egg Management
     record_egg_collection = RecordEggCollection.Field()
@@ -496,6 +577,7 @@ class Mutation(graphene.ObjectType):
     
     # Medicine Management
     create_medicine = CreateMedicine.Field()
+    update_medicine = UpdateMedicine.Field()
     record_medicine_purchase = RecordMedicinePurchase.Field()
     distribute_medicine = DistributeMedicine.Field()
     confirm_medicine_distribution = ConfirmMedicineDistribution.Field()

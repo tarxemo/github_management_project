@@ -162,7 +162,7 @@ class Medicine(models.Model):
         return self.name
 
 class MedicineInventory(models.Model):
-    medicine = models.ForeignKey(Medicine, on_delete=models.CASCADE)
+    medicine = models.OneToOneField(Medicine, on_delete=models.CASCADE)
     quantity_in_stock = models.DecimalField(max_digits=10, decimal_places=2)
     last_updated = models.DateTimeField(auto_now=True)
     
@@ -202,7 +202,7 @@ class MedicineDistribution(models.Model):
             raise ValidationError("Only doctors or workers can receive medicine")
     
     def __str__(self):
-        return f"{self.quantity} {self.medicine.unit_measure} to {self.chicken_house.name}"
+        return f"{self.quantity} {self.medicine.unit_of_measure} to {self.chicken_house.name}"
 
 class ChickenDeathRecord(models.Model):
     chicken_house = models.ForeignKey(ChickenHouse, on_delete=models.CASCADE)
@@ -210,6 +210,7 @@ class ChickenDeathRecord(models.Model):
     number_dead = models.PositiveIntegerField()
     recorded_by = models.ForeignKey(User, on_delete=models.PROTECT, related_name='recorded_deaths')
     confirmed_by = models.ForeignKey(User, on_delete=models.PROTECT, related_name='confirmed_deaths', null=True, blank=True)
+    notes = models.TextField(blank=True)
     doctor_notes = models.TextField(blank=True)
     possible_cause = models.CharField(max_length=100, blank=True)
     
@@ -249,9 +250,18 @@ def update_food_inventory(sender, instance, created, **kwargs):
         inventory.sacks_in_stock += instance.sacks_purchased
         inventory.save()
 
-@receiver(post_save, sender=FoodDistribution)
-def deduct_distributed_food(sender, instance, created, **kwargs):
-    if created and instance.worker_confirmed:
+@receiver(pre_save, sender=FoodDistribution)
+def deduct_food_on_worker_confirmation(sender, instance, **kwargs):
+    if not instance.pk:
+        return  # Skip new instance, wait for update
+
+    try:
+        old_instance = FoodDistribution.objects.get(pk=instance.pk)
+    except FoodDistribution.DoesNotExist:
+        return
+
+    # If confirmation just changed from False → True
+    if not old_instance.worker_confirmed and instance.worker_confirmed:
         inventory = FoodInventory.objects.get(food_type=instance.food_type)
         if inventory.sacks_in_stock >= instance.sacks_distributed:
             inventory.sacks_in_stock -= instance.sacks_distributed
@@ -259,22 +269,47 @@ def deduct_distributed_food(sender, instance, created, **kwargs):
         else:
             raise ValidationError("Not enough food in inventory for this distribution")
 
+
 @receiver(post_save, sender=MedicinePurchase)
 def update_medicine_inventory(sender, instance, created, **kwargs):
-    if created:
-        inventory, _ = MedicineInventory.objects.get_or_create(medicine=instance.medicine)
+    if not created:
+        return
+
+    try:
+        # Try to get the existing inventory
+        inventory = MedicineInventory.objects.get(medicine=instance.medicine)
         inventory.quantity_in_stock += instance.quantity
         inventory.save()
+    except MedicineInventory.DoesNotExist:
+        # If it doesn't exist, create a new inventory record
+        MedicineInventory.objects.create(
+            medicine=instance.medicine,
+            quantity_in_stock=instance.quantity
+        )
 
-@receiver(post_save, sender=MedicineDistribution)
-def deduct_distributed_medicine(sender, instance, created, **kwargs):
-    if created and instance.doctor_confirmed and instance.worker_confirmed:
-        inventory = MedicineInventory.objects.get(medicine=instance.medicine)
-        if inventory.quantity_in_stock >= instance.quantity:
-            inventory.quantity_in_stock -= instance.quantity
-            inventory.save()
-        else:
-            raise ValidationError("Not enough medicine in inventory for this distribution")
+@receiver(pre_save, sender=MedicineDistribution)
+def deduct_distributed_medicine_on_confirm(sender, instance, **kwargs):
+    if not instance.pk:
+        return  # Skip if it's a new object; handle after save
+
+    try:
+        previous = MedicineDistribution.objects.get(pk=instance.pk)
+    except MedicineDistribution.DoesNotExist:
+        return
+
+    # If both doctor and worker confirmation just changed to True
+    if (not previous.doctor_confirmed and instance.doctor_confirmed) or \
+       (not previous.worker_confirmed and instance.worker_confirmed):
+
+        # Only act if now both are confirmed
+        if instance.doctor_confirmed and instance.worker_confirmed:
+            inventory = MedicineInventory.objects.get(medicine=instance.medicine)
+            if inventory.quantity_in_stock >= instance.quantity:
+                inventory.quantity_in_stock -= instance.quantity
+                inventory.save()
+            else:
+                raise ValidationError("Not enough medicine in inventory for this distribution")
+
 
 @receiver(pre_save, sender=EggCollection)
 def validate_egg_collection(sender, instance, **kwargs):

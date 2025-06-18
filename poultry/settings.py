@@ -46,10 +46,10 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     
+    'graphql_jwt.refresh_token',
     'poutryapp',
     'graphene_django',
     'rest_framework',
-    'graphql_jwt.refresh_token'
 
 ]
 
@@ -68,12 +68,9 @@ AUTHENTICATION_BACKENDS = [
     "django.contrib.auth.backends.ModelBackend",
 ]
 
-
-SIMPLE_JWT = {
-    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=60),  # or any duration you prefer
-    'REFRESH_TOKEN_LIFETIME': timedelta(days=1),
-    'ROTATE_REFRESH_TOKENS': False,
-    'BLACKLIST_AFTER_ROTATION': True,
+GRAPHQL_JWT = {
+    "JWT_EXPIRATION_DELTA": timedelta(minutes=1),  # Access token lifetime
+    "JWT_REFRESH_EXPIRATION_DELTA": timedelta(days=7),  # Refresh token lifetime
 }
 
 

@@ -25,6 +25,7 @@ class ChickenHouseInput(graphene.InputObjectType):
     name = graphene.String(required=True)
     capacity = graphene.Int(required=True)
     is_active = graphene.Boolean()
+    worker_id = graphene.ID()
 
 class EggCollectionInput(graphene.InputObjectType):
     chicken_house_id = graphene.ID(required=True)

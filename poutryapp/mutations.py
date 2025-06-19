@@ -595,6 +595,7 @@ class Mutation(graphene.ObjectType):
     # Chicken House Management
     create_chicken_house = CreateChickenHouse.Field()
     add_chickens_to_house = AddChickensToHouse.Field()
+    update_chicken_house = UpdateChickenHouse.Field()
     
     # Egg Management
     record_egg_collection = RecordEggCollection.Field()

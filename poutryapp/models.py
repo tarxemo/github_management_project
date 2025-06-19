@@ -321,12 +321,27 @@ def validate_food_distribution(sender, instance, **kwargs):
     if instance.worker_confirmed and not instance.confirmation_date:
         instance.confirmation_date = timezone.now()
 
-@receiver(post_save, sender=ChickenDeathRecord)
-def decrease_chicken_count_on_death(sender, instance, created, **kwargs):
-    if created:
+@receiver(pre_save, sender=ChickenDeathRecord)
+def decrease_chicken_count_on_confirmation(sender, instance, **kwargs):
+    if not instance.pk:
+        # New record, wait until confirmed
+        return
+
+    try:
+        old_instance = ChickenDeathRecord.objects.get(pk=instance.pk)
+    except ChickenDeathRecord.DoesNotExist:
+        return
+
+    # If confirmed_by changed from None → someone
+    if old_instance.confirmed_by is None and instance.confirmed_by is not None:
+        # Make sure it's actually a doctor
+        if instance.confirmed_by.user_type != 'DOCTOR':
+            raise ValidationError("Only doctors can confirm death records.")
+
         house = instance.chicken_house
         if house.current_chicken_count >= instance.number_dead:
             house.current_chicken_count -= instance.number_dead
         else:
-            house.current_chicken_count = 0  # prevent negative count
+            house.current_chicken_count = 0
         house.save()
+

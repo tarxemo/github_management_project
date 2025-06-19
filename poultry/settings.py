@@ -71,7 +71,7 @@ AUTHENTICATION_BACKENDS = [
 ]
 
 GRAPHQL_JWT = {
-    "JWT_EXPIRATION_DELTA": timedelta(minutes=1),  # Access token lifetime
+    "JWT_EXPIRATION_DELTA": timedelta(minutes=60),  # Access token lifetime
     "JWT_REFRESH_EXPIRATION_DELTA": timedelta(days=7),  # Refresh token lifetime
 }
 

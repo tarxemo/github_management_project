@@ -1,5 +1,4 @@
 import graphene
-from graphene_django.forms.mutation import DjangoModelFormMutation
 from graphql import GraphQLError
 from django.contrib.auth import get_user_model
 from django.db import transaction

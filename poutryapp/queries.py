@@ -1,6 +1,4 @@
 import graphene
-from graphene_django.filter import DjangoFilterConnectionField
-from graphene import relay
 from .models import (
     User, ChickenHouse, EggCollection, EggInventory, EggSale,
     FoodType, FoodInventory, FoodPurchase, FoodDistribution,

@@ -13,6 +13,15 @@ class UserInput(graphene.InputObjectType):
     user_type = graphene.String(required=True)
     chicken_house_id = graphene.ID()
 
+class UpdateUserInput(graphene.InputObjectType):
+    phone_number = graphene.String(required=True)
+    # password = graphene.String(required=True)
+    first_name = graphene.String()
+    last_name = graphene.String()
+    user_type = graphene.String(required=True)
+    chicken_house_id = graphene.ID()
+
+
 class ChangePasswordInput(graphene.InputObjectType):
     old_password = graphene.String(required=True)
     new_password = graphene.String(required=True)

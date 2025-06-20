@@ -211,6 +211,15 @@ class InventorySummaryOutput(graphene.ObjectType):
     available_trays = graphene.Int()
     food_inventory = graphene.List(lambda: FoodInventoryOutput)
     medicine_inventory = graphene.List(lambda: MedicineInventoryOutput)
+    total_users = graphene.Int()
+    
+    def resolve_total_users(self, info):
+        return User.objects.exclude(is_superuser=True).count()
     
     def resolve_available_trays(self, info):
         return self.total_eggs // 30
+
+class AlertType(graphene.ObjectType):
+    type = graphene.String()
+    title = graphene.String()
+    message = graphene.String()

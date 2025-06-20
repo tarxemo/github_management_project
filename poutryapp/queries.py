@@ -475,3 +475,39 @@ class Query(graphene.ObjectType):
             food_inventory=FoodInventory.objects.all(),
             medicine_inventory=MedicineInventory.objects.all()
         )
+        
+    alerts = graphene.List(AlertType)
+
+    def resolve_alerts(self, info):
+        alerts = []
+
+        # 1. Food Inventory Check
+        for item in FoodInventory.objects.all():
+            if item.quantity_in_sacks <= 5:  # Set your own threshold
+                alerts.append(AlertType(
+                    type="food",
+                    title="Low Food Inventory",
+                    message=f"{item.food_type.name} is running low ({item.quantity_in_sacks} sacks left)"
+                ))
+
+        # 2. Medicine Expiry Check
+        soon = timezone.now().date() + timedelta(days=7)
+        expiring = Medicine.objects.filter(expiry_date__lte=soon)
+        for med in expiring:
+            days = (med.expiry_date - timezone.now().date()).days
+            alerts.append(AlertType(
+                type="medicine",
+                title="Medicine Expiring",
+                message=f"{med.name} expires in {days} day{'s' if days != 1 else ''}"
+            ))
+
+        # 3. House Maintenance Placeholder (You can add actual logic based on inspection records)
+        dirty_houses = ChickenHouse.objects.filter(is_active=True).order_by('?')[:1]
+        for house in dirty_houses:
+            alerts.append(AlertType(
+                type="maintenance",
+                title="Maintenance Due",
+                message=f"{house.name} needs cleaning inspection"
+            ))
+
+        return alerts

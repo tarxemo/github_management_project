@@ -95,6 +95,49 @@ class CreateUser(graphene.Mutation):
         user.save()
         return CreateUser(user=user)
 
+# In your mutations.py
+class UpdateUser(graphene.Mutation):
+    class Arguments:
+        id = graphene.ID(required=True)
+        input = UpdateUserInput(required=True)
+
+    user = graphene.Field(UserOutput)
+
+    @classmethod
+    def mutate(cls, root, info, id, input):
+        if not info.context.user.is_authenticated or info.context.user.user_type != 'ADMIN':
+            raise GraphQLError("Only admin can update users")
+
+        try:
+            user = User.objects.get(pk=id)
+        except User.DoesNotExist:
+            raise GraphQLError("User not found")
+
+        # Update fields
+        if input.first_name:
+            user.first_name = input.first_name
+        if input.last_name:
+            user.last_name = input.last_name
+        if input.phone_number:
+            if User.objects.filter(phone_number=input.phone_number).exclude(pk=user.id).exists():
+                raise GraphQLError("Phone number already in use")
+            user.phone_number = input.phone_number
+        if input.user_type:
+            user.user_type = input.user_type
+        
+        # Handle chicken house assignment
+        if input.chicken_house_id:
+            try:
+                chicken_house = ChickenHouse.objects.get(pk=input.chicken_house_id)
+                user.chicken_house = chicken_house
+            except ChickenHouse.DoesNotExist:
+                raise GraphQLError("Chicken house not found")
+        elif input.chicken_house_id == '':
+            user.chicken_house = None
+
+        user.save()
+        return UpdateUser(user=user)
+    
 class CreateChickenHouse(graphene.Mutation):
     class Arguments:
         input = ChickenHouseInput(required=True)
@@ -591,6 +634,7 @@ class Mutation(graphene.ObjectType):
     
     # User Management
     create_user = CreateUser.Field()
+    update_user = UpdateUser.Field()
     
     # Chicken House Management
     create_chicken_house = CreateChickenHouse.Field()

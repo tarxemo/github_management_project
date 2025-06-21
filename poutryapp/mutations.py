@@ -270,6 +270,41 @@ class RecordEggSale(graphene.Mutation):
         
         return RecordEggSale(sale=sale, inventory=EggInventory.objects.first())
 
+# In your schema/mutations.py
+class UpdateEggSale(graphene.Mutation):
+    class Arguments:
+        id = graphene.ID(required=True)
+        input = EggSaleInput(required=True)
+
+    egg_sale = graphene.Field(EggSaleOutput)
+
+    def mutate(self, info, id, input):
+        if not info.context.user.is_authenticated:
+            raise GraphQLError("Authentication required")
+
+        try:
+            egg_sale = EggSale.objects.get(pk=id)
+        except EggSale.DoesNotExist:
+            raise GraphQLError("Egg sale record not found")
+
+        # Sales manager can only confirm receipt
+        if info.context.user.user_type == 'SALES_MANAGER':
+            if input.get('remained_eggs') is not None:
+                egg_sale.remained_eggs = input.remained_eggs
+            if input.get('rejected_eggs') is not None:
+                egg_sale.rejected_eggs = input.rejected_eggs
+                egg_sale.confirm_received = True
+            egg_sale.save()
+            return UpdateEggSale(egg_sale=egg_sale)
+
+        # Stock manager can update remaining/rejected eggs and confirm
+        if info.context.user.user_type == 'STOCK_MANAGER':
+            egg_sale.confirm_sales = True
+            egg_sale.save()
+            return UpdateEggSale(egg_sale=egg_sale)
+
+        raise GraphQLError("Unauthorized to update this record")
+
 class CreateFoodType(graphene.Mutation):
     class Arguments:
         input = FoodTypeInput(required=True)
@@ -597,6 +632,7 @@ class Mutation(graphene.ObjectType):
     record_egg_collection = RecordEggCollection.Field()
     confirm_egg_collection = ConfirmEggCollection.Field()
     record_egg_sale = RecordEggSale.Field()
+    update_egg_sale = UpdateEggSale.Field()
     
     # Food Management
     create_food_type = CreateFoodType.Field()

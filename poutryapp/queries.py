@@ -184,7 +184,7 @@ class Query(graphene.ObjectType):
     
     def resolve_egg_sales(self, info, start_date=None, end_date=None, buyer_name=None):
         user = info.context.user
-        if not user.is_authenticated or user.user_type not in ['ADMIN', 'STOCK_MANAGER']:
+        if not user.is_authenticated or user.user_type not in ['ADMIN', 'STOCK_MANAGER', "SALES_MANAGER"]:
             raise GraphQLError("Only admin and stock managers can view sales records")
         
         queryset = EggSale.objects.all()
@@ -432,7 +432,7 @@ class Query(graphene.ObjectType):
             total_deaths = death_records.aggregate(
                 total=Sum('number_dead')
             )['total'] or 0
-            
+            print(f"total death : {total_deaths}")
             # Food consumption
             food_distributions = FoodDistribution.objects.filter(
                 chicken_house=house,
@@ -442,19 +442,19 @@ class Query(graphene.ObjectType):
             total_food = food_distributions.aggregate(
                 total=Sum('sacks_distributed')
             )['total'] or 0
-            
+            print(f"{total_food}")
             # Calculate performance metrics
             days_in_period = (today - start_date).days
             avg_eggs_per_day = total_eggs / days_in_period if days_in_period > 0 else 0
             
             mortality_rate = (total_deaths / house.capacity) * 100 if house.capacity > 0 else 0
-            
+            print(f"results {mortality_rate} {days_in_period} {avg_eggs_per_day} {total_food}")
             results.append(ChickenHousePerformanceOutput(
                 chicken_house=house,
                 total_eggs=total_eggs,
                 avg_eggs_per_day=avg_eggs_per_day,
                 mortality_rate=mortality_rate,
-                food_consumption=total_food * 50  # Convert sacks to kg
+                food_consumption=Decimal(total_food * 50)  # Convert sacks to kg
             ))
         
         return results

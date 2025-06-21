@@ -236,6 +236,24 @@ def update_egg_inventory(sender, instance, created, **kwargs):
         inventory.rejected_eggs += instance.rejected_eggs
         inventory.save()
 
+@receiver(pre_save, sender=EggSale)
+def add_back_remained_eggs_on_confirmation(sender, instance, **kwargs):
+    if not instance.pk:  # Skip if it's a new object
+        return
+
+    try:
+        old_instance = EggSale.objects.get(pk=instance.pk)
+    except EggSale.DoesNotExist:
+        return
+
+    # If confirm_sales just changed from False to True
+    if not old_instance.confirm_sales and instance.confirm_sales:
+        inventory = EggInventory.objects.first()
+        if inventory:
+            inventory.total_eggs += instance.remained_eggs
+            inventory.rejected_eggs += instance.rejected_eggs
+            inventory.save()
+            
 @receiver(post_save, sender=EggSale)
 def deduct_sold_eggs(sender, instance, created, **kwargs):
     if created:

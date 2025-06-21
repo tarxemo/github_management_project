@@ -18,7 +18,7 @@ class UserOutput(DjangoObjectType):
         model = UserModel
         only_fields = (
             'id', 'phone_number', 'first_name', 'last_name', 
-            'user_type', 'chicken_house'
+            'user_type'
         )
     
     user_type_display = graphene.String()
@@ -26,22 +26,12 @@ class UserOutput(DjangoObjectType):
     def resolve_user_type_display(self, info):
         return self.get_user_type_display()
     
-    def resolve_chicken_house(self, info):
-        return self.chicken_house if self.chicken_house else None
 
 class ChickenHouseOutput(DjangoObjectType):
     class Meta:
         model = ChickenHouse
         fields = '__all__'
     
-    current_worker = graphene.Field(lambda: UserOutput)
-    
-    def resolve_current_worker(self, info):
-        worker = UserModel.objects.filter(
-            chicken_house=self, 
-            user_type='WORKER'
-        ).first()
-        return worker 
 
 class EggCollectionOutput(DjangoObjectType):
     class Meta:

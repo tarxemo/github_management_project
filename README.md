@@ -1,6 +1,6 @@
 # RB
 ```
-from your_app.models import User, ChickenHouse
+from poutryapp.models import User, ChickenHouse
 
 for user in User.objects.all():
     if user.chicken_house:

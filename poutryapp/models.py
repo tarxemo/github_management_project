@@ -96,12 +96,14 @@ class EggInventory(models.Model):
 class EggSale(models.Model):
     date_sold = models.DateField(default=timezone.now)
     quantity = models.PositiveIntegerField()
-    rejected_eggs = models.PositiveIntegerField()
+    remained_eggs = models.PositiveIntegerField(default=0)
+    rejected_eggs = models.PositiveIntegerField(default=0)
     price_per_egg = models.DecimalField(max_digits=10, decimal_places=2)
     buyer_name = models.CharField(max_length=100)
     buyer_contact = models.CharField(max_length=20, blank=True)
     recorded_by = models.ForeignKey(User, on_delete=models.PROTECT)
-    
+    confirm_received = models.BooleanField(default=False)
+    confirm_sales = models.BooleanField(default=False)
     def __str__(self):
         return f"Sold {self.quantity} eggs on {self.date_sold}"
 

@@ -184,17 +184,6 @@ class ChickenHousePerformanceOutput(graphene.ObjectType):
     mortality_rate = graphene.Float()
     food_consumption = graphene.Decimal()
     
-    def resolve_avg_eggs_per_day(self, info):
-        # Business logic to calculate average eggs per day
-        pass
-    
-    def resolve_mortality_rate(self, info):
-        # Business logic to calculate mortality rate
-        pass
-    
-    def resolve_food_consumption(self, info):
-        # Business logic to calculate food consumption
-        pass
 
 class InventorySummaryOutput(graphene.ObjectType):
     total_eggs = graphene.Int()

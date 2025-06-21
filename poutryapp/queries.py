@@ -63,8 +63,8 @@ class Query(graphene.ObjectType):
             queryset = queryset.filter(is_active=True)
         
         # Workers can only see their assigned chicken house
-        if user.user_type == 'WORKER' and user.chicken_house:
-            queryset = queryset.filter(id=user.chicken_house.id)
+        if user.user_type == 'WORKER':
+            queryset = queryset.filter(owner=user)
         
         return queryset
 
@@ -264,8 +264,8 @@ class Query(graphene.ObjectType):
             queryset = queryset.filter(worker_confirmed=True)
         
         # Workers can only see distributions to their chicken house
-        if user.user_type == 'WORKER' and user.chicken_house:
-            queryset = queryset.filter(chicken_house=user.chicken_house)
+        if user.user_type == 'WORKER':
+            queryset = queryset.filter(chicken_house__owner=user)
         
         return queryset.order_by('-date_distributed')
 
@@ -345,8 +345,8 @@ class Query(graphene.ObjectType):
             queryset = queryset.filter(received_by=user)
         
         # Workers can only see distributions to their chicken house
-        if user.user_type == 'WORKER' and user.chicken_house:
-            queryset = queryset.filter(chicken_house=user.chicken_house)
+        if user.user_type == 'WORKER':
+            queryset = queryset.filter(chicken_house__owner=user)
         
         # Doctors can only see distributions they made
         # if user.user_type == 'DOCTOR':
@@ -380,8 +380,8 @@ class Query(graphene.ObjectType):
             queryset = queryset.filter(confirmed_by__isnull=True)
         
         # Workers can only see records from their chicken house
-        if user.user_type == 'WORKER' and user.chicken_house:
-            queryset = queryset.filter(chicken_house=user.chicken_house)
+        if user.user_type == 'WORKER':
+            queryset = queryset.filter(chicken_house__owner=user)
         
         return queryset.order_by('-date_recorded')
 

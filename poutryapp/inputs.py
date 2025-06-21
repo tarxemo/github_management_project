@@ -11,7 +11,7 @@ class UserInput(graphene.InputObjectType):
     first_name = graphene.String()
     last_name = graphene.String()
     user_type = graphene.String(required=True)
-    chicken_house_id = graphene.ID()
+    # chicken_house_id = graphene.ID()
 
 class UpdateUserInput(graphene.InputObjectType):
     phone_number = graphene.String(required=True)
@@ -19,7 +19,8 @@ class UpdateUserInput(graphene.InputObjectType):
     first_name = graphene.String()
     last_name = graphene.String()
     user_type = graphene.String(required=True)
-    chicken_house_id = graphene.ID()
+    # chicken_house_id = graphene.ID()
+    
 
 
 class ChangePasswordInput(graphene.InputObjectType):
@@ -34,7 +35,7 @@ class ChickenHouseInput(graphene.InputObjectType):
     name = graphene.String(required=True)
     capacity = graphene.Int(required=True)
     is_active = graphene.Boolean()
-    worker_id = graphene.ID()
+    worker_id = graphene.ID(required=True)
 
 class EggCollectionInput(graphene.InputObjectType):
     chicken_house_id = graphene.ID(required=True)

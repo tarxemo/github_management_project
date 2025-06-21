@@ -81,17 +81,6 @@ class CreateUser(graphene.Mutation):
         )
         user.set_password(input.password)
         
-        # Assign chicken house if worker
-        if input.user_type == 'WORKER' and input.chicken_house_id:
-            try:
-                chicken_house = ChickenHouse.objects.get(pk=input.chicken_house_id)
-                # Ensure chicken house doesn't already have a worker
-                if UserModel.objects.filter(chicken_house=chicken_house, user_type='WORKER').exists():
-                    raise GraphQLError("This chicken house already has an assigned worker")
-                user.chicken_house = chicken_house
-            except ChickenHouse.DoesNotExist:
-                raise GraphQLError("Chicken house not found")
-        
         user.save()
         return CreateUser(user=user)
 
@@ -125,16 +114,6 @@ class UpdateUser(graphene.Mutation):
         if input.user_type:
             user.user_type = input.user_type
         
-        # Handle chicken house assignment
-        if input.chicken_house_id:
-            try:
-                chicken_house = ChickenHouse.objects.get(pk=input.chicken_house_id)
-                user.chicken_house = chicken_house
-            except ChickenHouse.DoesNotExist:
-                raise GraphQLError("Chicken house not found")
-        elif input.chicken_house_id == '':
-            user.chicken_house = None
-
         user.save()
         return UpdateUser(user=user)
     
@@ -148,24 +127,15 @@ class CreateChickenHouse(graphene.Mutation):
         if not info.context.user.is_authenticated or info.context.user.user_type != 'ADMIN':
             raise GraphQLError("Only admin can create chicken houses")
         
-        worker = None
-        if input.get('worker_id'):
-            try:
-                worker = User.objects.get(pk=input.worker_id, user_type='WORKER')
-            except User.DoesNotExist:
-                raise GraphQLError("Worker not found")
+        worker = User.objects.get(pk=input.worker_id, user_type='WORKER')
         
         chicken_house = ChickenHouse(
             name=input.name,
+            owner = worker,
             capacity=input.capacity,
             is_active=input.get('is_active', True))
         chicken_house.save()
         
-        # Assign worker if provided
-        if worker:
-            worker.chicken_house = chicken_house
-            worker.save()
-            
         return CreateChickenHouse(chicken_house=chicken_house)
 
 class UpdateChickenHouse(graphene.Mutation):
@@ -183,30 +153,13 @@ class UpdateChickenHouse(graphene.Mutation):
         except ChickenHouse.DoesNotExist:
             raise GraphQLError("Chicken house not found.")
 
-        worker = None
-        if input.get('worker_id'):
-            try:
-                worker = User.objects.get(pk=input.worker_id, user_type='WORKER')
-            except User.DoesNotExist:
-                raise GraphQLError("Worker not found")
-
-        # Clear previous worker assignment
-        previous_workers = User.objects.filter(chicken_house=house, user_type='WORKER')
-        for prev_worker in previous_workers:
-            prev_worker.chicken_house = None
-            prev_worker.save()
-
+        worker = User.objects.get(pk=input.worker_id, user_type='WORKER')
         # Update house details
         house.name = input.name
         house.capacity = input.capacity
         house.is_active = input.is_active
+        house.owner = worker
         house.save()
-
-        # Assign new worker if provided
-        if worker:
-            worker.chicken_house = house
-            worker.save()
-
         return UpdateChickenHouse(success=True, message="House updated successfully", chicken_house=house)
 
 class AddChickensToHouse(graphene.Mutation):
@@ -247,8 +200,9 @@ class RecordEggCollection(graphene.Mutation):
         
         try:
             chicken_house = ChickenHouse.objects.get(pk=input.chicken_house_id)
-            if user.chicken_house != chicken_house:
+            if chicken_house.owner != user:
                 raise GraphQLError("You can only record collections for your assigned chicken house")
+
             
             collection = EggCollection(
                 worker=user,
@@ -380,9 +334,8 @@ class DistributeFood(graphene.Mutation):
         try:
             food_type = FoodType.objects.get(pk=input.food_type_id)
             chicken_house = ChickenHouse.objects.get(pk=input.chicken_house_id)
-            worker = User.objects.filter(chicken_house=chicken_house).first()
             
-            if worker.chicken_house != chicken_house:
+            if not chicken_house.owner:
                 raise GraphQLError("Worker must be assigned to the target chicken house")
             
             inventory = FoodInventory.objects.get(food_type=food_type)
@@ -394,7 +347,7 @@ class DistributeFood(graphene.Mutation):
                 chicken_house=chicken_house,
                 sacks_distributed=input.sacks_distributed,
                 distributed_by=user,
-                received_by=worker
+                received_by=chicken_house.owner
             )
             distribution.save()
             
@@ -511,9 +464,8 @@ class DistributeMedicine(graphene.Mutation):
         try:
             medicine = Medicine.objects.get(pk=input.medicine_id)
             chicken_house = ChickenHouse.objects.get(pk=input.chicken_house_id)
-            worker = User.objects.filter(chicken_house=chicken_house).first()
             
-            if worker.chicken_house != chicken_house:
+            if not chicken_house.owner:
                 raise GraphQLError("Worker must be assigned to the target chicken house")
             
             inventory = MedicineInventory.objects.get(medicine=medicine)
@@ -526,7 +478,7 @@ class DistributeMedicine(graphene.Mutation):
                 quantity=input.quantity,
                 purpose=input.get('purpose', ''),
                 distributed_by=user,
-                received_by=worker
+                received_by=chicken_house.owner
             )
             distribution.save()
             

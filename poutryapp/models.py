@@ -96,6 +96,7 @@ class EggInventory(models.Model):
 class EggSale(models.Model):
     date_sold = models.DateField(default=timezone.now)
     quantity = models.PositiveIntegerField()
+    rejected_eggs = models.PositiveIntegerField()
     price_per_egg = models.DecimalField(max_digits=10, decimal_places=2)
     buyer_name = models.CharField(max_length=100)
     buyer_contact = models.CharField(max_length=20, blank=True)

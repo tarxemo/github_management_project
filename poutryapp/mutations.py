@@ -1,3 +1,4 @@
+from poutryapp.decorators import skip_auth
 import graphene
 from graphql import GraphQLError
 from django.contrib.auth import get_user_model
@@ -25,6 +26,7 @@ class AuthMutation(graphene.Mutation):
     refresh_token = graphene.String()
     user = graphene.Field(UserOutput)
 
+    @skip_auth
     @classmethod
     def mutate(cls, root, info, phone_number, password):
         user = UserModel.objects.filter(phone_number=phone_number).first()

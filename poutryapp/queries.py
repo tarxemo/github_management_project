@@ -445,7 +445,7 @@ class Query(graphene.ObjectType):
             print(f"{total_food}")
             # Calculate performance metrics
             days_in_period = (today - start_date).days
-            avg_eggs_per_day = total_eggs / days_in_period if days_in_period > 0 else 0
+            avg_eggs_per_day = int(total_eggs / days_in_period) if days_in_period > 0 else 0
             
             mortality_rate = (total_deaths / house.capacity) * 100 if house.capacity > 0 else 0
             print(f"results {mortality_rate} {days_in_period} {avg_eggs_per_day} {total_food}")

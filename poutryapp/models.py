@@ -226,7 +226,68 @@ class ChickenDeathRecord(models.Model):
     
     def __str__(self):
         return f"{self.number_dead} deaths in {self.chicken_house.name} on {self.date_recorded}"
+class ExpenseCategory(models.Model):
+    name = models.CharField(max_length=100, unique=True)
+    description = models.TextField(blank=True)
+    
+    def __str__(self):
+        return self.name
 
+class Expense(models.Model):
+    PAYMENT_METHOD_CHOICES = (
+        ('CASH', 'Cash'),
+        ('MPESA', 'M-Pesa'),
+        ('BANK_TRANSFER', 'Bank Transfer'),
+        ('CHEQUE', 'Cheque'),
+    )
+    
+    category = models.ForeignKey(ExpenseCategory, on_delete=models.PROTECT)
+    date = models.DateField(default=timezone.now)
+    description = models.TextField()
+    payment_method = models.CharField(max_length=20, choices=PAYMENT_METHOD_CHOICES, default='CASH')
+    unit_cost = models.DecimalField(max_digits=12, decimal_places=2, help_text="Cost per unit")
+    quantity = models.DecimalField(max_digits=10, decimal_places=2, default=1, help_text="Number of units")
+    total_cost = models.DecimalField(max_digits=12, decimal_places=2, editable=False)
+    recorded_by = models.ForeignKey(User, on_delete=models.PROTECT)
+    receipt_number = models.CharField(max_length=50, blank=True)
+    notes = models.TextField(blank=True)
+    
+    class Meta:
+        ordering = ['-date']
+    
+    def clean(self):
+        # Calculate total cost before saving
+        self.total_cost = self.unit_cost * self.quantity
+    
+    def save(self, *args, **kwargs):
+        self.full_clean()  # This will call clean() and validate the model
+        super().save(*args, **kwargs)
+    
+    def __str__(self):
+        return f"{self.category.name} - {self.total_cost} on {self.date}"
+
+class SalaryPayment(models.Model):
+    worker = models.ForeignKey(User, on_delete=models.PROTECT, limit_choices_to={'user_type': 'WORKER'})
+    amount = models.DecimalField(max_digits=12, decimal_places=2)
+    payment_date = models.DateField(default=timezone.now)
+    payment_method = models.CharField(max_length=20, choices=Expense.PAYMENT_METHOD_CHOICES, default='CASH')
+    period_start = models.DateField()
+    period_end = models.DateField()
+    recorded_by = models.ForeignKey(User, on_delete=models.PROTECT, related_name='recorded_salaries')
+    notes = models.TextField(blank=True)
+    
+    class Meta:
+        ordering = ['-payment_date']
+    
+    def clean(self):
+        if self.period_start > self.period_end:
+            raise ValidationError("Period start date must be before end date")
+        if self.worker.user_type != 'WORKER':
+            raise ValidationError("Can only pay salaries to workers")
+    
+    def __str__(self):
+        return f"Salary for {self.worker.get_full_name()} - {self.amount}"
+    
 # Signals
 @receiver(post_save, sender=EggCollection)
 def update_egg_inventory(sender, instance, created, **kwargs):

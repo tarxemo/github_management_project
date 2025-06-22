@@ -511,3 +511,45 @@ class Query(graphene.ObjectType):
             ))
 
         return alerts
+
+    # Expense Queries
+    expense_categories = graphene.List(ExpenseCategoryType)
+    expenses = graphene.List(
+        ExpenseType,
+        start_date=graphene.Date(),
+        end_date=graphene.Date(),
+        category_id=graphene.ID()
+    )
+    salary_payments = graphene.List(
+        SalaryPaymentType,
+        start_date=graphene.Date(),
+        end_date=graphene.Date(),
+        worker_id=graphene.ID()
+    )
+    
+    def resolve_expense_categories(self, info):
+        return ExpenseCategory.objects.all().order_by('name')
+    
+    def resolve_expenses(self, info, start_date=None, end_date=None, category_id=None):
+        queryset = Expense.objects.all()
+        
+        if start_date:
+            queryset = queryset.filter(date__gte=start_date)
+        if end_date:
+            queryset = queryset.filter(date__lte=end_date)
+        if category_id:
+            queryset = queryset.filter(category_id=category_id)
+            
+        return queryset.order_by('-date')
+    
+    def resolve_salary_payments(self, info, start_date=None, end_date=None, worker_id=None):
+        queryset = SalaryPayment.objects.all()
+        
+        if start_date:
+            queryset = queryset.filter(payment_date__gte=start_date)
+        if end_date:
+            queryset = queryset.filter(payment_date__lte=end_date)
+        if worker_id:
+            queryset = queryset.filter(worker_id=worker_id)
+            
+        return queryset.order_by('-payment_date')

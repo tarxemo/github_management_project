@@ -52,6 +52,7 @@ INSTALLED_APPS = [
     'poutryapp',
     'graphene_django',
     'rest_framework',
+    'django_filters',
 
 ]
 

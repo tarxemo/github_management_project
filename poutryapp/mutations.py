@@ -14,6 +14,7 @@ from .inputs import *
 from datetime import date
 from graphql_jwt.shortcuts import get_token, create_refresh_token
 import graphql_jwt
+from graphql_relay import from_global_id
 
 UserModel = get_user_model()
 
@@ -613,6 +614,86 @@ class ConfirmDeathRecord(graphene.Mutation):
         except ChickenDeathRecord.DoesNotExist:
             raise GraphQLError("Death record not found")
 
+
+class CreateExpenseCategory(graphene.Mutation):
+    class Arguments:
+        input = ExpenseCategoryInput(required=True)
+
+    category = graphene.Field(ExpenseCategoryType)
+
+    def mutate(self, info, input):
+        if not info.context.user.is_authenticated or info.context.user.user_type != 'ADMIN':
+            raise GraphQLError("Only admin can create expense categories")
+        
+        category = ExpenseCategory(
+            name=input.name,
+            description=input.get('description', '')
+        )
+        category.save()
+        return CreateExpenseCategory(category=category)
+
+class RecordExpense(graphene.Mutation):
+    class Arguments:
+        input = ExpenseInput(required=True)
+
+    expense = graphene.Field(ExpenseType)
+
+    @transaction.atomic
+    def mutate(self, info, input):
+        user = info.context.user
+        if not user.is_authenticated or user.user_type != 'ADMIN':
+            raise GraphQLError("Only admin can record expenses")
+        
+        try:
+            category_id = from_global_id(input.category_id)[1]
+            category = ExpenseCategory.objects.get(pk=category_id)
+
+            expense = Expense(
+                category=category,
+                date=input.get('date', date.today()),
+                description=input.description,
+                payment_method=input.get('payment_method', 'CASH'),
+                unit_cost=input.unit_cost,
+                quantity=input.get('quantity', 1),
+                receipt_number=input.get('receipt_number', ''),
+                notes=input.get('notes', ''),
+                recorded_by=user
+            )
+            expense.save()
+            return RecordExpense(expense=expense)
+        except ExpenseCategory.DoesNotExist:
+            raise GraphQLError("Expense category not found")
+
+
+class RecordSalaryPayment(graphene.Mutation):
+    class Arguments:
+        input = SalaryPaymentInput(required=True)
+
+    salary_payment = graphene.Field(SalaryPaymentType)
+
+    @transaction.atomic
+    def mutate(self, info, input):
+        user = info.context.user
+        if not user.is_authenticated or user.user_type != 'ADMIN':
+            raise GraphQLError("Only admin can record salary payments")
+        
+        try:
+            worker = User.objects.get(pk=input.worker_id, user_type='WORKER')
+            salary = SalaryPayment(
+                worker=worker,
+                amount=input.amount,
+                payment_date=input.get('payment_date', date.today()),
+                payment_method=input.get('payment_method', 'CASH'),
+                period_start=input.period_start,
+                period_end=input.period_end,
+                notes=input.get('notes', ''),
+                recorded_by=user
+            )
+            salary.save()
+            return RecordSalaryPayment(salary_payment=salary)
+        except User.DoesNotExist:
+            raise GraphQLError("Worker not found")
+        
 class Mutation(graphene.ObjectType):
     # Authentication
     login = AuthMutation.Field()
@@ -652,3 +733,9 @@ class Mutation(graphene.ObjectType):
     # Health Management
     record_chicken_death = RecordChickenDeath.Field()
     confirm_death_record = ConfirmDeathRecord.Field()
+    
+    
+    # Expense Management
+    create_expense_category = CreateExpenseCategory.Field()
+    record_expense = RecordExpense.Field()
+    record_salary_payment = RecordSalaryPayment.Field()

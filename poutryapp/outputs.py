@@ -3,12 +3,13 @@ import graphene
 from graphene_django import DjangoObjectType
 from django.contrib.auth import get_user_model
 from .models import (
-    User, ChickenHouse, EggCollection, EggInventory, EggSale,
+    Expense, ExpenseCategory, SalaryPayment, User, ChickenHouse, EggCollection, EggInventory, EggSale,
     FoodType, FoodInventory, FoodPurchase, FoodDistribution,
     Medicine, MedicineInventory, MedicinePurchase, MedicineDistribution,
     ChickenDeathRecord
 )
 from datetime import date
+from graphene import relay
 
 UserModel = get_user_model()
 # ------------------- Output Types -------------------
@@ -202,3 +203,32 @@ class AlertType(graphene.ObjectType):
     type = graphene.String()
     title = graphene.String()
     message = graphene.String()
+
+class ExpenseCategoryType(DjangoObjectType):
+    class Meta:
+        model = ExpenseCategory
+        interfaces = (relay.Node,)
+        filter_fields = {
+            'name': ['exact', 'icontains'],
+        }
+
+class ExpenseType(DjangoObjectType):
+    class Meta:
+        model = Expense
+        interfaces = (relay.Node,)
+        filter_fields = {
+            'category__name': ['exact', 'icontains'],
+            'date': ['exact', 'gte', 'lte'],
+            'total_cost': ['gte', 'lte'],
+            'payment_method': ['exact'],
+        }
+
+class SalaryPaymentType(DjangoObjectType):
+    class Meta:
+        model = SalaryPayment
+        interfaces = (relay.Node,)
+        filter_fields = {
+            'worker__id': ['exact'],
+            'payment_date': ['exact', 'gte', 'lte'],
+            'amount': ['gte', 'lte'],
+        }

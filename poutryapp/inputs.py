@@ -113,3 +113,26 @@ class DeathRecordConfirmationInput(graphene.InputObjectType):
     record_id = graphene.ID(required=True)
     confirmed = graphene.Boolean(required=True)
     doctor_notes = graphene.String()
+
+class ExpenseCategoryInput(graphene.InputObjectType):
+    name = graphene.String(required=True)
+    description = graphene.String()
+
+class ExpenseInput(graphene.InputObjectType):
+    category_id = graphene.String(required=True)
+    date = graphene.Date()
+    description = graphene.String(required=True)
+    payment_method = graphene.String()
+    unit_cost = graphene.Decimal(required=True)
+    quantity = graphene.Decimal()
+    receipt_number = graphene.String()
+    notes = graphene.String()
+
+class SalaryPaymentInput(graphene.InputObjectType):
+    worker_id = graphene.ID(required=True)
+    amount = graphene.Decimal(required=True)
+    payment_date = graphene.Date()
+    payment_method = graphene.String()
+    period_start = graphene.Date(required=True)
+    period_end = graphene.Date(required=True)
+    notes = graphene.String()

@@ -74,7 +74,7 @@ class FoodPurchaseInput(graphene.InputObjectType):
 class FoodDistributionInput(graphene.InputObjectType):
     food_type_id = graphene.ID(required=True)
     chicken_house_id = graphene.ID(required=True)
-    sacks_distributed = graphene.Int(required=True)
+    sacks_distributed = graphene.Decimal(required=True)
 
 class FoodDistributionConfirmationInput(graphene.InputObjectType):
     distribution_id = graphene.ID(required=True)

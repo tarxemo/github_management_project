@@ -139,7 +139,7 @@ class FoodPurchase(models.Model):
 class FoodDistribution(models.Model):
     food_type = models.ForeignKey(FoodType, on_delete=models.CASCADE)
     chicken_house = models.ForeignKey(ChickenHouse, on_delete=models.CASCADE)
-    sacks_distributed = models.PositiveIntegerField()
+    sacks_distributed = models.DecimalField(max_digits=10, decimal_places=2)
     date_distributed = models.DateField(default=timezone.now)
     distributed_by = models.ForeignKey(User, on_delete=models.PROTECT, related_name='distributed_food')
     received_by = models.ForeignKey(User, on_delete=models.PROTECT, related_name='received_food')

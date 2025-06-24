@@ -108,7 +108,8 @@ class ChickenDeathRecordInput(graphene.InputObjectType):
     number_dead = graphene.Int(required=True)
     possible_cause = graphene.String()
     notes = graphene.String()
-
+    chicken_house_id = graphene.ID()
+    
 class DeathRecordConfirmationInput(graphene.InputObjectType):
     record_id = graphene.ID(required=True)
     confirmed = graphene.Boolean(required=True)

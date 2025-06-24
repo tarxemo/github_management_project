@@ -570,7 +570,7 @@ class RecordChickenDeath(graphene.Mutation):
             raise GraphQLError("Only workers can record chicken deaths")
         
         try:
-            chicken_house = user.chicken_house
+            chicken_house = ChickenHouse.objects.get(id=input.chicken_house_id)
             record = ChickenDeathRecord(
                 chicken_house=chicken_house,
                 number_dead=input.number_dead,

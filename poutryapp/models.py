@@ -49,7 +49,47 @@ class User(AbstractUser):
     def __str__(self):
         return f"{self.get_full_name()} ({self.phone_number})"
 
+class SystemLog(models.Model):
+    ACTION_CREATE = 'create'
+    ACTION_UPDATE = 'update'
+    ACTION_DELETE = 'delete'
+    ACTION_CHOICES = [
+        (ACTION_CREATE, 'Create'),
+        (ACTION_UPDATE, 'Update'),
+        (ACTION_DELETE, 'Delete'),
+    ]
 
+    user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
+    action = models.CharField(max_length=10, choices=ACTION_CHOICES)
+    model_name = models.CharField(max_length=100)
+    object_id = models.CharField(max_length=100, null=True, blank=True)
+    timestamp = models.DateTimeField(auto_now_add=True)
+    ip_address = models.GenericIPAddressField(null=True, blank=True)
+    user_agent = models.CharField(max_length=255, null=True, blank=True)
+    before_state = models.JSONField(null=True, blank=True)
+    after_state = models.JSONField(null=True, blank=True)
+    changes = models.JSONField(null=True, blank=True)
+
+    class Meta:
+        ordering = ['-timestamp']
+        verbose_name = 'System Log'
+        verbose_name_plural = 'System Logs'
+
+    def __str__(self):
+        return f"{self.get_action_display()} on {self.model_name} by {self.user} at {self.timestamp}"
+
+class AuditLogMixin:
+    def save(self, *args, **kwargs):
+        """Override save to capture state before save"""
+        if self.pk:  # Only for updates, not creates
+            # Get the current state from DB
+            old_instance = self.__class__.objects.get(pk=self.pk)
+            self._pre_save_state = {}
+            for field in self._meta.fields:
+                self._pre_save_state[field.name] = getattr(old_instance, field.name)
+        super().save(*args, **kwargs)
+        
+        
 class ChickenHouse(models.Model):
     name = models.CharField(max_length=100, unique=True)
     capacity = models.PositiveIntegerField(help_text="Maximum number of chickens this house can hold")

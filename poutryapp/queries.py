@@ -3,11 +3,11 @@ from .models import (
     User, ChickenHouse, EggCollection, EggInventory, EggSale,
     FoodType, FoodInventory, FoodPurchase, FoodDistribution,
     Medicine, MedicineInventory, MedicinePurchase, MedicineDistribution,
-    ChickenDeathRecord
+    ChickenDeathRecord, SystemLog
 )
 from .outputs import *
 from django.db.models import Sum, Q, F
-from datetime import date, timedelta
+from datetime import date, timedelta, datetime
 from graphql.error import GraphQLError
 from django.utils import timezone
 
@@ -553,3 +553,69 @@ class Query(graphene.ObjectType):
             queryset = queryset.filter(worker_id=worker_id)
             
         return queryset.order_by('-payment_date')
+
+
+    all_system_logs = graphene.List(
+        SystemLogType,
+        action=graphene.String(),
+        model_name=graphene.String(),
+        user_id=graphene.ID(),
+        date_from=graphene.String(),
+        date_to=graphene.String(),
+        search_text=graphene.String(),
+        first=graphene.Int(),
+        offset=graphene.Int(),
+    )
+    
+    system_log_by_id = graphene.Field(SystemLogType, id=graphene.ID(required=True))
+
+    def resolve_all_system_logs(
+        self,
+        info,
+        action=None,
+        model_name=None,
+        user_id=None,
+        date_from=None,
+        date_to=None,
+        search_text=None,
+        first=None,
+        offset=None,
+    ):
+        qs = SystemLog.objects.all()
+        
+        # Apply filters
+        if action:
+            qs = qs.filter(action=action.lower())
+        if model_name:
+            qs = qs.filter(model_name__icontains=model_name)
+        if user_id:
+            qs = qs.filter(user_id=user_id)
+        if date_from:
+            qs = qs.filter(timestamp__gte=datetime.strptime(date_from, '%Y-%m-%d'))
+        if date_to:
+            qs = qs.filter(timestamp__lte=datetime.strptime(date_to, '%Y-%m-%d') + timedelta(days=1))
+        if search_text:
+            qs = qs.filter(
+                Q(model_name__icontains=search_text) |
+                Q(user__username__icontains=search_text) |
+                Q(user__email__icontains=search_text) |
+                Q(object_id__icontains=search_text) |
+                Q(ip_address__icontains=search_text)
+            )
+        
+        # Apply sorting (newest first by default)
+        qs = qs.order_by('-timestamp')
+        
+        # Apply pagination
+        if offset:
+            qs = qs[offset:]
+        if first:
+            qs = qs[:first]
+            
+        return qs
+
+    def resolve_system_log_by_id(self, info, id):
+        try:
+            return SystemLog.objects.get(pk=id)
+        except SystemLog.DoesNotExist:
+            return None

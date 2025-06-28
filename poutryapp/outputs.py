@@ -3,7 +3,7 @@ import graphene
 from graphene_django import DjangoObjectType
 from django.contrib.auth import get_user_model
 from .models import (
-    Expense, ExpenseCategory, SalaryPayment, User, ChickenHouse, EggCollection, EggInventory, EggSale,
+    Expense, ExpenseCategory, SalaryPayment, SystemLog, User, ChickenHouse, EggCollection, EggInventory, EggSale,
     FoodType, FoodInventory, FoodPurchase, FoodDistribution,
     Medicine, MedicineInventory, MedicinePurchase, MedicineDistribution,
     ChickenDeathRecord
@@ -232,3 +232,21 @@ class SalaryPaymentType(DjangoObjectType):
             'payment_date': ['exact', 'gte', 'lte'],
             'amount': ['gte', 'lte'],
         }
+
+class SystemLogType(DjangoObjectType):
+    class Meta:
+        model = SystemLog
+        fields = '__all__'
+
+    before_state = graphene.JSONString()
+    after_state = graphene.JSONString()
+    changes = graphene.JSONString()
+
+    def resolve_before_state(self, info):
+        return self.before_state
+
+    def resolve_after_state(self, info):
+        return self.after_state
+
+    def resolve_changes(self, info):
+        return self.changes

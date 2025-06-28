@@ -14,7 +14,13 @@ from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.units import inch
 from io import BytesIO
 import csv
-
+from reportlab.lib.pagesizes import A4, letter, landscape
+from reportlab.lib.units import inch
+from reportlab.platypus import (
+    BaseDocTemplate, PageTemplate, Frame, 
+    Paragraph, Table, TableStyle, Spacer,
+    KeepTogether
+)
 
 
 class ReportAPIView(APIView):
@@ -169,99 +175,160 @@ class ReportAPIView(APIView):
 
         return None
 
+
     def generate_pdf(self, report_type, report_data):
         buffer = BytesIO()
-        doc = canvas.Canvas(buffer, pagesize=landscape(letter))
-        width, height = landscape(letter)
         
-        # Styles (same as before)
+        # Import page sizes at the top of your file
+        from reportlab.lib.pagesizes import A4
+        
+        # Use A4 size in portrait mode
+        doc = BaseDocTemplate(
+            buffer, 
+            pagesize=A4,
+            leftMargin=50,
+            rightMargin=50,
+            topMargin=50,
+            bottomMargin=50
+        )
+        width, height = A4  # Standard A4 dimensions (595.27 x 841.89 points)
+        
+        # Styles
         styles = getSampleStyleSheet()
         title_style = ParagraphStyle(
             'Title',
             parent=styles['Title'],
-            fontSize=18,
+            fontSize=16,
             textColor=colors.HexColor('#FFE31A'),
-            spaceAfter=12
+            spaceAfter=12,
+            alignment=1  # Center aligned
         )
         header_style = ParagraphStyle(
             'Header',
             parent=styles['Normal'],
-            fontSize=12,
+            fontSize=10,
             textColor=colors.white,
             alignment=1,
-            leading=14
+            leading=12
         )
         body_style = ParagraphStyle(
             'Body',
             parent=styles['Normal'],
-            fontSize=10,
+            fontSize=9,
             textColor=colors.black,
-            leading=12
+            leading=10
         )
         
         # Title
         title = Paragraph(report_data['title'], title_style)
-        title.wrapOn(doc, width - 100, 50)
-        title.drawOn(doc, 50, height - 70)
         
         # Date range if applicable
+        date_text = ""
         if report_type == 'productivity' and report_data.get('date_field') and report_data['data']:
             date_text = f"Date Range: {start_date.strftime('%Y-%m-%d')} to {end_date.strftime('%Y-%m-%d')}"
-            doc.setFont("Helvetica", 12)
-            doc.drawString(50, height - 100, date_text)
         
         # Prepare table data
         table_data = []
-        
-        # Add headers
         table_data.append([Paragraph(col, header_style) for col in report_data['columns']])
         
-        # Add data rows - SPECIAL HANDLING FOR PRODUCTIVITY REPORT
+        # Add data rows
         for item in report_data['data']:
             row = []
             for col in report_data['columns']:
                 col_key = col.lower().replace(' ', '_')
                 if isinstance(item, dict):
-                    value = str(item.get(col_key, ''))  # Convert all values to string
+                    value = str(item.get(col_key, ''))
                 else:
-                    value = str(getattr(item, col_key, ''))  # Convert all values to string
+                    value = str(getattr(item, col_key, ''))
                 row.append(Paragraph(value, body_style))
             table_data.append(row)
         
-        # Create table
-        col_widths = [width * 0.9 / len(report_data['columns']) for _ in report_data['columns']]
-        table = Table(table_data, colWidths=col_widths, repeatRows=1)
+        # Calculate column widths
+        available_width = width - doc.leftMargin - doc.rightMargin
+        num_cols = len(report_data['columns'])
+        col_widths = [available_width / num_cols for _ in report_data['columns']]
         
-        # Table style (same as before)
+        # Create table with automatic row splitting
+        table = Table(
+            table_data,
+            colWidths=col_widths,
+            repeatRows=1,  # Repeat headers on each page
+            hAlign='LEFT'
+        )
+        
+        # Table style
         table.setStyle(TableStyle([
             ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#333333')),
             ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
             ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
             ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-            ('FONTSIZE', (0, 0), (-1, 0), 12),
-            ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+            ('FONTSIZE', (0, 0), (-1, 0), 10),
+            ('BOTTOMPADDING', (0, 0), (-1, 0), 6),
             ('BACKGROUND', (0, 1), (-1, -1), colors.white),
-            ('GRID', (0, 0), (-1, -1), 1, colors.lightgrey),
+            ('GRID', (0, 0), (-1, -1), 0.5, colors.lightgrey),
             ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-            ('LEADING', (0, 0), (-1, -1), 14),
+            ('LEADING', (0, 0), (-1, -1), 11),
         ]))
         
-        # Draw table on canvas
-        table.wrapOn(doc, width - 100, height - 150)
-        table.drawOn(doc, 50, height - 150 - table._height)
+        # Create a template for each page
+        def on_first_page(canvas, doc):
+            canvas.saveState()
+            # Draw header
+            title.wrap(available_width, 30)
+            title.drawOn(canvas, doc.leftMargin, height - doc.topMargin - 30)
+            
+            if date_text:
+                canvas.setFont("Helvetica", 10)
+                canvas.drawString(doc.leftMargin, height - doc.topMargin - 50, date_text)
+            
+            # Draw footer
+            canvas.setFont("Helvetica", 8)
+            canvas.setFillColor(colors.grey)
+            canvas.drawRightString(width - doc.rightMargin, doc.bottomMargin/2, 
+                                 f"Page 1 - Generated on {datetime.now().strftime('%Y-%m-%d %H:%M')}")
+            canvas.restoreState()
         
-        # Footer
-        doc.setFont("Helvetica", 8)
-        doc.setFillColor(colors.grey)
-        doc.drawRightString(width - 50, 30, f"Generated on {datetime.now().strftime('%Y-%m-%d %H:%M')}")
+        def on_later_pages(canvas, doc):
+            canvas.saveState()
+            # Draw footer with page number
+            canvas.setFont("Helvetica", 8)
+            canvas.setFillColor(colors.grey)
+            canvas.drawRightString(width - doc.rightMargin, doc.bottomMargin/2, 
+                                 f"Page {doc.page} - Generated on {datetime.now().strftime('%Y-%m-%d %H:%M')}")
+            canvas.restoreState()
         
-        doc.save()
+        # Create frame for content
+        frame = Frame(
+            doc.leftMargin, 
+            doc.bottomMargin, 
+            available_width, 
+            height - doc.topMargin - doc.bottomMargin - 60,  # Leave space for header/footer
+            leftPadding=0,
+            bottomPadding=0,
+            rightPadding=0,
+            topPadding=0,
+            showBoundary=0
+        )
+        
+        # Create page template
+        doc_template = PageTemplate(
+            id='AllPages',
+            frames=[frame],
+            onPage=on_first_page,
+            onPageEnd=on_later_pages
+        )
+        
+        doc.addPageTemplates([doc_template])
+        
+        # Build the document
+        story = [table]
+        doc.build(story)
+        
         buffer.seek(0)
-        
         response = HttpResponse(buffer, content_type='application/pdf')
         response['Content-Disposition'] = f'attachment; filename="{report_type}_report.pdf"'
         return response
-
+    
     def generate_csv(self, report_type, report_data):
         response = HttpResponse(content_type='text/csv')
         response['Content-Disposition'] = f'attachment; filename="{report_type}_report.csv"'

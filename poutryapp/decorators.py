@@ -1,9 +1,11 @@
-# decorators.py
 from functools import wraps
-from django.contrib.auth.models import AnonymousUser
 from graphql import GraphQLError
 
-def skip_auth(resolver_func):
-    resolver_func.skip_auth = True
-    return resolver_func
-
+def require_authentication(func):
+    @wraps(func)
+    def wrapper(self, info, *args, **kwargs):
+        user = info.context.user
+        if not user.is_authenticated:
+            raise GraphQLError("Authentication required")
+        return func(self, info, *args, **kwargs)
+    return wrapper

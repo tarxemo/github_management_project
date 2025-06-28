@@ -1,4 +1,4 @@
-from poutryapp.decorators import skip_auth
+from poutryapp.decorators import require_authentication
 import graphene
 from graphql import GraphQLError
 from django.contrib.auth import get_user_model
@@ -27,7 +27,7 @@ class AuthMutation(graphene.Mutation):
     refresh_token = graphene.String()
     user = graphene.Field(UserOutput)
 
-    @skip_auth
+  
     @classmethod
     def mutate(cls, root, info, phone_number, password):
         user = UserModel.objects.filter(phone_number=phone_number).first()
@@ -53,6 +53,7 @@ class ChangePassword(graphene.Mutation):
     class Arguments:
         input = ChangePasswordInput(required=True)
 
+    @require_authentication
     def mutate(self, info, input):
         user = info.context.user
 
@@ -70,6 +71,7 @@ class CreateUser(graphene.Mutation):
 
     user = graphene.Field(UserOutput)
 
+    @require_authentication
     @transaction.atomic
     def mutate(self, info, input):
         # Only admin can create users
@@ -95,6 +97,7 @@ class UpdateUser(graphene.Mutation):
 
     user = graphene.Field(UserOutput)
 
+    @require_authentication
     @classmethod
     def mutate(cls, root, info, id, input):
         if not info.context.user.is_authenticated or info.context.user.user_type != 'ADMIN':
@@ -126,6 +129,7 @@ class CreateChickenHouse(graphene.Mutation):
 
     chicken_house = graphene.Field(ChickenHouseOutput)
 
+    @require_authentication
     def mutate(self, info, input):
         if not info.context.user.is_authenticated or info.context.user.user_type != 'ADMIN':
             raise GraphQLError("Only admin can create chicken houses")
@@ -150,6 +154,7 @@ class UpdateChickenHouse(graphene.Mutation):
     message = graphene.String()
     chicken_house = graphene.Field(ChickenHouseOutput)
 
+    @require_authentication
     def mutate(self, info, id, input):
         try:
             house = ChickenHouse.objects.get(pk=id)
@@ -171,6 +176,7 @@ class AddChickensToHouse(graphene.Mutation):
 
     chicken_house = graphene.Field(ChickenHouseOutput)
 
+    @require_authentication
     def mutate(self, info, input):
         user = info.context.user
         if not user.is_authenticated or user.user_type != "ADMIN":
@@ -195,6 +201,7 @@ class RecordEggCollection(graphene.Mutation):
 
     collection = graphene.Field(EggCollectionOutput)
 
+    @require_authentication
     @transaction.atomic
     def mutate(self, info, input):
         user = info.context.user
@@ -228,6 +235,7 @@ class ConfirmEggCollection(graphene.Mutation):
 
     collection = graphene.Field(EggCollectionOutput)
 
+    @require_authentication
     def mutate(self, info, input):
         user = info.context.user
         if not user.is_authenticated or user.user_type != 'STOCK_MANAGER':
@@ -252,6 +260,7 @@ class RecordEggSale(graphene.Mutation):
     sale = graphene.Field(EggSaleOutput)
     inventory = graphene.Field(EggInventoryOutput)
 
+    @require_authentication
     @transaction.atomic
     def mutate(self, info, input):
         user = info.context.user
@@ -281,6 +290,7 @@ class UpdateEggSale(graphene.Mutation):
 
     egg_sale = graphene.Field(EggSaleOutput)
 
+    @require_authentication
     def mutate(self, info, id, input):
         if not info.context.user.is_authenticated:
             raise GraphQLError("Authentication required")
@@ -314,6 +324,7 @@ class CreateFoodType(graphene.Mutation):
 
     food_type = graphene.Field(FoodTypeOutput)
 
+    @require_authentication
     def mutate(self, info, input):
         if not info.context.user.is_authenticated or info.context.user.user_type != 'ADMIN':
             raise GraphQLError("Only admin can create food types")
@@ -332,6 +343,7 @@ class RecordFoodPurchase(graphene.Mutation):
     purchase = graphene.Field(FoodPurchaseOutput)
     inventory = graphene.Field(FoodInventoryOutput)
 
+    @require_authentication
     @transaction.atomic
     def mutate(self, info, input):
         user = info.context.user
@@ -363,6 +375,7 @@ class DistributeFood(graphene.Mutation):
     distribution = graphene.Field(FoodDistributionOutput)
     inventory = graphene.Field(FoodInventoryOutput)
 
+    @require_authentication
     @transaction.atomic
     def mutate(self, info, input):
         user = info.context.user
@@ -402,6 +415,7 @@ class ConfirmFoodDistribution(graphene.Mutation):
 
     distribution = graphene.Field(FoodDistributionOutput)
 
+    @require_authentication
     def mutate(self, info, input):
         user = info.context.user
         if not user.is_authenticated or user.user_type != 'WORKER':
@@ -427,6 +441,7 @@ class CreateMedicine(graphene.Mutation):
 
     medicine = graphene.Field(MedicineOutput)
 
+    @require_authentication
     def mutate(self, info, input):
         if not info.context.user.is_authenticated or info.context.user.user_type != 'ADMIN':
             raise GraphQLError("Only admin can create medicine records")
@@ -446,6 +461,7 @@ class UpdateMedicine(graphene.Mutation):
 
     medicine = graphene.Field(MedicineOutput)
 
+    @require_authentication
     def mutate(self, info, id, input):
         med = Medicine.objects.get(pk=id)
         for key, value in input.items():
@@ -460,6 +476,7 @@ class RecordMedicinePurchase(graphene.Mutation):
     purchase = graphene.Field(MedicinePurchaseOutput)
     inventory = graphene.Field(MedicineInventoryOutput)
 
+    @require_authentication
     @transaction.atomic
     def mutate(self, info, input):
         user = info.context.user
@@ -493,6 +510,7 @@ class DistributeMedicine(graphene.Mutation):
     distribution = graphene.Field(MedicineDistributionOutput)
     inventory = graphene.Field(MedicineInventoryOutput)
 
+    @require_authentication
     @transaction.atomic
     def mutate(self, info, input):
         user = info.context.user
@@ -533,6 +551,7 @@ class ConfirmMedicineDistribution(graphene.Mutation):
 
     distribution = graphene.Field(MedicineDistributionOutput)
 
+    @require_authentication
     def mutate(self, info, input):
         user = info.context.user
         if not user.is_authenticated:
@@ -564,6 +583,7 @@ class RecordChickenDeath(graphene.Mutation):
 
     record = graphene.Field(ChickenDeathRecordOutput)
 
+    @require_authentication
     def mutate(self, info, input):
         user = info.context.user
         if not user.is_authenticated or user.user_type != 'WORKER':
@@ -596,6 +616,7 @@ class ConfirmDeathRecord(graphene.Mutation):
 
     record = graphene.Field(ChickenDeathRecordOutput)
 
+    @require_authentication
     def mutate(self, info, input):
         user = info.context.user
         if not user.is_authenticated or user.user_type != 'DOCTOR':
@@ -621,6 +642,7 @@ class CreateExpenseCategory(graphene.Mutation):
 
     category = graphene.Field(ExpenseCategoryType)
 
+    @require_authentication
     def mutate(self, info, input):
         if not info.context.user.is_authenticated or info.context.user.user_type != 'ADMIN':
             raise GraphQLError("Only admin can create expense categories")
@@ -638,6 +660,7 @@ class RecordExpense(graphene.Mutation):
 
     expense = graphene.Field(ExpenseType)
 
+    @require_authentication
     @transaction.atomic
     def mutate(self, info, input):
         user = info.context.user
@@ -671,6 +694,7 @@ class RecordSalaryPayment(graphene.Mutation):
 
     salary_payment = graphene.Field(SalaryPaymentType)
 
+    @require_authentication
     @transaction.atomic
     def mutate(self, info, input):
         user = info.context.user

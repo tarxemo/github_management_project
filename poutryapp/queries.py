@@ -1,3 +1,4 @@
+from poutryapp.decorators import require_authentication
 import graphene
 from .models import (
     User, ChickenHouse, EggCollection, EggInventory, EggSale,
@@ -15,11 +16,13 @@ class Query(graphene.ObjectType):
     # ------------------- Authentication & User Queries -------------------
     users = graphene.List(UserOutput)
 
+    @require_authentication
     def resolve_users(self, info):
         return User.objects.select_related('chicken_house').exclude(is_superuser = True)
     
     current_user = graphene.Field(UserOutput)
     
+    @require_authentication
     def resolve_current_user(self, info):
         user = info.context.user
         if not user.is_authenticated:
@@ -32,6 +35,7 @@ class Query(graphene.ObjectType):
         chicken_house_id=graphene.ID()
     )
     
+    @require_authentication
     def resolve_users(self, info, user_type=None, chicken_house_id=None):
         if not info.context.user.is_authenticated or info.context.user.user_type != 'ADMIN':
             raise GraphQLError("Only admin can view users")
@@ -52,6 +56,7 @@ class Query(graphene.ObjectType):
         active_only=graphene.Boolean(default_value=True)
     )
     
+    @require_authentication
     def resolve_chicken_houses(self, info, active_only=True):
         user = info.context.user
         if not user.is_authenticated:
@@ -73,6 +78,7 @@ class Query(graphene.ObjectType):
         id=graphene.ID(required=True)
     )
     
+    @require_authentication
     def resolve_chicken_house(self, info, id):
         user = info.context.user
         if not user.is_authenticated:
@@ -92,6 +98,7 @@ class Query(graphene.ObjectType):
     # ------------------- Egg Management Queries -------------------
     egg_inventory = graphene.Field(EggInventoryOutput)
     
+    @require_authentication
     def resolve_egg_inventory(self, info):
         user = info.context.user
         if not user.is_authenticated or user.user_type not in ['ADMIN', 'STOCK_MANAGER']:
@@ -108,6 +115,7 @@ class Query(graphene.ObjectType):
         confirmed_only=graphene.Boolean(default_value=False)
     )
     
+    @require_authentication
     def resolve_egg_collections(self, info, chicken_house_id=None, start_date=None, end_date=None, confirmed_only=False):
         user = info.context.user
         if not user.is_authenticated:
@@ -141,6 +149,7 @@ class Query(graphene.ObjectType):
         chicken_house_id=graphene.ID()
     )
     
+    @require_authentication
     def resolve_daily_egg_report(self, info, date=None, chicken_house_id=None):
         user = info.context.user
         if not user.is_authenticated:
@@ -182,6 +191,7 @@ class Query(graphene.ObjectType):
         buyer_name=graphene.String()
     )
     
+    @require_authentication
     def resolve_egg_sales(self, info, start_date=None, end_date=None, buyer_name=None):
         user = info.context.user
         if not user.is_authenticated or user.user_type not in ['ADMIN', 'STOCK_MANAGER', "SALES_MANAGER"]:
@@ -201,11 +211,13 @@ class Query(graphene.ObjectType):
     # ------------------- Food Management Queries -------------------
     food_types = graphene.List(FoodTypeOutput)
     
+    @require_authentication
     def resolve_food_types(self, info):
         return FoodType.objects.all()
 
     food_inventory = graphene.List(FoodInventoryOutput)
     
+    @require_authentication
     def resolve_food_inventory(self, info):
         user = info.context.user
         if not user.is_authenticated or user.user_type not in ['ADMIN', 'STOCK_MANAGER']:
@@ -220,6 +232,7 @@ class Query(graphene.ObjectType):
         end_date=graphene.Date()
     )
     
+    @require_authentication
     def resolve_food_purchases(self, info, food_type_id=None, start_date=None, end_date=None):
         user = info.context.user
         if not user.is_authenticated or user.user_type not in ['ADMIN', 'STOCK_MANAGER']:
@@ -245,6 +258,7 @@ class Query(graphene.ObjectType):
         confirmed_only=graphene.Boolean(default_value=False)
     )
     
+    @require_authentication
     def resolve_food_distributions(self, info, chicken_house_id=None, food_type_id=None, start_date=None, end_date=None, confirmed_only=False):
         user = info.context.user
         if not user.is_authenticated:
@@ -273,6 +287,7 @@ class Query(graphene.ObjectType):
     
     medicines = graphene.List(MedicineOutput)
     
+    @require_authentication
     def resolve_medicines(self, info):
         user = info.context.user
         if not user.is_authenticated:
@@ -282,6 +297,7 @@ class Query(graphene.ObjectType):
 
     medicine_inventory = graphene.List(MedicineInventoryOutput)
     
+    @require_authentication
     def resolve_medicine_inventory(self, info):
         user = info.context.user
         if not user.is_authenticated or user.user_type not in ['ADMIN', 'STOCK_MANAGER', 'DOCTOR', "WORKER"]:
@@ -296,6 +312,7 @@ class Query(graphene.ObjectType):
         expiring_soon=graphene.Boolean(default_value=False)
     )
     
+    @require_authentication
     def resolve_medicine_purchases(self, info, medicine_id=None, expiring_soon=False):
         user = info.context.user
         if not user.is_authenticated or user.user_type not in ['ADMIN', 'STOCK_MANAGER', 'DOCTOR', "WORKER"]:
@@ -324,6 +341,7 @@ class Query(graphene.ObjectType):
         needs_confirmation=graphene.Boolean(default_value=False)
     )
     
+    @require_authentication
     def resolve_medicine_distributions(self, info, chicken_house_id=None, medicine_id=None, start_date=None, end_date=None, needs_confirmation=False):
         user = info.context.user
         if not user.is_authenticated:
@@ -363,6 +381,7 @@ class Query(graphene.ObjectType):
         needs_confirmation=graphene.Boolean(default_value=False)
     )
     
+    @require_authentication
     def resolve_chicken_death_records(self, info, chicken_house_id=None, start_date=None, end_date=None, needs_confirmation=False):
         user = info.context.user
         if not user.is_authenticated:
@@ -391,6 +410,7 @@ class Query(graphene.ObjectType):
         period=graphene.String(default_value="month")  # "day", "week", "month", "year"
     )
     
+    @require_authentication
     def resolve_chicken_house_performance(self, info, period):
         user = info.context.user
         if not user.is_authenticated or user.user_type not in ['ADMIN', 'STOCK_MANAGER']:
@@ -461,6 +481,7 @@ class Query(graphene.ObjectType):
 
     inventory_summary = graphene.Field(InventorySummaryOutput)
     
+    @require_authentication
     def resolve_inventory_summary(self, info):
         user = info.context.user
         if not user.is_authenticated or user.user_type not in ['ADMIN', 'STOCK_MANAGER']:
@@ -478,6 +499,7 @@ class Query(graphene.ObjectType):
         
     alerts = graphene.List(AlertType)
 
+    @require_authentication
     def resolve_alerts(self, info):
         alerts = []
 
@@ -527,6 +549,7 @@ class Query(graphene.ObjectType):
         worker_id=graphene.ID()
     )
     
+    @require_authentication
     def resolve_expense_categories(self, info):
         return ExpenseCategory.objects.all().order_by('name')
     
@@ -542,6 +565,7 @@ class Query(graphene.ObjectType):
             
         return queryset.order_by('-date')
     
+    @require_authentication
     def resolve_salary_payments(self, info, start_date=None, end_date=None, worker_id=None):
         queryset = SalaryPayment.objects.all()
         
@@ -569,6 +593,7 @@ class Query(graphene.ObjectType):
     
     system_log_by_id = graphene.Field(SystemLogType, id=graphene.ID(required=True))
 
+    @require_authentication
     def resolve_all_system_logs(
         self,
         info,
@@ -614,6 +639,7 @@ class Query(graphene.ObjectType):
             
         return qs
 
+    @require_authentication
     def resolve_system_log_by_id(self, info, id):
         try:
             return SystemLog.objects.get(pk=id)

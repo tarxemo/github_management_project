@@ -199,7 +199,7 @@ class ReportAPIView(APIView):
             'Title',
             parent=styles['Title'],
             fontSize=16,
-            textColor=colors.HexColor('#FFE31A'),
+            textColor=colors.HexColor("#1F1E24"),
             spaceAfter=12,
             alignment=1  # Center aligned
         )

@@ -36,7 +36,9 @@ class ChickenHouseInput(graphene.InputObjectType):
     capacity = graphene.Int(required=True)
     is_active = graphene.Boolean()
     worker_id = graphene.ID(required=True)
-
+    age_in_weeks = graphene.Int()
+    average_weight = graphene.Decimal()
+    
 class EggCollectionInput(graphene.InputObjectType):
     chicken_house_id = graphene.ID(required=True)
     full_trays = graphene.Int(required=True)

@@ -139,6 +139,8 @@ class CreateChickenHouse(graphene.Mutation):
         chicken_house = ChickenHouse(
             name=input.name,
             owner = worker,
+            age_in_weeks = input.age_in_weeks,
+            average_weight = input.average_weight,
             capacity=input.capacity,
             is_active=input.get('is_active', True))
         chicken_house.save()
@@ -166,6 +168,8 @@ class UpdateChickenHouse(graphene.Mutation):
         house.name = input.name
         house.capacity = input.capacity
         house.is_active = input.is_active
+        house.age_in_weeks = input.age_in_weeks
+        house.average_weight = input.average_weight
         house.owner = worker
         house.save()
         return UpdateChickenHouse(success=True, message="House updated successfully", chicken_house=house)

@@ -97,9 +97,9 @@ class UpdateUser(graphene.Mutation):
 
     user = graphene.Field(UserOutput)
 
-    @classmethod
     @require_authentication
-    def mutate(cls, root, info, id, input):
+    def mutate(self, info, id, input):
+        print("i reached here")
         if not info.context.user.is_authenticated or info.context.user.user_type != 'ADMIN':
             raise GraphQLError("Only admin can update users")
 

@@ -59,9 +59,6 @@ class Query(graphene.ObjectType):
     @require_authentication
     def resolve_chicken_houses(self, info, active_only=True):
         user = info.context.user
-        if not user.is_authenticated:
-            raise GraphQLError("Authentication required")
-        
         queryset = ChickenHouse.objects.all()
         
         if active_only:

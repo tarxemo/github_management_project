@@ -71,8 +71,8 @@ class CreateUser(graphene.Mutation):
 
     user = graphene.Field(UserOutput)
 
-    @require_authentication
     @transaction.atomic
+    @require_authentication
     def mutate(self, info, input):
         # Only admin can create users
         if not info.context.user.is_authenticated or info.context.user.user_type != 'ADMIN':
@@ -97,8 +97,8 @@ class UpdateUser(graphene.Mutation):
 
     user = graphene.Field(UserOutput)
 
-    @require_authentication
     @classmethod
+    @require_authentication
     def mutate(cls, root, info, id, input):
         if not info.context.user.is_authenticated or info.context.user.user_type != 'ADMIN':
             raise GraphQLError("Only admin can update users")
@@ -205,8 +205,8 @@ class RecordEggCollection(graphene.Mutation):
 
     collection = graphene.Field(EggCollectionOutput)
 
-    @require_authentication
     @transaction.atomic
+    @require_authentication
     def mutate(self, info, input):
         user = info.context.user
         if not user.is_authenticated or user.user_type != 'WORKER':
@@ -264,8 +264,8 @@ class RecordEggSale(graphene.Mutation):
     sale = graphene.Field(EggSaleOutput)
     inventory = graphene.Field(EggInventoryOutput)
 
-    @require_authentication
     @transaction.atomic
+    @require_authentication
     def mutate(self, info, input):
         user = info.context.user
         if not user.is_authenticated or user.user_type != 'STOCK_MANAGER':
@@ -347,8 +347,8 @@ class RecordFoodPurchase(graphene.Mutation):
     purchase = graphene.Field(FoodPurchaseOutput)
     inventory = graphene.Field(FoodInventoryOutput)
 
-    @require_authentication
     @transaction.atomic
+    @require_authentication
     def mutate(self, info, input):
         user = info.context.user
         if not user.is_authenticated or user.user_type != 'STOCK_MANAGER':
@@ -379,8 +379,8 @@ class DistributeFood(graphene.Mutation):
     distribution = graphene.Field(FoodDistributionOutput)
     inventory = graphene.Field(FoodInventoryOutput)
 
-    @require_authentication
     @transaction.atomic
+    @require_authentication
     def mutate(self, info, input):
         user = info.context.user
         if not user.is_authenticated or user.user_type != 'STOCK_MANAGER':
@@ -480,8 +480,8 @@ class RecordMedicinePurchase(graphene.Mutation):
     purchase = graphene.Field(MedicinePurchaseOutput)
     inventory = graphene.Field(MedicineInventoryOutput)
 
-    @require_authentication
     @transaction.atomic
+    @require_authentication
     def mutate(self, info, input):
         user = info.context.user
         if not user.is_authenticated or user.user_type != 'STOCK_MANAGER':
@@ -514,8 +514,8 @@ class DistributeMedicine(graphene.Mutation):
     distribution = graphene.Field(MedicineDistributionOutput)
     inventory = graphene.Field(MedicineInventoryOutput)
 
-    @require_authentication
     @transaction.atomic
+    @require_authentication
     def mutate(self, info, input):
         user = info.context.user
         if not user.is_authenticated or user.user_type != 'STOCK_MANAGER':
@@ -664,8 +664,8 @@ class RecordExpense(graphene.Mutation):
 
     expense = graphene.Field(ExpenseType)
 
-    @require_authentication
     @transaction.atomic
+    @require_authentication
     def mutate(self, info, input):
         user = info.context.user
         if not user.is_authenticated or user.user_type != 'ADMIN':
@@ -698,8 +698,8 @@ class RecordSalaryPayment(graphene.Mutation):
 
     salary_payment = graphene.Field(SalaryPaymentType)
 
-    @require_authentication
     @transaction.atomic
+    @require_authentication
     def mutate(self, info, input):
         user = info.context.user
         if not user.is_authenticated or user.user_type != 'ADMIN':

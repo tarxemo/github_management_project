@@ -97,9 +97,15 @@ class ChickenHouse(models.Model):
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
     owner = models.ForeignKey('User', on_delete=models.SET_NULL, null=True, blank=True, related_name='chicken_houses')
-    
+
+    # 🐣 Add these:
+    age_in_weeks = models.PositiveIntegerField(default=0)
+    average_weight = models.FloatField(help_text="Average weight per chicken in kg", default=0.0)
+
     def __str__(self):
-        return f"{self.name} (Capacity: {self.capacity})"
+        return f"{self.name} (Age: {self.age_in_weeks} weeks, Weight: {self.average_weight}kg)"
+
+
 
 class EggCollection(models.Model):
     worker = models.ForeignKey(User, on_delete=models.CASCADE, related_name='collected_eggs')

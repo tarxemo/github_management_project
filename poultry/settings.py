@@ -24,7 +24,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = 'django-insecure-bj0c9&^)t!@q#rs!^y8f^+31bj41=xhli@a_3ng=0#w!afy%fc'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = False
 
 ALLOWED_HOSTS = ["13.60.60.39", "localhost", "127.0.0.1", "wwww.leonidasfarm.com", "sv.leonidasfarm.com", "leonidasfarm.com"]
 
@@ -111,28 +111,28 @@ TEMPLATES = [
 ]
 
 WSGI_APPLICATION = 'poultry.wsgi.application'
-
+# DATABASES = {
+#     'default': {
+#         'ENGINE': 'django.db.backends.sqlite3',
+#         'NAME': BASE_DIR / 'db.sqlite3',
+#     }
+# }
 
 # Database
 # https://docs.djangoproject.com/en/5.1/ref/settings/#databases
 
+# 
+
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': 'leo',
+        'USER': 'tarxemo',
+        'PASSWORD': '@SuperCoder',
+        'HOST': 'localhost',  # or your remote server IP
+        'PORT': '5432',
     }
 }
-
-# DATABASES = {
-#     'default': {
-#         'ENGINE': 'django.db.backends.postgresql',
-#         'NAME': 'leo',
-#         'USER': 'tarxemo',
-#         'PASSWORD': '@SuperCoder',
-#         'HOST': 'localhost',  # or your remote server IP
-#         'PORT': '5432',
-#     }
-# }
 
 # Password validation
 # https://docs.djangoproject.com/en/5.1/ref/settings/#auth-password-validators

@@ -45,7 +45,7 @@ class Migration(migrations.Migration):
             fields=[
                 ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
                 ('amount', models.DecimalField(decimal_places=2, max_digits=12)),
-                ('payment_date', models.DateField(default=django.utils.timezone.now)),
+                ('created_at', models.DateField(default=django.utils.timezone.now)),
                 ('payment_method', models.CharField(choices=[('CASH', 'Cash'), ('MPESA', 'M-Pesa'), ('BANK_TRANSFER', 'Bank Transfer'), ('CHEQUE', 'Cheque')], default='CASH', max_length=20)),
                 ('period_start', models.DateField()),
                 ('period_end', models.DateField()),
@@ -54,7 +54,7 @@ class Migration(migrations.Migration):
                 ('worker', models.ForeignKey(limit_choices_to={'user_type': 'WORKER'}, on_delete=django.db.models.deletion.PROTECT, to=settings.AUTH_USER_MODEL)),
             ],
             options={
-                'ordering': ['-payment_date'],
+                'ordering': ['-created_at'],
             },
         ),
     ]

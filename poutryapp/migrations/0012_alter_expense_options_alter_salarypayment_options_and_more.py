@@ -21,30 +21,30 @@ class Migration(migrations.Migration):
         ),
         migrations.RenameField(
             model_name='egginventory',
-            old_name='last_updated',
+            old_name='updated_at',
             new_name='updated_at',
         ),
         migrations.RenameField(
             model_name='foodinventory',
-            old_name='last_updated',
+            old_name='updated_at',
             new_name='updated_at',
         ),
         migrations.RenameField(
             model_name='medicineinventory',
-            old_name='last_updated',
+            old_name='updated_at',
             new_name='updated_at',
         ),
         migrations.RemoveField(
             model_name='chickendeathrecord',
-            name='date_recorded',
+            name='created_at',
         ),
         migrations.RemoveField(
             model_name='eggcollection',
-            name='date_collected',
+            name='created_at',
         ),
         migrations.RemoveField(
             model_name='eggsale',
-            name='date_sold',
+            name='created_at',
         ),
         migrations.RemoveField(
             model_name='expense',
@@ -52,23 +52,23 @@ class Migration(migrations.Migration):
         ),
         migrations.RemoveField(
             model_name='fooddistribution',
-            name='date_distributed',
+            name='created_at',
         ),
         migrations.RemoveField(
             model_name='foodpurchase',
-            name='purchase_date',
+            name='created_at',
         ),
         migrations.RemoveField(
             model_name='medicinedistribution',
-            name='date_distributed',
+            name='created_at',
         ),
         migrations.RemoveField(
             model_name='medicinepurchase',
-            name='purchase_date',
+            name='created_at',
         ),
         migrations.RemoveField(
             model_name='salarypayment',
-            name='payment_date',
+            name='created_at',
         ),
         migrations.AddField(
             model_name='chickendeathrecord',

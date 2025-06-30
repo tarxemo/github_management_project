@@ -148,7 +148,7 @@ class EggCollection(BaseModel):
             raise ValidationError("Worker can only collect eggs from their assigned chicken house")
     
     def __str__(self):
-        return f"{self.chicken_house.name} - {self.total_eggs} eggs on {self.date_collected}"
+        return f"{self.chicken_house.name} - {self.total_eggs} eggs on {self.created_at}"
 
 class EggInventory(BaseModel):
     total_eggs = models.PositiveIntegerField(default=0)
@@ -168,7 +168,7 @@ class EggSale(BaseModel):
     confirm_received = models.BooleanField(default=False)
     confirm_sales = models.BooleanField(default=False)
     def __str__(self):
-        return f"Sold {self.quantity} eggs on {self.date_sold}"
+        return f"Sold {self.quantity} eggs on {self.created_at}"
 
 class FoodType(BaseModel):
     name = models.CharField(max_length=50, unique=True)
@@ -195,7 +195,7 @@ class FoodPurchase(BaseModel):
     recorded_by = models.ForeignKey(User, on_delete=models.PROTECT)
     
     def __str__(self):
-        return f"{self.sacks_purchased} sacks of {self.food_type} on {self.purchase_date}"
+        return f"{self.sacks_purchased} sacks of {self.food_type} on {self.created_at}"
 
 class FoodDistribution(BaseModel):
     food_type = models.ForeignKey(FoodType, on_delete=models.CASCADE)
@@ -215,7 +215,7 @@ class FoodDistribution(BaseModel):
             raise ValidationError("Worker can only receive food for their assigned chicken house")
     
     def __str__(self):
-        return f"{self.sacks_distributed} sacks to {self.chicken_house.name} on {self.date_distributed}"
+        return f"{self.sacks_distributed} sacks to {self.chicken_house.name} on {self.created_at}"
 
 class Medicine(BaseModel):
     name = models.CharField(max_length=100)
@@ -244,7 +244,7 @@ class MedicinePurchase(BaseModel):
     recorded_by = models.ForeignKey(User, on_delete=models.PROTECT)
     
     def __str__(self):
-        return f"{self.quantity} {self.medicine.unit_measure} of {self.medicine} on {self.purchase_date}"
+        return f"{self.quantity} {self.medicine.unit_measure} of {self.medicine} on {self.created_at}"
 
 class MedicineDistribution(BaseModel):
     medicine = models.ForeignKey(Medicine, on_delete=models.CASCADE)
@@ -281,7 +281,7 @@ class ChickenDeathRecord(BaseModel):
             raise ValidationError("Only doctors can confirm death records")
     
     def __str__(self):
-        return f"{self.number_dead} deaths in {self.chicken_house.name} on {self.date_recorded}"
+        return f"{self.number_dead} deaths in {self.chicken_house.name} on {self.created_at}"
     
 class ExpenseCategory(BaseModel):
     name = models.CharField(max_length=100, unique=True)

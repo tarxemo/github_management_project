@@ -80,63 +80,63 @@ class ReportAPIView(APIView):
             house_filter &= Q(chicken_house_id=house_id)
 
         if report_type == 'egg_collection':
-            filters = get_date_filter('date_collected')
+            filters = get_date_filter('created_at')
             data = list(EggCollection.objects.filter(filters & house_filter).select_related(
                 'chicken_house', 'worker'
-            ).order_by('date_collected'))
+            ).order_by('created_at'))
             return {
                 'data': data,
                 'columns': ['Date', 'Chicken House', 'Worker', 'Full Trays', 'Loose Eggs', 'Rejected', 'Total Eggs'],
                 'title': 'Egg Collection Report',
-                'date_field': 'date_collected'
+                'date_field': 'created_at'
             }
         
         elif report_type == 'egg_sales':
-            filters = get_date_filter('date_sold')
+            filters = get_date_filter('created_at')
             data = list(EggSale.objects.filter(filters).select_related(
                 'recorded_by'
-            ).order_by('date_sold'))
+            ).order_by('created_at'))
             return {
                 'data': data,
                 'columns': ['Date', 'Quantity', 'Price Per Egg', 'Total Amount', 'Buyer', 'Recorded By'],
                 'title': 'Egg Sales Report',
-                'date_field': 'date_sold'
+                'date_field': 'created_at'
             }
         
         elif report_type == 'food_consumption':
-            filters = get_date_filter('date_distributed')
+            filters = get_date_filter('created_at')
             data = list(FoodDistribution.objects.filter(filters & house_filter).select_related(
                 'food_type', 'chicken_house', 'distributed_by', 'received_by'
-            ).order_by('date_distributed'))
+            ).order_by('created_at'))
             return {
                 'data': data,
                 'columns': ['Date', 'Food Type', 'Chicken House', 'Sacks Distributed', 'Distributed By', 'Received By'],
                 'title': 'Food Consumption Report',
-                'date_field': 'date_distributed'
+                'date_field': 'created_at'
             }
         
         elif report_type == 'medicine_usage':
-            filters = get_date_filter('date_distributed')
+            filters = get_date_filter('created_at')
             data = list(MedicineDistribution.objects.filter(filters & house_filter).select_related(
                 'medicine', 'chicken_house', 'distributed_by', 'received_by'
-            ).order_by('date_distributed'))
+            ).order_by('created_at'))
             return {
                 'data': data,
                 'columns': ['Date', 'Medicine', 'Chicken House', 'Quantity', 'Purpose', 'Distributed By', 'Received By'],
                 'title': 'Medicine Usage Report',
-                'date_field': 'date_distributed'
+                'date_field': 'created_at'
             }
         
         elif report_type == 'mortality':
-            filters = get_date_filter('date_recorded')
+            filters = get_date_filter('created_at')
             data = list(ChickenDeathRecord.objects.filter(filters & house_filter).select_related(
                 'chicken_house', 'recorded_by', 'confirmed_by'
-            ).order_by('date_recorded'))
+            ).order_by('created_at'))
             return {
                 'data': data,
                 'columns': ['Date', 'Chicken House', 'Number Dead', 'Possible Cause', 'Recorded By', 'Confirmed By'],
                 'title': 'Chicken Mortality Report',
-                'date_field': 'date_recorded'
+                'date_field': 'created_at'
             }
         
         elif report_type == 'expenses':
@@ -152,14 +152,14 @@ class ReportAPIView(APIView):
             }
         
         elif report_type == 'productivity':
-            filters = get_date_filter('date_collected')
+            filters = get_date_filter('created_at')
             houses = ChickenHouse.objects.all()
             productivity_data = []
             
             for house in houses:
                 eggs_agg = EggCollection.objects.filter(
                     chicken_house=house,
-                    **({'date_collected__range': [start_date, end_date]} if start_date and end_date else {})
+                    **({'created_at__range': [start_date, end_date]} if start_date and end_date else {})
                 ).aggregate(total_eggs=Sum(F('full_trays') * 30 + F('loose_eggs')))
                 
                 eggs = eggs_agg['total_eggs'] or 0
@@ -373,32 +373,32 @@ class FinancialDashboardReport(APIView):
             )
         
         # Calculate date filters
-        date_sold_filter = Q()
+        created_at_filter = Q()
         if start_date and end_date:
-            date_sold_filter &= Q(date_sold__range=[start_date, end_date])
+            created_at_filter &= Q(created_at__range=[start_date, end_date])
             
             
         date_purchase_filter = Q()
         if start_date and end_date:
-            date_purchase_filter &= Q(purchase_date__range=[start_date, end_date])
+            date_purchase_filter &= Q(created_at__range=[start_date, end_date])
         
-        payment_date_filter = Q()
+        created_at_filter = Q()
         if start_date and end_date:
-            payment_date_filter &= Q(payment_date__range=[start_date, end_date])
+            created_at_filter &= Q(created_at__range=[start_date, end_date])
             
-        date_collected_filter = Q()
+        created_at_filter = Q()
         if start_date and end_date:
-            date_collected_filter &= Q(date_collected__range=[start_date, end_date])
+            created_at_filter &= Q(created_at__range=[start_date, end_date])
             
-        date_recorded_filter = Q()
+        created_at_filter = Q()
         if start_date and end_date:
-            date_recorded_filter &= Q(date_recorded__range=[start_date, end_date])
+            created_at_filter &= Q(created_at__range=[start_date, end_date])
               
         date_filter = Q()
         if start_date and end_date:
             date_filter &= Q(date__range=[start_date, end_date])  
         # Financial KPIs
-        total_egg_sales = EggSale.objects.filter(date_sold_filter).aggregate(
+        total_egg_sales = EggSale.objects.filter(created_at_filter).aggregate(
             total=Sum(F('quantity') * F('price_per_egg')))
         
         total_expenses = Expense.objects.filter(date_filter).aggregate(
@@ -410,14 +410,14 @@ class FinancialDashboardReport(APIView):
         medicine_purchases = MedicinePurchase.objects.filter(date_purchase_filter).aggregate(
             total=Sum(F('quantity') * F('price_per_unit')))
         
-        salary_expenses = SalaryPayment.objects.filter(payment_date_filter).aggregate(
+        salary_expenses = SalaryPayment.objects.filter(created_at_filter).aggregate(
             total=Sum('amount'))
         
         # Productivity metrics
-        egg_collections = EggCollection.objects.filter(date_collected_filter).aggregate(
+        egg_collections = EggCollection.objects.filter(created_at_filter).aggregate(
             total=Sum(F('full_trays') * 30 + F('loose_eggs')))
         
-        mortality_rate = ChickenDeathRecord.objects.filter(date_recorded_filter).aggregate(
+        mortality_rate = ChickenDeathRecord.objects.filter(created_at_filter).aggregate(
             total=Sum('number_dead'))
         
         # Prepare response data
@@ -460,7 +460,7 @@ class FinancialDashboardReport(APIView):
         """Calculate average eggs produced per chicken across all houses"""
         date_filter = Q()
         if start_date and end_date:
-            date_filter &= Q(date_collected__range=[start_date, end_date])
+            date_filter &= Q(created_at__range=[start_date, end_date])
         
         total_eggs = EggCollection.objects.filter(date_filter).aggregate(
             total=Sum(F('full_trays') * 30 + F('loose_eggs')))['total'] or 0
@@ -474,7 +474,7 @@ class FinancialDashboardReport(APIView):
         """Compare performance across chicken houses"""
         date_filter = Q()
         if start_date and end_date:
-            date_filter &= Q(date_collected__range=[start_date, end_date])
+            date_filter &= Q(created_at__range=[start_date, end_date])
         
         houses = ChickenHouse.objects.all()
         analysis = []
@@ -692,7 +692,7 @@ class CostOfProductionReport(APIView):
         
         # Get all egg production
         egg_production = EggCollection.objects.filter(
-            date_collected__range=[start_date, end_date] if start_date and end_date else Q()
+            created_at__range=[start_date, end_date] if start_date and end_date else Q()
         ).aggregate(
             total_eggs=Sum(F('full_trays') * 30 + F('loose_eggs'))
         )['total_eggs'] or 0
@@ -970,9 +970,9 @@ class ProfitabilityTrendReport(APIView):
     def get_sales_by_period(self, start_date, end_date, group_by):
         """Get sales aggregated by time period"""
         sales = EggSale.objects.filter(
-            date_sold__range=[start_date, end_date]
+            created_at__range=[start_date, end_date]
         ).annotate(
-            period=Trunc('date_sold', group_by)
+            period=Trunc('created_at', group_by)
         ).values('period').annotate(
             total_sales=Sum(F('quantity') * F('price_per_egg'))
         ).order_by('period')

@@ -361,7 +361,7 @@ class RecordFoodPurchase(graphene.Mutation):
                 sacks_purchased=input.sacks_purchased,
                 price_per_sack=input.price_per_sack,
                 supplier=input.supplier,
-                purchase_date=input.get('purchase_date', date.today()),
+                created_at=input.get('created_at', date.today()),
                 recorded_by=user
             )
             purchase.save()
@@ -494,7 +494,7 @@ class RecordMedicinePurchase(graphene.Mutation):
                 quantity=input.quantity,
                 price_per_unit=input.price_per_unit,
                 supplier=input.supplier,
-                purchase_date=input.get('purchase_date', date.today()),
+                created_at=input.get('created_at', date.today()),
                 expiry_date=input.expiry_date,
                 recorded_by=user
             )
@@ -710,7 +710,7 @@ class RecordSalaryPayment(graphene.Mutation):
             salary = SalaryPayment(
                 worker=worker,
                 amount=input.amount,
-                payment_date=input.get('payment_date', date.today()),
+                created_at=input.get('created_at', date.today()),
                 payment_method=input.get('payment_method', 'CASH'),
                 period_start=input.period_start,
                 period_end=input.period_end,

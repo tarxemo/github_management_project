@@ -13,13 +13,7 @@ from graphql.error import GraphQLError
 from django.utils import timezone
 
 class Query(graphene.ObjectType):
-    # ------------------- Authentication & User Queries -------------------
-    users = graphene.List(UserOutput)
 
-    @require_authentication
-    def resolve_users(self, info):
-        return User.objects.select_related('chicken_house').exclude(is_superuser = True)
-    
     current_user = graphene.Field(UserOutput)
     
     @require_authentication
@@ -130,15 +124,15 @@ class Query(graphene.ObjectType):
         
         # Date range filtering
         if start_date:
-            queryset = queryset.filter(date_collected__gte=start_date)
+            queryset = queryset.filter(created_at__gte=start_date)
         if end_date:
-            queryset = queryset.filter(date_collected__lte=end_date)
+            queryset = queryset.filter(created_at__lte=end_date)
         
         # Confirmation status
         if confirmed_only:
             queryset = queryset.filter(stock_manager_confirmed=True)
         
-        return queryset.order_by('-date_collected')
+        return queryset.order_by('-created_at')
 
     daily_egg_report = graphene.Field(
         DailyEggReportOutput,
@@ -155,7 +149,7 @@ class Query(graphene.ObjectType):
         report_date = date if date else timezone.now().date()
         
         # Base query
-        queryset = EggCollection.objects.filter(date_collected=report_date)
+        queryset = EggCollection.objects.filter(created_at=report_date)
         
         # Filter by chicken house if specified
         if chicken_house_id:
@@ -197,13 +191,13 @@ class Query(graphene.ObjectType):
         queryset = EggSale.objects.all()
         
         if start_date:
-            queryset = queryset.filter(date_sold__gte=start_date)
+            queryset = queryset.filter(created_at__gte=start_date)
         if end_date:
-            queryset = queryset.filter(date_sold__lte=end_date)
+            queryset = queryset.filter(created_at__lte=end_date)
         if buyer_name:
             queryset = queryset.filter(buyer_name__icontains=buyer_name)
         
-        return queryset.order_by('-date_sold')
+        return queryset.order_by('-created_at')
 
     # ------------------- Food Management Queries -------------------
     food_types = graphene.List(FoodTypeOutput)
@@ -240,11 +234,11 @@ class Query(graphene.ObjectType):
         if food_type_id:
             queryset = queryset.filter(food_type_id=food_type_id)
         if start_date:
-            queryset = queryset.filter(purchase_date__gte=start_date)
+            queryset = queryset.filter(created_at__gte=start_date)
         if end_date:
-            queryset = queryset.filter(purchase_date__lte=end_date)
+            queryset = queryset.filter(created_at__lte=end_date)
         
-        return queryset.order_by('-purchase_date')
+        return queryset.order_by('-created_at')
 
     food_distributions = graphene.List(
         FoodDistributionOutput,
@@ -268,9 +262,9 @@ class Query(graphene.ObjectType):
         if food_type_id:
             queryset = queryset.filter(food_type_id=food_type_id)
         if start_date:
-            queryset = queryset.filter(date_distributed__gte=start_date)
+            queryset = queryset.filter(created_at__gte=start_date)
         if end_date:
-            queryset = queryset.filter(date_distributed__lte=end_date)
+            queryset = queryset.filter(created_at__lte=end_date)
         if confirmed_only:
             queryset = queryset.filter(worker_confirmed=True)
         
@@ -278,7 +272,7 @@ class Query(graphene.ObjectType):
         if user.user_type == 'WORKER':
             queryset = queryset.filter(chicken_house__owner=user)
         
-        return queryset.order_by('-date_distributed')
+        return queryset.order_by('-created_at')
 
     # ------------------- Medicine Management Queries -------------------
     
@@ -351,9 +345,9 @@ class Query(graphene.ObjectType):
         if medicine_id:
             queryset = queryset.filter(medicine_id=medicine_id)
         if start_date:
-            queryset = queryset.filter(date_distributed__gte=start_date)
+            queryset = queryset.filter(created_at__gte=start_date)
         if end_date:
-            queryset = queryset.filter(date_distributed__lte=end_date)
+            queryset = queryset.filter(created_at__lte=end_date)
         if user.user_type == 'DOCTOR':
             queryset = queryset
         elif user.user_type == 'WORKER':
@@ -367,7 +361,7 @@ class Query(graphene.ObjectType):
         # if user.user_type == 'DOCTOR':
         #     queryset = queryset.filter(distributed_by=user)
         
-        return queryset.order_by('-date_distributed')
+        return queryset.order_by('-created_at')
 
     # ------------------- Health Management Queries -------------------
     chicken_death_records = graphene.List(
@@ -389,9 +383,9 @@ class Query(graphene.ObjectType):
         if chicken_house_id:
             queryset = queryset.filter(chicken_house_id=chicken_house_id)
         if start_date:
-            queryset = queryset.filter(date_recorded__gte=start_date)
+            queryset = queryset.filter(created_at__gte=start_date)
         if end_date:
-            queryset = queryset.filter(date_recorded__lte=end_date)
+            queryset = queryset.filter(created_at__lte=end_date)
         if needs_confirmation and user.user_type == 'DOCTOR':
             queryset = queryset.filter(confirmed_by__isnull=True)
         
@@ -399,7 +393,7 @@ class Query(graphene.ObjectType):
         if user.user_type == 'WORKER':
             queryset = queryset.filter(chicken_house__owner=user)
         
-        return queryset.order_by('-date_recorded')
+        return queryset.order_by('-created_at')
 
     # ------------------- Business Analytics Queries -------------------
     chicken_house_performance = graphene.List(
@@ -433,7 +427,7 @@ class Query(graphene.ObjectType):
             # Egg production
             egg_collections = EggCollection.objects.filter(
                 chicken_house=house,
-                date_collected__gte=start_date,
+                created_at__gte=start_date,
                 stock_manager_confirmed=True
             )
             total_eggs = egg_collections.aggregate(
@@ -443,7 +437,7 @@ class Query(graphene.ObjectType):
             # Mortality
             death_records = ChickenDeathRecord.objects.filter(
                 chicken_house=house,
-                date_recorded__gte=start_date,
+                created_at__gte=start_date,
                 confirmed_by__isnull=False
             )
             total_deaths = death_records.aggregate(
@@ -453,7 +447,7 @@ class Query(graphene.ObjectType):
             # Food consumption
             food_distributions = FoodDistribution.objects.filter(
                 chicken_house=house,
-                date_distributed__gte=start_date,
+                created_at__gte=start_date,
                 worker_confirmed=True
             )
             total_food = food_distributions.aggregate(
@@ -554,26 +548,26 @@ class Query(graphene.ObjectType):
         queryset = Expense.objects.all()
         
         if start_date:
-            queryset = queryset.filter(date__gte=start_date)
+            queryset = queryset.filter(created_at__gte=start_date)
         if end_date:
-            queryset = queryset.filter(date__lte=end_date)
+            queryset = queryset.filter(created_at__lte=end_date)
         if category_id:
             queryset = queryset.filter(category_id=category_id)
             
-        return queryset.order_by('-date')
+        return queryset.order_by('-created_at')
     
     @require_authentication
     def resolve_salary_payments(self, info, start_date=None, end_date=None, worker_id=None):
         queryset = SalaryPayment.objects.all()
         
         if start_date:
-            queryset = queryset.filter(payment_date__gte=start_date)
+            queryset = queryset.filter(created_at__gte=start_date)
         if end_date:
-            queryset = queryset.filter(payment_date__lte=end_date)
+            queryset = queryset.filter(created_at__lte=end_date)
         if worker_id:
             queryset = queryset.filter(worker_id=worker_id)
             
-        return queryset.order_by('-payment_date')
+        return queryset.order_by('-created_at')
 
 
     all_system_logs = graphene.List(

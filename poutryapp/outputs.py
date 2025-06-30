@@ -31,7 +31,6 @@ class UserOutput(DjangoObjectType):
             'id', 'phone_number', 'first_name', 'last_name', 
             'user_type', 'is_active', 'created_at', 'updated_at'
         )
-        interfaces = (relay.Node,)
     
     user_type_display = graphene.String()
     

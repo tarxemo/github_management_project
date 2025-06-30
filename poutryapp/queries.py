@@ -53,7 +53,7 @@ class Query(graphene.ObjectType):
     @require_authentication
     def resolve_chicken_houses(self, info, active_only=True):
         user = info.context.user
-        queryset = ChickenHouse.objects.all()
+        queryset = ChickenHouse.objects.all_objects()
         
         if active_only:
             queryset = queryset.filter(is_active=True)
@@ -112,7 +112,7 @@ class Query(graphene.ObjectType):
         if not user.is_authenticated:
             raise GraphQLError("Authentication required")
         
-        queryset = EggCollection.objects.all()
+        queryset = EggCollection.objects.all_objects()
         
         # Filter by chicken house
         if chicken_house_id:
@@ -188,7 +188,7 @@ class Query(graphene.ObjectType):
         if not user.is_authenticated or user.user_type not in ['ADMIN', 'STOCK_MANAGER', "SALES_MANAGER"]:
             raise GraphQLError("Only admin and stock managers can view sales records")
         
-        queryset = EggSale.objects.all()
+        queryset = EggSale.objects.all_objects()
         
         if start_date:
             queryset = queryset.filter(created_at__gte=start_date)
@@ -204,7 +204,7 @@ class Query(graphene.ObjectType):
     
     @require_authentication
     def resolve_food_types(self, info):
-        return FoodType.objects.all()
+        return FoodType.objects.all_objects()
 
     food_inventory = graphene.List(FoodInventoryOutput)
     
@@ -214,7 +214,7 @@ class Query(graphene.ObjectType):
         if not user.is_authenticated or user.user_type not in ['ADMIN', 'STOCK_MANAGER']:
             raise GraphQLError("Only admin and stock managers can view food inventory")
         
-        return FoodInventory.objects.all()
+        return FoodInventory.objects.all_objects()
 
     food_purchases = graphene.List(
         FoodPurchaseOutput,
@@ -229,7 +229,7 @@ class Query(graphene.ObjectType):
         if not user.is_authenticated or user.user_type not in ['ADMIN', 'STOCK_MANAGER']:
             raise GraphQLError("Only admin and stock managers can view purchase records")
         
-        queryset = FoodPurchase.objects.all()
+        queryset = FoodPurchase.objects.all_objects()
         
         if food_type_id:
             queryset = queryset.filter(food_type_id=food_type_id)
@@ -255,7 +255,7 @@ class Query(graphene.ObjectType):
         if not user.is_authenticated:
             raise GraphQLError("Authentication required")
         
-        queryset = FoodDistribution.objects.all()
+        queryset = FoodDistribution.objects.all_objects()
         
         if chicken_house_id:
             queryset = queryset.filter(chicken_house_id=chicken_house_id)
@@ -284,7 +284,7 @@ class Query(graphene.ObjectType):
         if not user.is_authenticated:
             raise GraphQLError("Authentication required")
         
-        return Medicine.objects.all()
+        return Medicine.objects.all_objects()
 
     medicine_inventory = graphene.List(MedicineInventoryOutput)
     
@@ -295,7 +295,7 @@ class Query(graphene.ObjectType):
             raise GraphQLError("Only admin, stock managers and doctors can view medicine inventory")
         if user.user_type == "WORKER":
             return []
-        return MedicineInventory.objects.all()
+        return MedicineInventory.objects.all_objects()
 
     medicine_purchases = graphene.List(
         MedicinePurchaseOutput,
@@ -312,7 +312,7 @@ class Query(graphene.ObjectType):
         if user.user_type == "WORKER":
             return []
         
-        queryset = MedicinePurchase.objects.all()
+        queryset = MedicinePurchase.objects.all_objects()
         
         if medicine_id:
             queryset = queryset.filter(medicine_id=medicine_id)
@@ -338,7 +338,7 @@ class Query(graphene.ObjectType):
         if not user.is_authenticated:
             raise GraphQLError("Authentication required")
         
-        queryset = MedicineDistribution.objects.all()
+        queryset = MedicineDistribution.objects.all_objects()
         
         if chicken_house_id:
             queryset = queryset.filter(chicken_house_id=chicken_house_id)
@@ -378,7 +378,7 @@ class Query(graphene.ObjectType):
         if not user.is_authenticated:
             raise GraphQLError("Authentication required")
         
-        queryset = ChickenDeathRecord.objects.all()
+        queryset = ChickenDeathRecord.objects.all_objects()
         
         if chicken_house_id:
             queryset = queryset.filter(chicken_house_id=chicken_house_id)
@@ -484,8 +484,8 @@ class Query(graphene.ObjectType):
         
         return InventorySummaryOutput(
             total_eggs=egg_inventory.total_eggs,
-            food_inventory=FoodInventory.objects.all(),
-            medicine_inventory=MedicineInventory.objects.all()
+            food_inventory=FoodInventory.objects.all_objects(),
+            medicine_inventory=MedicineInventory.objects.all_objects()
         )
         
     alerts = graphene.List(AlertOutput)
@@ -495,7 +495,7 @@ class Query(graphene.ObjectType):
         alerts = []
 
         # 1. Food Inventory Check
-        for item in FoodInventory.objects.all():
+        for item in FoodInventory.objects.all_objects():
             if item.quantity_in_sacks <= 5:  # Set your own threshold
                 alerts.append(AlertOutput(
                     type="food",
@@ -542,10 +542,10 @@ class Query(graphene.ObjectType):
     
     @require_authentication
     def resolve_expense_categories(self, info):
-        return ExpenseCategory.objects.all().order_by('name')
+        return ExpenseCategory.objects.all_objects().order_by('name')
     
     def resolve_expenses(self, info, start_date=None, end_date=None, category_id=None):
-        queryset = Expense.objects.all()
+        queryset = Expense.objects.all_objects()
         
         if start_date:
             queryset = queryset.filter(created_at__gte=start_date)
@@ -558,7 +558,7 @@ class Query(graphene.ObjectType):
     
     @require_authentication
     def resolve_salary_payments(self, info, start_date=None, end_date=None, worker_id=None):
-        queryset = SalaryPayment.objects.all()
+        queryset = SalaryPayment.objects.all_objects()
         
         if start_date:
             queryset = queryset.filter(created_at__gte=start_date)

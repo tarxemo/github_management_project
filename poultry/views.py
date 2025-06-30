@@ -29,6 +29,8 @@ from reportlab.graphics.charts.linecharts import HorizontalLineChart
 from reportlab.graphics.charts.barcharts import VerticalBarChart
 from reportlab.lib.colors import Color, HexColor
 from decimal import Decimal
+from datetime import datetime, time
+from django.utils.timezone import make_aware
 
 class ReportAPIView(APIView):
     def get(self, request):
@@ -153,7 +155,7 @@ class ReportAPIView(APIView):
         
         elif report_type == 'productivity':
             filters = get_date_filter('created_at')
-            houses = ChickenHouse.objects.all()
+            houses = ChickenHouse.objects.all_objects()
             productivity_data = []
             
             for house in houses:
@@ -364,50 +366,30 @@ class FinancialDashboardReport(APIView):
         
         # Validate dates
         try:
-            start_date = datetime.strptime(start_date, '%Y-%m-%d').date() if start_date else None
-            end_date = datetime.strptime(end_date, '%Y-%m-%d').date() if end_date else None
+            if start_date:
+                start_date = make_aware(datetime.combine(datetime.strptime(start_date, '%Y-%m-%d'), time.min))
+            if end_date:
+                end_date = make_aware(datetime.combine(datetime.strptime(end_date, '%Y-%m-%d'), time.max))
         except (ValueError, TypeError):
-            return Response(
-                {"error": "Invalid date format. Use YYYY-MM-DD."},
-                status=status.HTTP_400_BAD_REQUEST
-            )
+            pass
+
         
         # Calculate date filters
         created_at_filter = Q()
         if start_date and end_date:
             created_at_filter &= Q(created_at__range=[start_date, end_date])
-            
-            
-        date_purchase_filter = Q()
-        if start_date and end_date:
-            date_purchase_filter &= Q(created_at__range=[start_date, end_date])
-        
-        created_at_filter = Q()
-        if start_date and end_date:
-            created_at_filter &= Q(created_at__range=[start_date, end_date])
-            
-        created_at_filter = Q()
-        if start_date and end_date:
-            created_at_filter &= Q(created_at__range=[start_date, end_date])
-            
-        created_at_filter = Q()
-        if start_date and end_date:
-            created_at_filter &= Q(created_at__range=[start_date, end_date])
-              
-        date_filter = Q()
-        if start_date and end_date:
-            date_filter &= Q(date__range=[start_date, end_date])  
+             
         # Financial KPIs
         total_egg_sales = EggSale.objects.filter(created_at_filter).aggregate(
             total=Sum(F('quantity') * F('price_per_egg')))
         
-        total_expenses = Expense.objects.filter(date_filter).aggregate(
+        total_expenses = Expense.objects.filter(created_at_filter).aggregate(
             total=Sum('total_cost'))
         
-        food_purchases = FoodPurchase.objects.filter(date_purchase_filter).aggregate(
+        food_purchases = FoodPurchase.objects.filter(created_at_filter).aggregate(
             total=Sum(F('sacks_purchased') * F('price_per_sack')))
         
-        medicine_purchases = MedicinePurchase.objects.filter(date_purchase_filter).aggregate(
+        medicine_purchases = MedicinePurchase.objects.filter(created_at_filter).aggregate(
             total=Sum(F('quantity') * F('price_per_unit')))
         
         salary_expenses = SalaryPayment.objects.filter(created_at_filter).aggregate(
@@ -476,7 +458,7 @@ class FinancialDashboardReport(APIView):
         if start_date and end_date:
             date_filter &= Q(created_at__range=[start_date, end_date])
         
-        houses = ChickenHouse.objects.all()
+        houses = ChickenHouse.objects.all_objects()
         analysis = []
         
         for house in houses:
@@ -738,7 +720,7 @@ class CostOfProductionReport(APIView):
         if start_date and end_date:
             date_filter &= Q(date__range=[start_date, end_date])
         
-        houses = ChickenHouse.objects.all()
+        houses = ChickenHouse.objects.all_objects()
         comparison = []
         
         for house in houses:

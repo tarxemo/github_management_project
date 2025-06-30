@@ -2272,7 +2272,7 @@ S2.define('select2/translation',[
   };
 
   Translation.prototype.extend = function (translation) {
-    this.dict = $.extend({}, translation.all(), this.dict);
+    this.dict = $.extend({}, translation.all_objects(), this.dict);
   };
 
   // Static functions

@@ -16,7 +16,7 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path,include
-from poultry.views import ReportAPIView
+from poultry.views import *
 from graphene_django.views import GraphQLView
 from django.views.decorators.csrf import csrf_exempt
 # from django_graphql_playground.views import playground
@@ -25,5 +25,8 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path('reports/', ReportAPIView.as_view(), name='reports-api'),
     path("gql/", csrf_exempt(GraphQLView.as_view(graphiql=True))),
+    path("profits/", ProfitabilityTrendReport.as_view()),
+    path("costs/", CostOfProductionReport.as_view()),
+    path("financials/", FinancialDashboardReport.as_view())
 ]
 

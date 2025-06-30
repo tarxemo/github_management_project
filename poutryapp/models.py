@@ -6,6 +6,28 @@ from django.core.exceptions import ValidationError
 from django.utils import timezone
 from django.contrib.auth.base_user import BaseUserManager
 
+
+class ActiveManager(models.Manager):
+    def active(self):
+        return self.get_queryset().filter(is_active=True)
+
+    def inactive(self):
+        return self.get_queryset().filter(is_active=False)
+
+    def all_objects(self):
+        return self.get_queryset()
+
+class BaseModel(models.Model):
+    created_at = models.DateTimeField(auto_now_add=True)  # Automatically set when created
+    updated_at = models.DateTimeField(auto_now=True)      # Automatically updated on save
+    is_active = models.BooleanField(default=True)
+
+    # Attach the custom manager
+    objects = ActiveManager()
+
+    class Meta:
+        abstract = True
+        
 class CustomUserManager(BaseUserManager):
     def create_user(self, phone_number, password=None, **extra_fields):
         if not phone_number:
@@ -90,12 +112,10 @@ class AuditLogMixin:
         super().save(*args, **kwargs)
         
         
-class ChickenHouse(models.Model):
+class ChickenHouse(BaseModel):
     name = models.CharField(max_length=100, unique=True)
     capacity = models.PositiveIntegerField(help_text="Maximum number of chickens this house can hold")
     current_chicken_count = models.PositiveIntegerField(default=0)
-    is_active = models.BooleanField(default=True)
-    created_at = models.DateTimeField(auto_now_add=True)
     owner = models.ForeignKey('User', on_delete=models.SET_NULL, null=True, blank=True, related_name='chicken_houses')
 
     # 🐣 Add these:
@@ -107,10 +127,9 @@ class ChickenHouse(models.Model):
 
 
 
-class EggCollection(models.Model):
+class EggCollection(BaseModel):
     worker = models.ForeignKey(User, on_delete=models.CASCADE, related_name='collected_eggs')
     chicken_house = models.ForeignKey(ChickenHouse, on_delete=models.CASCADE)
-    date_collected = models.DateField(default=timezone.now)
     full_trays = models.PositiveIntegerField(help_text="Number of full trays (30 eggs per tray)")
     loose_eggs = models.PositiveIntegerField(default=0, help_text="Eggs not fitting in full trays")
     rejected_eggs = models.PositiveIntegerField(default=0, help_text="Eggs not fit for sale")
@@ -129,18 +148,16 @@ class EggCollection(models.Model):
             raise ValidationError("Worker can only collect eggs from their assigned chicken house")
     
     def __str__(self):
-        return f"{self.chicken_house.name} - {self.total_eggs} eggs on {self.date_collected}"
+        return f"{self.chicken_house.name} - {self.total_eggs} eggs on {self.created_at}"
 
-class EggInventory(models.Model):
+class EggInventory(BaseModel):
     total_eggs = models.PositiveIntegerField(default=0)
     rejected_eggs = models.PositiveIntegerField(default=0)
-    last_updated = models.DateTimeField(auto_now=True)
     
     def __str__(self):
         return f"Inventory: {self.total_eggs} eggs ({self.rejected_eggs} rejected)"
 
-class EggSale(models.Model):
-    date_sold = models.DateField(default=timezone.now)
+class EggSale(BaseModel):
     quantity = models.PositiveIntegerField()
     remained_eggs = models.PositiveIntegerField(default=0)
     rejected_eggs = models.PositiveIntegerField(default=0)
@@ -151,19 +168,18 @@ class EggSale(models.Model):
     confirm_received = models.BooleanField(default=False)
     confirm_sales = models.BooleanField(default=False)
     def __str__(self):
-        return f"Sold {self.quantity} eggs on {self.date_sold}"
+        return f"Sold {self.quantity} eggs on {self.created_at}"
 
-class FoodType(models.Model):
+class FoodType(BaseModel):
     name = models.CharField(max_length=50, unique=True)
     description = models.TextField(blank=True)
     
     def __str__(self):
         return self.name
 
-class FoodInventory(models.Model):
+class FoodInventory(BaseModel):
     food_type = models.ForeignKey(FoodType, on_delete=models.CASCADE)
     sacks_in_stock = models.PositiveIntegerField(default=0)
-    last_updated = models.DateTimeField(auto_now=True)
     
     class Meta:
         verbose_name_plural = "Food Inventories"
@@ -171,22 +187,20 @@ class FoodInventory(models.Model):
     def __str__(self):
         return f"{self.food_type}: {self.sacks_in_stock} sacks"
 
-class FoodPurchase(models.Model):
+class FoodPurchase(BaseModel):
     food_type = models.ForeignKey(FoodType, on_delete=models.CASCADE)
     sacks_purchased = models.PositiveIntegerField()
     price_per_sack = models.DecimalField(max_digits=10, decimal_places=2)
     supplier = models.CharField(max_length=100)
-    purchase_date = models.DateField(default=timezone.now)
     recorded_by = models.ForeignKey(User, on_delete=models.PROTECT)
     
     def __str__(self):
-        return f"{self.sacks_purchased} sacks of {self.food_type} on {self.purchase_date}"
+        return f"{self.sacks_purchased} sacks of {self.food_type} on {self.created_at}"
 
-class FoodDistribution(models.Model):
+class FoodDistribution(BaseModel):
     food_type = models.ForeignKey(FoodType, on_delete=models.CASCADE)
     chicken_house = models.ForeignKey(ChickenHouse, on_delete=models.CASCADE)
     sacks_distributed = models.DecimalField(max_digits=10, decimal_places=2)
-    date_distributed = models.DateField(default=timezone.now)
     distributed_by = models.ForeignKey(User, on_delete=models.PROTECT, related_name='distributed_food')
     received_by = models.ForeignKey(User, on_delete=models.PROTECT, related_name='received_food')
     worker_confirmed = models.BooleanField(default=False)
@@ -201,9 +215,9 @@ class FoodDistribution(models.Model):
             raise ValidationError("Worker can only receive food for their assigned chicken house")
     
     def __str__(self):
-        return f"{self.sacks_distributed} sacks to {self.chicken_house.name} on {self.date_distributed}"
+        return f"{self.sacks_distributed} sacks to {self.chicken_house.name} on {self.created_at}"
 
-class Medicine(models.Model):
+class Medicine(BaseModel):
     name = models.CharField(max_length=100)
     description = models.TextField(blank=True)
     unit_of_measure = models.CharField(max_length=20, help_text="e.g., ml, tablets, kg")
@@ -211,10 +225,9 @@ class Medicine(models.Model):
     def __str__(self):
         return self.name
 
-class MedicineInventory(models.Model):
+class MedicineInventory(BaseModel):
     medicine = models.OneToOneField(Medicine, on_delete=models.CASCADE)
     quantity_in_stock = models.DecimalField(max_digits=10, decimal_places=2)
-    last_updated = models.DateTimeField(auto_now=True)
     
     class Meta:
         verbose_name_plural = "Medicine Inventories"
@@ -222,23 +235,21 @@ class MedicineInventory(models.Model):
     def __str__(self):
         return f"{self.medicine}: {self.quantity_in_stock} {self.medicine.unit_of_measure}"
 
-class MedicinePurchase(models.Model):
+class MedicinePurchase(BaseModel):
     medicine = models.ForeignKey(Medicine, on_delete=models.CASCADE)
     quantity = models.DecimalField(max_digits=10, decimal_places=2)
     price_per_unit = models.DecimalField(max_digits=10, decimal_places=2)
     supplier = models.CharField(max_length=100)
-    purchase_date = models.DateField(default=timezone.now)
     expiry_date = models.DateField()
     recorded_by = models.ForeignKey(User, on_delete=models.PROTECT)
     
     def __str__(self):
-        return f"{self.quantity} {self.medicine.unit_measure} of {self.medicine} on {self.purchase_date}"
+        return f"{self.quantity} {self.medicine.unit_measure} of {self.medicine} on {self.created_at}"
 
-class MedicineDistribution(models.Model):
+class MedicineDistribution(BaseModel):
     medicine = models.ForeignKey(Medicine, on_delete=models.CASCADE)
     chicken_house = models.ForeignKey(ChickenHouse, on_delete=models.CASCADE)
     quantity = models.DecimalField(max_digits=10, decimal_places=2)
-    date_distributed = models.DateField(default=timezone.now)
     distributed_by = models.ForeignKey(User, on_delete=models.PROTECT, related_name='distributed_medicine')
     received_by = models.ForeignKey(User, on_delete=models.PROTECT, related_name='received_medicine')
     doctor_confirmed = models.BooleanField(default=False)
@@ -254,9 +265,8 @@ class MedicineDistribution(models.Model):
     def __str__(self):
         return f"{self.quantity} {self.medicine.unit_of_measure} to {self.chicken_house.name}"
 
-class ChickenDeathRecord(models.Model):
+class ChickenDeathRecord(BaseModel):
     chicken_house = models.ForeignKey(ChickenHouse, on_delete=models.CASCADE)
-    date_recorded = models.DateField(default=timezone.now)
     number_dead = models.PositiveIntegerField()
     recorded_by = models.ForeignKey(User, on_delete=models.PROTECT, related_name='recorded_deaths')
     confirmed_by = models.ForeignKey(User, on_delete=models.PROTECT, related_name='confirmed_deaths', null=True, blank=True)
@@ -271,15 +281,16 @@ class ChickenDeathRecord(models.Model):
             raise ValidationError("Only doctors can confirm death records")
     
     def __str__(self):
-        return f"{self.number_dead} deaths in {self.chicken_house.name} on {self.date_recorded}"
-class ExpenseCategory(models.Model):
+        return f"{self.number_dead} deaths in {self.chicken_house.name} on {self.created_at}"
+    
+class ExpenseCategory(BaseModel):
     name = models.CharField(max_length=100, unique=True)
     description = models.TextField(blank=True)
     
     def __str__(self):
         return self.name
 
-class Expense(models.Model):
+class Expense(BaseModel):
     PAYMENT_METHOD_CHOICES = (
         ('CASH', 'Cash'),
         ('MPESA', 'M-Pesa'),
@@ -288,7 +299,6 @@ class Expense(models.Model):
     )
     
     category = models.ForeignKey(ExpenseCategory, on_delete=models.PROTECT)
-    date = models.DateField(default=timezone.now)
     description = models.TextField()
     payment_method = models.CharField(max_length=20, choices=PAYMENT_METHOD_CHOICES, default='CASH')
     unit_cost = models.DecimalField(max_digits=12, decimal_places=2, help_text="Cost per unit")
@@ -299,7 +309,7 @@ class Expense(models.Model):
     notes = models.TextField(blank=True)
     
     class Meta:
-        ordering = ['-date']
+        ordering = ['-created_at']
     
     def clean(self):
         # Calculate total cost before saving
@@ -312,10 +322,9 @@ class Expense(models.Model):
     def __str__(self):
         return f"{self.category.name} - {self.total_cost} on {self.date}"
 
-class SalaryPayment(models.Model):
+class SalaryPayment(BaseModel):
     worker = models.ForeignKey(User, on_delete=models.PROTECT, limit_choices_to={'user_type': 'WORKER'})
     amount = models.DecimalField(max_digits=12, decimal_places=2)
-    payment_date = models.DateField(default=timezone.now)
     payment_method = models.CharField(max_length=20, choices=Expense.PAYMENT_METHOD_CHOICES, default='CASH')
     period_start = models.DateField()
     period_end = models.DateField()
@@ -323,7 +332,7 @@ class SalaryPayment(models.Model):
     notes = models.TextField(blank=True)
     
     class Meta:
-        ordering = ['-payment_date']
+        ordering = ['-created_at']
     
     def clean(self):
         if self.period_start > self.period_end:

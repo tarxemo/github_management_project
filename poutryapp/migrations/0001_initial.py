@@ -33,7 +33,7 @@ class Migration(migrations.Migration):
                 ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
                 ('total_eggs', models.PositiveIntegerField(default=0)),
                 ('rejected_eggs', models.PositiveIntegerField(default=0)),
-                ('last_updated', models.DateTimeField(auto_now=True)),
+                ('updated_at', models.DateTimeField(auto_now=True)),
             ],
         ),
         migrations.CreateModel(
@@ -85,7 +85,7 @@ class Migration(migrations.Migration):
             name='ChickenDeathRecord',
             fields=[
                 ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('date_recorded', models.DateField(default=django.utils.timezone.now)),
+                ('created_at', models.DateField(default=django.utils.timezone.now)),
                 ('number_dead', models.PositiveIntegerField()),
                 ('doctor_notes', models.TextField(blank=True)),
                 ('possible_cause', models.CharField(blank=True, max_length=100)),
@@ -98,7 +98,7 @@ class Migration(migrations.Migration):
             name='EggCollection',
             fields=[
                 ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('date_collected', models.DateField(default=django.utils.timezone.now)),
+                ('created_at', models.DateField(default=django.utils.timezone.now)),
                 ('full_trays', models.PositiveIntegerField(help_text='Number of full trays (30 eggs per tray)')),
                 ('loose_eggs', models.PositiveIntegerField(default=0, help_text='Eggs not fitting in full trays')),
                 ('rejected_eggs', models.PositiveIntegerField(default=0, help_text='Eggs not fit for sale')),
@@ -113,7 +113,7 @@ class Migration(migrations.Migration):
             name='EggSale',
             fields=[
                 ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('date_sold', models.DateField(default=django.utils.timezone.now)),
+                ('created_at', models.DateField(default=django.utils.timezone.now)),
                 ('quantity', models.PositiveIntegerField()),
                 ('price_per_egg', models.DecimalField(decimal_places=2, max_digits=10)),
                 ('buyer_name', models.CharField(max_length=100)),
@@ -128,7 +128,7 @@ class Migration(migrations.Migration):
                 ('sacks_purchased', models.PositiveIntegerField()),
                 ('price_per_sack', models.DecimalField(decimal_places=2, max_digits=10)),
                 ('supplier', models.CharField(max_length=100)),
-                ('purchase_date', models.DateField(default=django.utils.timezone.now)),
+                ('created_at', models.DateField(default=django.utils.timezone.now)),
                 ('recorded_by', models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, to=settings.AUTH_USER_MODEL)),
                 ('food_type', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='poutryapp.foodtype')),
             ],
@@ -138,7 +138,7 @@ class Migration(migrations.Migration):
             fields=[
                 ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
                 ('sacks_in_stock', models.PositiveIntegerField(default=0)),
-                ('last_updated', models.DateTimeField(auto_now=True)),
+                ('updated_at', models.DateTimeField(auto_now=True)),
                 ('food_type', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='poutryapp.foodtype')),
             ],
             options={
@@ -150,7 +150,7 @@ class Migration(migrations.Migration):
             fields=[
                 ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
                 ('sacks_distributed', models.PositiveIntegerField()),
-                ('date_distributed', models.DateField(default=django.utils.timezone.now)),
+                ('created_at', models.DateField(default=django.utils.timezone.now)),
                 ('worker_confirmed', models.BooleanField(default=False)),
                 ('confirmation_date', models.DateTimeField(blank=True, null=True)),
                 ('chicken_house', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='poutryapp.chickenhouse')),
@@ -164,7 +164,7 @@ class Migration(migrations.Migration):
             fields=[
                 ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
                 ('quantity', models.DecimalField(decimal_places=2, max_digits=10)),
-                ('date_distributed', models.DateField(default=django.utils.timezone.now)),
+                ('created_at', models.DateField(default=django.utils.timezone.now)),
                 ('doctor_confirmed', models.BooleanField(default=False)),
                 ('worker_confirmed', models.BooleanField(default=False)),
                 ('purpose', models.TextField(blank=True)),
@@ -179,7 +179,7 @@ class Migration(migrations.Migration):
             fields=[
                 ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
                 ('quantity_in_stock', models.DecimalField(decimal_places=2, max_digits=10)),
-                ('last_updated', models.DateTimeField(auto_now=True)),
+                ('updated_at', models.DateTimeField(auto_now=True)),
                 ('medicine', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='poutryapp.medicine')),
             ],
             options={
@@ -193,7 +193,7 @@ class Migration(migrations.Migration):
                 ('quantity', models.DecimalField(decimal_places=2, max_digits=10)),
                 ('price_per_unit', models.DecimalField(decimal_places=2, max_digits=10)),
                 ('supplier', models.CharField(max_length=100)),
-                ('purchase_date', models.DateField(default=django.utils.timezone.now)),
+                ('created_at', models.DateField(default=django.utils.timezone.now)),
                 ('expiry_date', models.DateField()),
                 ('medicine', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='poutryapp.medicine')),
                 ('recorded_by', models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, to=settings.AUTH_USER_MODEL)),

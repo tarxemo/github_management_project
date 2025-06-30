@@ -9,7 +9,7 @@ class Command(BaseCommand):
     help = "Update age of chickens in all chicken houses"
 
     def handle(self, *args, **kwargs):
-        houses = ChickenHouse.objects.all()
+        houses = ChickenHouse.objects.all_objects()
         for house in houses:
             house.age_in_weeks += 1
             house.save()

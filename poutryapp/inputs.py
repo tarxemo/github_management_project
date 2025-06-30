@@ -71,7 +71,7 @@ class FoodPurchaseInput(graphene.InputObjectType):
     sacks_purchased = graphene.Int(required=True)
     price_per_sack = graphene.Decimal(required=True)
     supplier = graphene.String(required=True)
-    purchase_date = graphene.Date()
+    created_at = graphene.Date()
 
 class FoodDistributionInput(graphene.InputObjectType):
     food_type_id = graphene.ID(required=True)
@@ -92,7 +92,7 @@ class MedicinePurchaseInput(graphene.InputObjectType):
     quantity = graphene.Decimal(required=True)
     price_per_unit = graphene.Decimal(required=True)
     supplier = graphene.String(required=True)
-    purchase_date = graphene.Date()
+    created_at = graphene.Date()
     expiry_date = graphene.Date(required=True)
 
 class MedicineDistributionInput(graphene.InputObjectType):
@@ -134,7 +134,7 @@ class ExpenseInput(graphene.InputObjectType):
 class SalaryPaymentInput(graphene.InputObjectType):
     worker_id = graphene.ID(required=True)
     amount = graphene.Decimal(required=True)
-    payment_date = graphene.Date()
+    created_at = graphene.Date()
     payment_method = graphene.String()
     period_start = graphene.Date(required=True)
     period_end = graphene.Date(required=True)

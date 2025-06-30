@@ -6,12 +6,22 @@ from .models import (
     Expense, ExpenseCategory, SalaryPayment, SystemLog, User, ChickenHouse, EggCollection, EggInventory, EggSale,
     FoodType, FoodInventory, FoodPurchase, FoodDistribution,
     Medicine, MedicineInventory, MedicinePurchase, MedicineDistribution,
-    ChickenDeathRecord
+    ChickenDeathRecord, BaseModel
 )
 from datetime import date
 from graphene import relay
 
 UserModel = get_user_model()
+
+# ------------------- Base Output Type -------------------
+class BaseOutput(DjangoObjectType):
+    class Meta:
+        abstract = True
+    
+    is_active = graphene.Boolean()
+    created_at = graphene.DateTime()
+    updated_at = graphene.DateTime()
+
 # ------------------- Output Types -------------------
 
 class UserOutput(DjangoObjectType):
@@ -19,25 +29,25 @@ class UserOutput(DjangoObjectType):
         model = UserModel
         only_fields = (
             'id', 'phone_number', 'first_name', 'last_name', 
-            'user_type'
+            'user_type', 'is_active', 'created_at', 'updated_at'
         )
     
     user_type_display = graphene.String()
     
     def resolve_user_type_display(self, info):
         return self.get_user_type_display()
-    
 
-class ChickenHouseOutput(DjangoObjectType):
+class ChickenHouseOutput(BaseOutput):
     class Meta:
         model = ChickenHouse
         fields = '__all__'
-    
+        interfaces = (relay.Node,)
 
-class EggCollectionOutput(DjangoObjectType):
+class EggCollectionOutput(BaseOutput):
     class Meta:
         model = EggCollection
         fields = '__all__'
+        interfaces = (relay.Node,)
     
     total_eggs = graphene.Int()
     chicken_house = graphene.Field(lambda: ChickenHouseOutput)
@@ -46,20 +56,22 @@ class EggCollectionOutput(DjangoObjectType):
     def resolve_total_eggs(self, info):
         return (self.full_trays * 30) + self.loose_eggs
 
-class EggInventoryOutput(DjangoObjectType):
+class EggInventoryOutput(BaseOutput):
     class Meta:
         model = EggInventory
         fields = '__all__'
+        interfaces = (relay.Node,)
     
     available_trays = graphene.Int()
     
     def resolve_available_trays(self, info):
         return self.total_eggs // 30
 
-class EggSaleOutput(DjangoObjectType):
+class EggSaleOutput(BaseOutput):
     class Meta:
         model = EggSale
         fields = '__all__'
+        interfaces = (relay.Node,)
     
     total_amount = graphene.Decimal()
     recorded_by = graphene.Field(lambda: UserOutput)
@@ -67,15 +79,17 @@ class EggSaleOutput(DjangoObjectType):
     def resolve_total_amount(self, info):
         return self.quantity * Decimal(f'{self.price_per_egg}')
 
-class FoodTypeOutput(DjangoObjectType):
+class FoodTypeOutput(BaseOutput):
     class Meta:
         model = FoodType
         fields = '__all__'
+        interfaces = (relay.Node,)
 
-class FoodInventoryOutput(DjangoObjectType):
+class FoodInventoryOutput(BaseOutput):
     class Meta:
         model = FoodInventory
         fields = '__all__'
+        interfaces = (relay.Node,)
     
     food_type = graphene.Field(lambda: FoodTypeOutput)
     total_kg = graphene.Decimal()
@@ -83,10 +97,11 @@ class FoodInventoryOutput(DjangoObjectType):
     def resolve_total_kg(self, info):
         return self.sacks_in_stock * Decimal('50')
 
-class FoodPurchaseOutput(DjangoObjectType):
+class FoodPurchaseOutput(BaseOutput):
     class Meta:
         model = FoodPurchase
         fields = '__all__'
+        interfaces = (relay.Node,)
     
     food_type = graphene.Field(lambda: FoodTypeOutput)
     recorded_by = graphene.Field(lambda: UserOutput)
@@ -95,10 +110,11 @@ class FoodPurchaseOutput(DjangoObjectType):
     def resolve_total_amount(self, info):
         return self.sacks_purchased * Decimal(f'{self.price_per_sack}')
 
-class FoodDistributionOutput(DjangoObjectType):
+class FoodDistributionOutput(BaseOutput):
     class Meta:
         model = FoodDistribution
         fields = '__all__'
+        interfaces = (relay.Node,)
     
     food_type = graphene.Field(lambda: FoodTypeOutput)
     chicken_house = graphene.Field(lambda: ChickenHouseOutput)
@@ -109,22 +125,25 @@ class FoodDistributionOutput(DjangoObjectType):
     def resolve_total_kg(self, info):
         return self.sacks_distributed * Decimal('50')
 
-class MedicineOutput(DjangoObjectType):
+class MedicineOutput(BaseOutput):
     class Meta:
         model = Medicine
         fields = '__all__'
+        interfaces = (relay.Node,)
 
-class MedicineInventoryOutput(DjangoObjectType):
+class MedicineInventoryOutput(BaseOutput):
     class Meta:
         model = MedicineInventory
         fields = '__all__'
+        interfaces = (relay.Node,)
     
     medicine = graphene.Field(lambda: MedicineOutput)
 
-class MedicinePurchaseOutput(DjangoObjectType):
+class MedicinePurchaseOutput(BaseOutput):
     class Meta:
         model = MedicinePurchase
         fields = '__all__'
+        interfaces = (relay.Node,)
     
     medicine = graphene.Field(lambda: MedicineOutput)
     recorded_by = graphene.Field(lambda: UserOutput)
@@ -137,34 +156,78 @@ class MedicinePurchaseOutput(DjangoObjectType):
     def resolve_days_to_expiry(self, info):
         return (self.expiry_date - date.today()).days
 
-class MedicineDistributionOutput(DjangoObjectType):
+class MedicineDistributionOutput(BaseOutput):
     class Meta:
         model = MedicineDistribution
         fields = '__all__'
+        interfaces = (relay.Node,)
     
     medicine = graphene.Field(lambda: MedicineOutput)
     chicken_house = graphene.Field(lambda: ChickenHouseOutput)
     distributed_by = graphene.Field(lambda: UserOutput)
     received_by = graphene.Field(lambda: UserOutput)
 
-class ChickenDeathRecordOutput(DjangoObjectType):
+class ChickenDeathRecordOutput(BaseOutput):
     class Meta:
         model = ChickenDeathRecord
         fields = '__all__'
+        interfaces = (relay.Node,)
     
     chicken_house = graphene.Field(lambda: ChickenHouseOutput)
     recorded_by = graphene.Field(lambda: UserOutput)
     confirmed_by = graphene.Field(lambda: UserOutput)
-    
-    def resolve_confirmed_by(self, info):
-        return self.confirmed_by  # ✅ No .from_orm needed
 
-    def resolve_recorded_by(self, info):
-        return self.recorded_by  # ✅ Same here
+class ExpenseCategoryOutput(BaseOutput):
+    class Meta:
+        model = ExpenseCategory
+        fields = '__all__'
+        interfaces = (relay.Node,)
+        filter_fields = {
+            'name': ['exact', 'icontains'],
+        }
 
-    def resolve_chicken_house(self, info):
-        return self.chicken_house  # ✅ And here
+class ExpenseOutput(BaseOutput):
+    class Meta:
+        model = Expense
+        fields = '__all__'
+        interfaces = (relay.Node,)
+        filter_fields = {
+            'category__name': ['exact', 'icontains'],
+            'created_at': ['exact', 'gte', 'lte'],
+            'total_cost': ['gte', 'lte'],
+            'payment_method': ['exact'],
+        }
 
+class SalaryPaymentOutput(BaseOutput):
+    class Meta:
+        model = SalaryPayment
+        fields = '__all__'
+        interfaces = (relay.Node,)
+        filter_fields = {
+            'worker__id': ['exact'],
+            'created_at': ['exact', 'gte', 'lte'],
+            'amount': ['gte', 'lte'],
+        }
+
+class SystemLogOutput(DjangoObjectType):
+    class Meta:
+        model = SystemLog
+        fields = '__all__'
+        interfaces = (relay.Node,)
+
+    before_state = graphene.JSONString()
+    after_state = graphene.JSONString()
+    changes = graphene.JSONString()
+    user = graphene.Field(lambda: UserOutput)
+
+    def resolve_before_state(self, info):
+        return self.before_state
+
+    def resolve_after_state(self, info):
+        return self.after_state
+
+    def resolve_changes(self, info):
+        return self.changes
 
 # ------------------- Custom Business-Focused Types -------------------
 
@@ -184,7 +247,6 @@ class ChickenHousePerformanceOutput(graphene.ObjectType):
     avg_eggs_per_day = graphene.Float()
     mortality_rate = graphene.Float()
     food_consumption = graphene.Decimal()
-    
 
 class InventorySummaryOutput(graphene.ObjectType):
     total_eggs = graphene.Int()
@@ -199,54 +261,7 @@ class InventorySummaryOutput(graphene.ObjectType):
     def resolve_available_trays(self, info):
         return self.total_eggs // 30
 
-class AlertType(graphene.ObjectType):
+class AlertOutput(graphene.ObjectType):
     type = graphene.String()
     title = graphene.String()
     message = graphene.String()
-
-class ExpenseCategoryType(DjangoObjectType):
-    class Meta:
-        model = ExpenseCategory
-        interfaces = (relay.Node,)
-        filter_fields = {
-            'name': ['exact', 'icontains'],
-        }
-
-class ExpenseType(DjangoObjectType):
-    class Meta:
-        model = Expense
-        interfaces = (relay.Node,)
-        filter_fields = {
-            'category__name': ['exact', 'icontains'],
-            'date': ['exact', 'gte', 'lte'],
-            'total_cost': ['gte', 'lte'],
-            'payment_method': ['exact'],
-        }
-
-class SalaryPaymentType(DjangoObjectType):
-    class Meta:
-        model = SalaryPayment
-        interfaces = (relay.Node,)
-        filter_fields = {
-            'worker__id': ['exact'],
-            'payment_date': ['exact', 'gte', 'lte'],
-            'amount': ['gte', 'lte'],
-        }
-
-class SystemLogType(DjangoObjectType):
-    class Meta:
-        model = SystemLog
-        fields = '__all__'
-
-    before_state = graphene.JSONString()
-    after_state = graphene.JSONString()
-    changes = graphene.JSONString()
-
-    def resolve_before_state(self, info):
-        return self.before_state
-
-    def resolve_after_state(self, info):
-        return self.after_state
-
-    def resolve_changes(self, info):
-        return self.changes

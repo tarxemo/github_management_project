@@ -13,13 +13,7 @@ from graphql.error import GraphQLError
 from django.utils import timezone
 
 class Query(graphene.ObjectType):
-    # ------------------- Authentication & User Queries -------------------
-    users = graphene.List(UserOutput)
 
-    @require_authentication
-    def resolve_users(self, info):
-        return User.objects.select_related('chicken_house').exclude(is_superuser = True)
-    
     current_user = graphene.Field(UserOutput)
     
     @require_authentication
@@ -59,7 +53,7 @@ class Query(graphene.ObjectType):
     @require_authentication
     def resolve_chicken_houses(self, info, active_only=True):
         user = info.context.user
-        queryset = ChickenHouse.objects.all()
+        queryset = ChickenHouse.objects.all_objects()
         
         if active_only:
             queryset = queryset.filter(is_active=True)
@@ -118,7 +112,7 @@ class Query(graphene.ObjectType):
         if not user.is_authenticated:
             raise GraphQLError("Authentication required")
         
-        queryset = EggCollection.objects.all()
+        queryset = EggCollection.objects.all_objects()
         
         # Filter by chicken house
         if chicken_house_id:
@@ -130,15 +124,15 @@ class Query(graphene.ObjectType):
         
         # Date range filtering
         if start_date:
-            queryset = queryset.filter(date_collected__gte=start_date)
+            queryset = queryset.filter(created_at__gte=start_date)
         if end_date:
-            queryset = queryset.filter(date_collected__lte=end_date)
+            queryset = queryset.filter(created_at__lte=end_date)
         
         # Confirmation status
         if confirmed_only:
             queryset = queryset.filter(stock_manager_confirmed=True)
         
-        return queryset.order_by('-date_collected')
+        return queryset.order_by('-created_at')
 
     daily_egg_report = graphene.Field(
         DailyEggReportOutput,
@@ -155,7 +149,7 @@ class Query(graphene.ObjectType):
         report_date = date if date else timezone.now().date()
         
         # Base query
-        queryset = EggCollection.objects.filter(date_collected=report_date)
+        queryset = EggCollection.objects.filter(created_at=report_date)
         
         # Filter by chicken house if specified
         if chicken_house_id:
@@ -194,23 +188,23 @@ class Query(graphene.ObjectType):
         if not user.is_authenticated or user.user_type not in ['ADMIN', 'STOCK_MANAGER', "SALES_MANAGER"]:
             raise GraphQLError("Only admin and stock managers can view sales records")
         
-        queryset = EggSale.objects.all()
+        queryset = EggSale.objects.all_objects()
         
         if start_date:
-            queryset = queryset.filter(date_sold__gte=start_date)
+            queryset = queryset.filter(created_at__gte=start_date)
         if end_date:
-            queryset = queryset.filter(date_sold__lte=end_date)
+            queryset = queryset.filter(created_at__lte=end_date)
         if buyer_name:
             queryset = queryset.filter(buyer_name__icontains=buyer_name)
         
-        return queryset.order_by('-date_sold')
+        return queryset.order_by('-created_at')
 
     # ------------------- Food Management Queries -------------------
     food_types = graphene.List(FoodTypeOutput)
     
     @require_authentication
     def resolve_food_types(self, info):
-        return FoodType.objects.all()
+        return FoodType.objects.all_objects()
 
     food_inventory = graphene.List(FoodInventoryOutput)
     
@@ -220,7 +214,7 @@ class Query(graphene.ObjectType):
         if not user.is_authenticated or user.user_type not in ['ADMIN', 'STOCK_MANAGER']:
             raise GraphQLError("Only admin and stock managers can view food inventory")
         
-        return FoodInventory.objects.all()
+        return FoodInventory.objects.all_objects()
 
     food_purchases = graphene.List(
         FoodPurchaseOutput,
@@ -235,16 +229,16 @@ class Query(graphene.ObjectType):
         if not user.is_authenticated or user.user_type not in ['ADMIN', 'STOCK_MANAGER']:
             raise GraphQLError("Only admin and stock managers can view purchase records")
         
-        queryset = FoodPurchase.objects.all()
+        queryset = FoodPurchase.objects.all_objects()
         
         if food_type_id:
             queryset = queryset.filter(food_type_id=food_type_id)
         if start_date:
-            queryset = queryset.filter(purchase_date__gte=start_date)
+            queryset = queryset.filter(created_at__gte=start_date)
         if end_date:
-            queryset = queryset.filter(purchase_date__lte=end_date)
+            queryset = queryset.filter(created_at__lte=end_date)
         
-        return queryset.order_by('-purchase_date')
+        return queryset.order_by('-created_at')
 
     food_distributions = graphene.List(
         FoodDistributionOutput,
@@ -261,16 +255,16 @@ class Query(graphene.ObjectType):
         if not user.is_authenticated:
             raise GraphQLError("Authentication required")
         
-        queryset = FoodDistribution.objects.all()
+        queryset = FoodDistribution.objects.all_objects()
         
         if chicken_house_id:
             queryset = queryset.filter(chicken_house_id=chicken_house_id)
         if food_type_id:
             queryset = queryset.filter(food_type_id=food_type_id)
         if start_date:
-            queryset = queryset.filter(date_distributed__gte=start_date)
+            queryset = queryset.filter(created_at__gte=start_date)
         if end_date:
-            queryset = queryset.filter(date_distributed__lte=end_date)
+            queryset = queryset.filter(created_at__lte=end_date)
         if confirmed_only:
             queryset = queryset.filter(worker_confirmed=True)
         
@@ -278,7 +272,7 @@ class Query(graphene.ObjectType):
         if user.user_type == 'WORKER':
             queryset = queryset.filter(chicken_house__owner=user)
         
-        return queryset.order_by('-date_distributed')
+        return queryset.order_by('-created_at')
 
     # ------------------- Medicine Management Queries -------------------
     
@@ -290,7 +284,7 @@ class Query(graphene.ObjectType):
         if not user.is_authenticated:
             raise GraphQLError("Authentication required")
         
-        return Medicine.objects.all()
+        return Medicine.objects.all_objects()
 
     medicine_inventory = graphene.List(MedicineInventoryOutput)
     
@@ -301,7 +295,7 @@ class Query(graphene.ObjectType):
             raise GraphQLError("Only admin, stock managers and doctors can view medicine inventory")
         if user.user_type == "WORKER":
             return []
-        return MedicineInventory.objects.all()
+        return MedicineInventory.objects.all_objects()
 
     medicine_purchases = graphene.List(
         MedicinePurchaseOutput,
@@ -318,7 +312,7 @@ class Query(graphene.ObjectType):
         if user.user_type == "WORKER":
             return []
         
-        queryset = MedicinePurchase.objects.all()
+        queryset = MedicinePurchase.objects.all_objects()
         
         if medicine_id:
             queryset = queryset.filter(medicine_id=medicine_id)
@@ -344,16 +338,16 @@ class Query(graphene.ObjectType):
         if not user.is_authenticated:
             raise GraphQLError("Authentication required")
         
-        queryset = MedicineDistribution.objects.all()
+        queryset = MedicineDistribution.objects.all_objects()
         
         if chicken_house_id:
             queryset = queryset.filter(chicken_house_id=chicken_house_id)
         if medicine_id:
             queryset = queryset.filter(medicine_id=medicine_id)
         if start_date:
-            queryset = queryset.filter(date_distributed__gte=start_date)
+            queryset = queryset.filter(created_at__gte=start_date)
         if end_date:
-            queryset = queryset.filter(date_distributed__lte=end_date)
+            queryset = queryset.filter(created_at__lte=end_date)
         if user.user_type == 'DOCTOR':
             queryset = queryset
         elif user.user_type == 'WORKER':
@@ -367,7 +361,7 @@ class Query(graphene.ObjectType):
         # if user.user_type == 'DOCTOR':
         #     queryset = queryset.filter(distributed_by=user)
         
-        return queryset.order_by('-date_distributed')
+        return queryset.order_by('-created_at')
 
     # ------------------- Health Management Queries -------------------
     chicken_death_records = graphene.List(
@@ -384,14 +378,14 @@ class Query(graphene.ObjectType):
         if not user.is_authenticated:
             raise GraphQLError("Authentication required")
         
-        queryset = ChickenDeathRecord.objects.all()
+        queryset = ChickenDeathRecord.objects.all_objects()
         
         if chicken_house_id:
             queryset = queryset.filter(chicken_house_id=chicken_house_id)
         if start_date:
-            queryset = queryset.filter(date_recorded__gte=start_date)
+            queryset = queryset.filter(created_at__gte=start_date)
         if end_date:
-            queryset = queryset.filter(date_recorded__lte=end_date)
+            queryset = queryset.filter(created_at__lte=end_date)
         if needs_confirmation and user.user_type == 'DOCTOR':
             queryset = queryset.filter(confirmed_by__isnull=True)
         
@@ -399,7 +393,7 @@ class Query(graphene.ObjectType):
         if user.user_type == 'WORKER':
             queryset = queryset.filter(chicken_house__owner=user)
         
-        return queryset.order_by('-date_recorded')
+        return queryset.order_by('-created_at')
 
     # ------------------- Business Analytics Queries -------------------
     chicken_house_performance = graphene.List(
@@ -433,7 +427,7 @@ class Query(graphene.ObjectType):
             # Egg production
             egg_collections = EggCollection.objects.filter(
                 chicken_house=house,
-                date_collected__gte=start_date,
+                created_at__gte=start_date,
                 stock_manager_confirmed=True
             )
             total_eggs = egg_collections.aggregate(
@@ -443,7 +437,7 @@ class Query(graphene.ObjectType):
             # Mortality
             death_records = ChickenDeathRecord.objects.filter(
                 chicken_house=house,
-                date_recorded__gte=start_date,
+                created_at__gte=start_date,
                 confirmed_by__isnull=False
             )
             total_deaths = death_records.aggregate(
@@ -453,7 +447,7 @@ class Query(graphene.ObjectType):
             # Food consumption
             food_distributions = FoodDistribution.objects.filter(
                 chicken_house=house,
-                date_distributed__gte=start_date,
+                created_at__gte=start_date,
                 worker_confirmed=True
             )
             total_food = food_distributions.aggregate(
@@ -490,20 +484,20 @@ class Query(graphene.ObjectType):
         
         return InventorySummaryOutput(
             total_eggs=egg_inventory.total_eggs,
-            food_inventory=FoodInventory.objects.all(),
-            medicine_inventory=MedicineInventory.objects.all()
+            food_inventory=FoodInventory.objects.all_objects(),
+            medicine_inventory=MedicineInventory.objects.all_objects()
         )
         
-    alerts = graphene.List(AlertType)
+    alerts = graphene.List(AlertOutput)
 
     @require_authentication
     def resolve_alerts(self, info):
         alerts = []
 
         # 1. Food Inventory Check
-        for item in FoodInventory.objects.all():
+        for item in FoodInventory.objects.all_objects():
             if item.quantity_in_sacks <= 5:  # Set your own threshold
-                alerts.append(AlertType(
+                alerts.append(AlertOutput(
                     type="food",
                     title="Low Food Inventory",
                     message=f"{item.food_type.name} is running low ({item.quantity_in_sacks} sacks left)"
@@ -514,7 +508,7 @@ class Query(graphene.ObjectType):
         expiring = Medicine.objects.filter(expiry_date__lte=soon)
         for med in expiring:
             days = (med.expiry_date - timezone.now().date()).days
-            alerts.append(AlertType(
+            alerts.append(AlertOutput(
                 type="medicine",
                 title="Medicine Expiring",
                 message=f"{med.name} expires in {days} day{'s' if days != 1 else ''}"
@@ -523,7 +517,7 @@ class Query(graphene.ObjectType):
         # 3. House Maintenance Placeholder (You can add actual logic based on inspection records)
         dirty_houses = ChickenHouse.objects.filter(is_active=True).order_by('?')[:1]
         for house in dirty_houses:
-            alerts.append(AlertType(
+            alerts.append(AlertOutput(
                 type="maintenance",
                 title="Maintenance Due",
                 message=f"{house.name} needs cleaning inspection"
@@ -532,15 +526,15 @@ class Query(graphene.ObjectType):
         return alerts
 
     # Expense Queries
-    expense_categories = graphene.List(ExpenseCategoryType)
+    expense_categories = graphene.List(ExpenseCategoryOutput)
     expenses = graphene.List(
-        ExpenseType,
+        ExpenseOutput,
         start_date=graphene.Date(),
         end_date=graphene.Date(),
         category_id=graphene.ID()
     )
     salary_payments = graphene.List(
-        SalaryPaymentType,
+        SalaryPaymentOutput,
         start_date=graphene.Date(),
         end_date=graphene.Date(),
         worker_id=graphene.ID()
@@ -548,36 +542,36 @@ class Query(graphene.ObjectType):
     
     @require_authentication
     def resolve_expense_categories(self, info):
-        return ExpenseCategory.objects.all().order_by('name')
+        return ExpenseCategory.objects.all_objects().order_by('name')
     
     def resolve_expenses(self, info, start_date=None, end_date=None, category_id=None):
-        queryset = Expense.objects.all()
+        queryset = Expense.objects.all_objects()
         
         if start_date:
-            queryset = queryset.filter(date__gte=start_date)
+            queryset = queryset.filter(created_at__gte=start_date)
         if end_date:
-            queryset = queryset.filter(date__lte=end_date)
+            queryset = queryset.filter(created_at__lte=end_date)
         if category_id:
             queryset = queryset.filter(category_id=category_id)
             
-        return queryset.order_by('-date')
+        return queryset.order_by('-created_at')
     
     @require_authentication
     def resolve_salary_payments(self, info, start_date=None, end_date=None, worker_id=None):
-        queryset = SalaryPayment.objects.all()
+        queryset = SalaryPayment.objects.all_objects()
         
         if start_date:
-            queryset = queryset.filter(payment_date__gte=start_date)
+            queryset = queryset.filter(created_at__gte=start_date)
         if end_date:
-            queryset = queryset.filter(payment_date__lte=end_date)
+            queryset = queryset.filter(created_at__lte=end_date)
         if worker_id:
             queryset = queryset.filter(worker_id=worker_id)
             
-        return queryset.order_by('-payment_date')
+        return queryset.order_by('-created_at')
 
 
     all_system_logs = graphene.List(
-        SystemLogType,
+        SystemLogOutput,
         action=graphene.String(),
         model_name=graphene.String(),
         user_id=graphene.ID(),
@@ -588,7 +582,7 @@ class Query(graphene.ObjectType):
         offset=graphene.Int(),
     )
     
-    system_log_by_id = graphene.Field(SystemLogType, id=graphene.ID(required=True))
+    system_log_by_id = graphene.Field(SystemLogOutput, id=graphene.ID(required=True))
 
     @require_authentication
     def resolve_all_system_logs(

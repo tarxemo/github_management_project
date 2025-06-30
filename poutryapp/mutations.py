@@ -644,7 +644,7 @@ class CreateExpenseCategory(graphene.Mutation):
     class Arguments:
         input = ExpenseCategoryInput(required=True)
 
-    category = graphene.Field(ExpenseCategoryType)
+    category = graphene.Field(ExpenseCategoryOutput)
 
     @require_authentication
     def mutate(self, info, input):
@@ -662,7 +662,7 @@ class RecordExpense(graphene.Mutation):
     class Arguments:
         input = ExpenseInput(required=True)
 
-    expense = graphene.Field(ExpenseType)
+    expense = graphene.Field(ExpenseOutput)
 
     @transaction.atomic
     @require_authentication
@@ -696,7 +696,7 @@ class RecordSalaryPayment(graphene.Mutation):
     class Arguments:
         input = SalaryPaymentInput(required=True)
 
-    salary_payment = graphene.Field(SalaryPaymentType)
+    salary_payment = graphene.Field(SalaryPaymentOutput)
 
     @transaction.atomic
     @require_authentication

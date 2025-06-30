@@ -494,7 +494,7 @@ class Query(graphene.ObjectType):
             medicine_inventory=MedicineInventory.objects.all()
         )
         
-    alerts = graphene.List(AlertType)
+    alerts = graphene.List(AlertOutput)
 
     @require_authentication
     def resolve_alerts(self, info):
@@ -503,7 +503,7 @@ class Query(graphene.ObjectType):
         # 1. Food Inventory Check
         for item in FoodInventory.objects.all():
             if item.quantity_in_sacks <= 5:  # Set your own threshold
-                alerts.append(AlertType(
+                alerts.append(AlertOutput(
                     type="food",
                     title="Low Food Inventory",
                     message=f"{item.food_type.name} is running low ({item.quantity_in_sacks} sacks left)"
@@ -514,7 +514,7 @@ class Query(graphene.ObjectType):
         expiring = Medicine.objects.filter(expiry_date__lte=soon)
         for med in expiring:
             days = (med.expiry_date - timezone.now().date()).days
-            alerts.append(AlertType(
+            alerts.append(AlertOutput(
                 type="medicine",
                 title="Medicine Expiring",
                 message=f"{med.name} expires in {days} day{'s' if days != 1 else ''}"
@@ -523,7 +523,7 @@ class Query(graphene.ObjectType):
         # 3. House Maintenance Placeholder (You can add actual logic based on inspection records)
         dirty_houses = ChickenHouse.objects.filter(is_active=True).order_by('?')[:1]
         for house in dirty_houses:
-            alerts.append(AlertType(
+            alerts.append(AlertOutput(
                 type="maintenance",
                 title="Maintenance Due",
                 message=f"{house.name} needs cleaning inspection"
@@ -532,15 +532,15 @@ class Query(graphene.ObjectType):
         return alerts
 
     # Expense Queries
-    expense_categories = graphene.List(ExpenseCategoryType)
+    expense_categories = graphene.List(ExpenseCategoryOutput)
     expenses = graphene.List(
-        ExpenseType,
+        ExpenseOutput,
         start_date=graphene.Date(),
         end_date=graphene.Date(),
         category_id=graphene.ID()
     )
     salary_payments = graphene.List(
-        SalaryPaymentType,
+        SalaryPaymentOutput,
         start_date=graphene.Date(),
         end_date=graphene.Date(),
         worker_id=graphene.ID()
@@ -577,7 +577,7 @@ class Query(graphene.ObjectType):
 
 
     all_system_logs = graphene.List(
-        SystemLogType,
+        SystemLogOutput,
         action=graphene.String(),
         model_name=graphene.String(),
         user_id=graphene.ID(),
@@ -588,7 +588,7 @@ class Query(graphene.ObjectType):
         offset=graphene.Int(),
     )
     
-    system_log_by_id = graphene.Field(SystemLogType, id=graphene.ID(required=True))
+    system_log_by_id = graphene.Field(SystemLogOutput, id=graphene.ID(required=True))
 
     @require_authentication
     def resolve_all_system_logs(

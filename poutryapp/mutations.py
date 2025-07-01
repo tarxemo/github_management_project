@@ -308,6 +308,8 @@ class UpdateEggSale(graphene.Mutation):
         if info.context.user.user_type == 'SALES_MANAGER':
             if input.get('remained_eggs') is not None:
                 egg_sale.remained_eggs = input.remained_eggs
+                if input.get('remained_eggs') < 1:
+                    egg_sale.confirm_sales = True
             if input.get('rejected_eggs') is not None:
                 egg_sale.rejected_eggs = input.rejected_eggs
                 egg_sale.confirm_received = True

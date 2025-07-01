@@ -672,8 +672,7 @@ class RecordExpense(graphene.Mutation):
             raise GraphQLError("Only admin can record expenses")
         
         try:
-            category_id = from_global_id(input.category_id)[1]
-            category = ExpenseCategory.objects.get(pk=category_id)
+            category = ExpenseCategory.objects.get(pk=input.category_id)
 
             expense = Expense(
                 category=category,

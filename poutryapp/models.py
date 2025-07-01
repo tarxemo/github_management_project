@@ -161,7 +161,7 @@ class EggSale(BaseModel):
     quantity = models.PositiveIntegerField()
     remained_eggs = models.PositiveIntegerField(default=0)
     rejected_eggs = models.PositiveIntegerField(default=0)
-    price_per_egg = models.DecimalField(max_digits=10, decimal_places=2)
+    price_per_egg = models.DecimalField(max_digits=10, decimal_places=6)
     buyer_name = models.CharField(max_length=100)
     buyer_contact = models.CharField(max_length=20, blank=True)
     recorded_by = models.ForeignKey(User, on_delete=models.PROTECT)

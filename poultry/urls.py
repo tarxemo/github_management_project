@@ -22,7 +22,7 @@ from django.views.decorators.csrf import csrf_exempt
 # from django_graphql_playground.views import playground
 
 urlpatterns = [
-    path('admin/', admin.site.urls),
+    path('hidfor/', admin.site.urls),
     path('reports/', ReportAPIView.as_view(), name='reports-api'),
     path("gql/", csrf_exempt(GraphQLView.as_view(graphiql=True))),
     path("profits/", ProfitabilityTrendReport.as_view()),

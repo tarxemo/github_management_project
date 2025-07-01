@@ -41,13 +41,11 @@ class ChickenHouseOutput(BaseOutput):
     class Meta:
         model = ChickenHouse
         fields = '__all__'
-        interfaces = (relay.Node,)
 
 class EggCollectionOutput(BaseOutput):
     class Meta:
         model = EggCollection
         fields = '__all__'
-        interfaces = (relay.Node,)
     
     total_eggs = graphene.Int()
     chicken_house = graphene.Field(lambda: ChickenHouseOutput)
@@ -60,7 +58,6 @@ class EggInventoryOutput(BaseOutput):
     class Meta:
         model = EggInventory
         fields = '__all__'
-        interfaces = (relay.Node,)
     
     available_trays = graphene.Int()
     
@@ -71,7 +68,6 @@ class EggSaleOutput(BaseOutput):
     class Meta:
         model = EggSale
         fields = '__all__'
-        interfaces = (relay.Node,)
     
     total_amount = graphene.Decimal()
     recorded_by = graphene.Field(lambda: UserOutput)
@@ -83,13 +79,11 @@ class FoodTypeOutput(BaseOutput):
     class Meta:
         model = FoodType
         fields = '__all__'
-        interfaces = (relay.Node,)
 
 class FoodInventoryOutput(BaseOutput):
     class Meta:
         model = FoodInventory
         fields = '__all__'
-        interfaces = (relay.Node,)
     
     food_type = graphene.Field(lambda: FoodTypeOutput)
     total_kg = graphene.Decimal()
@@ -101,7 +95,6 @@ class FoodPurchaseOutput(BaseOutput):
     class Meta:
         model = FoodPurchase
         fields = '__all__'
-        interfaces = (relay.Node,)
     
     food_type = graphene.Field(lambda: FoodTypeOutput)
     recorded_by = graphene.Field(lambda: UserOutput)
@@ -114,7 +107,6 @@ class FoodDistributionOutput(BaseOutput):
     class Meta:
         model = FoodDistribution
         fields = '__all__'
-        interfaces = (relay.Node,)
     
     food_type = graphene.Field(lambda: FoodTypeOutput)
     chicken_house = graphene.Field(lambda: ChickenHouseOutput)
@@ -129,13 +121,11 @@ class MedicineOutput(BaseOutput):
     class Meta:
         model = Medicine
         fields = '__all__'
-        interfaces = (relay.Node,)
 
 class MedicineInventoryOutput(BaseOutput):
     class Meta:
         model = MedicineInventory
         fields = '__all__'
-        interfaces = (relay.Node,)
     
     medicine = graphene.Field(lambda: MedicineOutput)
 
@@ -143,7 +133,6 @@ class MedicinePurchaseOutput(BaseOutput):
     class Meta:
         model = MedicinePurchase
         fields = '__all__'
-        interfaces = (relay.Node,)
     
     medicine = graphene.Field(lambda: MedicineOutput)
     recorded_by = graphene.Field(lambda: UserOutput)
@@ -160,7 +149,6 @@ class MedicineDistributionOutput(BaseOutput):
     class Meta:
         model = MedicineDistribution
         fields = '__all__'
-        interfaces = (relay.Node,)
     
     medicine = graphene.Field(lambda: MedicineOutput)
     chicken_house = graphene.Field(lambda: ChickenHouseOutput)
@@ -171,7 +159,6 @@ class ChickenDeathRecordOutput(BaseOutput):
     class Meta:
         model = ChickenDeathRecord
         fields = '__all__'
-        interfaces = (relay.Node,)
     
     chicken_house = graphene.Field(lambda: ChickenHouseOutput)
     recorded_by = graphene.Field(lambda: UserOutput)
@@ -181,7 +168,7 @@ class ExpenseCategoryOutput(BaseOutput):
     class Meta:
         model = ExpenseCategory
         fields = '__all__'
-        interfaces = (relay.Node,)
+        # interfaces = (relay.Node,)
         filter_fields = {
             'name': ['exact', 'icontains'],
         }
@@ -190,7 +177,7 @@ class ExpenseOutput(BaseOutput):
     class Meta:
         model = Expense
         fields = '__all__'
-        interfaces = (relay.Node,)
+        # interfaces = (relay.Node,)
         filter_fields = {
             'category__name': ['exact', 'icontains'],
             'created_at': ['exact', 'gte', 'lte'],
@@ -202,7 +189,7 @@ class SalaryPaymentOutput(BaseOutput):
     class Meta:
         model = SalaryPayment
         fields = '__all__'
-        interfaces = (relay.Node,)
+        # interfaces = (relay.Node,)
         filter_fields = {
             'worker__id': ['exact'],
             'created_at': ['exact', 'gte', 'lte'],
@@ -213,7 +200,7 @@ class SystemLogOutput(DjangoObjectType):
     class Meta:
         model = SystemLog
         fields = '__all__'
-        interfaces = (relay.Node,)
+        # interfaces = (relay.Node,)
 
     before_state = graphene.JSONString()
     after_state = graphene.JSONString()

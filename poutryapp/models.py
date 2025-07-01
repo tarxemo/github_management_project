@@ -56,7 +56,7 @@ class User(AbstractUser):
         ('STOCK_MANAGER', 'Stock Manager'),
         ('WORKER', 'Worker'),
         ('DOCTOR', 'Doctor'),
-        ('SALES_MANAGER', 'Doctor'),
+        ('SALES_MANAGER', 'Sales Manager'),
     )
 
     username = None  # Remove username field

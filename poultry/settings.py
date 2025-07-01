@@ -92,6 +92,11 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
+CSRF_TRUSTED_ORIGINS = [
+        'https://sv.leonidasfarm.com', 
+    ]
+    
+    
 ROOT_URLCONF = 'poultry.urls'
 
 TEMPLATES = [

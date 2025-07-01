@@ -121,8 +121,7 @@ class Query(graphene.ObjectType):
         # Workers can only see their own collections
         if user.user_type == 'WORKER':
             queryset = queryset.filter(worker=user)
-            
-        end_date = end_date + timedelta(days=1)
+        
         # Date range filtering
         if start_date:
             queryset = queryset.filter(created_at__gte=start_date)

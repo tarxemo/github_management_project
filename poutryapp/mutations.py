@@ -676,7 +676,7 @@ class RecordExpense(graphene.Mutation):
 
             expense = Expense(
                 category=category,
-                date=input.get('date', date.today()),
+                created_at=input.get('date', date.today()),
                 description=input.description,
                 payment_method=input.get('payment_method', 'CASH'),
                 unit_cost=input.unit_cost,

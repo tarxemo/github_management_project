@@ -121,7 +121,8 @@ class Query(graphene.ObjectType):
         # Workers can only see their own collections
         if user.user_type == 'WORKER':
             queryset = queryset.filter(worker=user)
-        
+            
+        end_date = end_date + timedelta(days=1)
         # Date range filtering
         if start_date:
             queryset = queryset.filter(created_at__gte=start_date)
@@ -544,18 +545,21 @@ class Query(graphene.ObjectType):
     def resolve_expense_categories(self, info):
         return ExpenseCategory.objects.all_objects().order_by('name')
     
+
+    @require_authentication
     def resolve_expenses(self, info, start_date=None, end_date=None, category_id=None):
         queryset = Expense.objects.all_objects()
         
         if start_date:
             queryset = queryset.filter(created_at__gte=start_date)
         if end_date:
-            queryset = queryset.filter(created_at__lte=end_date)
+            adjusted_end_date = end_date + timedelta(days=1)
+            queryset = queryset.filter(created_at__lt=adjusted_end_date)
         if category_id:
             queryset = queryset.filter(category_id=category_id)
             
         return queryset.order_by('-created_at')
-    
+        
     @require_authentication
     def resolve_salary_payments(self, info, start_date=None, end_date=None, worker_id=None):
         queryset = SalaryPayment.objects.all_objects()

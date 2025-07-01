@@ -122,6 +122,8 @@ class Query(graphene.ObjectType):
         if user.user_type == 'WORKER':
             queryset = queryset.filter(worker=user)
         
+        if end_date != None:
+            end_date = end_date + timedelta(days=1)
         # Date range filtering
         if start_date:
             queryset = queryset.filter(created_at__gte=start_date)

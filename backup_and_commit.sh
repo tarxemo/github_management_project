@@ -4,7 +4,7 @@
 cd /home/ubuntu/RB || exit
 
 # Export database to backup file
-PGPASSWORD='@SuperCoder' pg_dump -U tarxemo leo > db_backup_$(date +%Y-%m-%d).sql
+pg_dump -h localhost -U tarxemo -F c -f db_backup_$(date +%Y-%m-%d).dump leo
 
 # Run Django management command
 source /home/ubuntu/venv/bin/activate

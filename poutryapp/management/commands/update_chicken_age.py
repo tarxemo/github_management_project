@@ -11,6 +11,6 @@ class Command(BaseCommand):
     def handle(self, *args, **kwargs):
         houses = ChickenHouse.objects.all_objects()
         for house in houses:
-            house.age_in_weeks += 1
+            house.age_in_weeks += 1/7
             house.save()
         self.stdout.write(self.style.SUCCESS("Successfully updated chicken ages."))

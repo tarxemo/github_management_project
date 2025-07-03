@@ -119,7 +119,7 @@ class ChickenHouse(BaseModel):
     owner = models.ForeignKey('User', on_delete=models.SET_NULL, null=True, blank=True, related_name='chicken_houses')
 
     # 🐣 Add these:
-    age_in_weeks = models.PositiveIntegerField(default=0)
+    age_in_weeks = models.DecimalField(max_digits=10, decimal_places=7)
     average_weight = models.FloatField(help_text="Average weight per chicken in kg", default=0.0)
 
     def __str__(self):

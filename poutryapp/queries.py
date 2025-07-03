@@ -319,9 +319,9 @@ class Query(graphene.ObjectType):
         if medicine_id:
             queryset = queryset.filter(medicine_id=medicine_id)
         
-        if expiring_soon:
-            threshold_date = date.today() + timedelta(days=30)
-            queryset = queryset.filter(expiry_date__lte=threshold_date)
+        # if expiring_soon:
+        #     threshold_date = date.today() + timedelta(days=30)
+        #     queryset = queryset.filter(expiry_date__lte=threshold_date)
         
         return queryset.order_by('expiry_date')
 

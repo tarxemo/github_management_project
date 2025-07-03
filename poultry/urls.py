@@ -20,11 +20,12 @@ from poultry.views import *
 from graphene_django.views import GraphQLView
 from django.views.decorators.csrf import csrf_exempt
 # from django_graphql_playground.views import playground
+from django.conf import settings
 
 urlpatterns = [
     path('hidfor/', admin.site.urls),
     path('reports/', ReportAPIView.as_view(), name='reports-api'),
-    path("gql/", csrf_exempt(GraphQLView.as_view(graphiql=True))),
+    path("gql/", csrf_exempt(GraphQLView.as_view(graphiql=settings.DEBUG))),
     path("profits/", ProfitabilityTrendReport.as_view()),
     path("costs/", CostOfProductionReport.as_view()),
     path("financials/", FinancialDashboardReport.as_view())

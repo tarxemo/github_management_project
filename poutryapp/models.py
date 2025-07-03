@@ -244,7 +244,7 @@ class MedicinePurchase(BaseModel):
     recorded_by = models.ForeignKey(User, on_delete=models.PROTECT)
     
     def __str__(self):
-        return f"{self.quantity} {self.medicine.unit_measure} of {self.medicine} on {self.created_at}"
+        return f"{self.quantity} {self.medicine.unit_of_measure} of {self.medicine} on {self.created_at}"
 
 class MedicineDistribution(BaseModel):
     medicine = models.ForeignKey(Medicine, on_delete=models.CASCADE)

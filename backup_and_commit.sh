@@ -1,19 +1,28 @@
 #!/bin/bash
 
-# Navigate to project directory
-cd /home/ubuntu/RB || exit
+# Set to fail on errors
+set -e
 
-# Export database to backup file
-pg_dump -h localhost -U tarxemo -F c -f db_backup_$(date +%Y-%m-%d).dump leo
+# Variables
+DATE=$(date +%Y-%m-%d)
+PROJECT_DIR="/home/ubuntu/RB"
+VENV_PYTHON="/home/ubuntu/venv/bin/python3"
+DB_BACKUP_PATH="$PROJECT_DIR/db_backup_${DATE}.dump"
+LOGFILE="$PROJECT_DIR/cron.log"
 
-# Run Django management command
-source /home/ubuntu/venv/bin/activate
-python3 manage.py update_chicken_age
+# Change to project directory
+cd "$PROJECT_DIR" || exit 1
+
+# Backup database
+/usr/bin/pg_dump -h localhost -U tarxemo -F c -f "$DB_BACKUP_PATH" leo >> "$LOGFILE" 2>&1
+
+# Run Django management command using venv Python
+"$VENV_PYTHON" manage.py update_chicken_age >> "$LOGFILE" 2>&1
 
 # Git operations
-git add .
-git commit -m "commit from server commiting database backup"
-git pull --no-edit
-git add .
-git commit -m "commit from server commiting database backup after conflicts"
-git push
+/usr/bin/git add . >> "$LOGFILE" 2>&1
+/usr/bin/git commit -m "Automated backup and update at $DATE" >> "$LOGFILE" 2>&1 || echo "No changes to commit" >> "$LOGFILE"
+/usr/bin/git pull --no-edit >> "$LOGFILE" 2>&1
+/usr/bin/git add . >> "$LOGFILE" 2>&1
+/usr/bin/git commit -m "Post-pull commit at $DATE" >> "$LOGFILE" 2>&1 || echo "No post-pull changes to commit" >> "$LOGFILE"
+/usr/bin/git push >> "$LOGFILE" 2>&1

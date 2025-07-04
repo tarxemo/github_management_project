@@ -1,8 +1,5 @@
-# yourapp/management/commands/update_chicken_age.py
-
 from django.core.management.base import BaseCommand
-from datetime import timedelta
-from django.utils.timezone import now
+from decimal import Decimal
 from poutryapp.models import ChickenHouse
 
 class Command(BaseCommand):
@@ -11,6 +8,6 @@ class Command(BaseCommand):
     def handle(self, *args, **kwargs):
         houses = ChickenHouse.objects.all_objects()
         for house in houses:
-            house.age_in_weeks += 1/7
+            house.age_in_weeks += Decimal("0.142857")  # 1 day = 1/7 week
             house.save()
         self.stdout.write(self.style.SUCCESS("Successfully updated chicken ages."))

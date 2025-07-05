@@ -92,7 +92,7 @@ class Query(graphene.ObjectType):
     @require_authentication
     def resolve_egg_inventory(self, info):
         user = info.context.user
-        if not user.is_authenticated or user.user_type not in ['ADMIN', 'STOCK_MANAGER']:
+        if not user.is_authenticated or user.user_type not in ['ADMIN', 'STOCK_MANAGER', "SALES_MANAGER"]:
             raise GraphQLError("Only admin and stock managers can view egg inventory")
         
         inventory, _ = EggInventory.objects.get_or_create(pk=1)
@@ -179,25 +179,32 @@ class Query(graphene.ObjectType):
 
     egg_sales = graphene.List(
         EggSaleOutput,
-        start_date=graphene.Date(),
-        end_date=graphene.Date(),
-        buyer_name=graphene.String()
+        start_date=graphene.String(),
+        end_date=graphene.String(),
+        buyer_name=graphene.String(),
+        egg_type=graphene.String(),
+        only_unconfirmed=graphene.Boolean()
     )
     
     @require_authentication
-    def resolve_egg_sales(self, info, start_date=None, end_date=None, buyer_name=None):
+    def resolve_egg_sales(self, info, start_date=None, end_date=None, buyer_name=None, 
+                         egg_type=None, only_unconfirmed=False):
         user = info.context.user
         if not user.is_authenticated or user.user_type not in ['ADMIN', 'STOCK_MANAGER', "SALES_MANAGER"]:
             raise GraphQLError("Only admin and stock managers can view sales records")
         
-        queryset = EggSale.objects.all_objects()
+        queryset = EggSale.objects.all()
         
         if start_date:
-            queryset = queryset.filter(created_at__gte=start_date)
+            queryset = queryset.filter(created_at__date__gte=start_date)
         if end_date:
-            queryset = queryset.filter(created_at__lte=end_date)
+            queryset = queryset.filter(created_at__date__lte=end_date)
         if buyer_name:
             queryset = queryset.filter(buyer_name__icontains=buyer_name)
+        if egg_type:
+            queryset = queryset.filter(egg_type=egg_type)
+        if only_unconfirmed:
+            queryset = queryset.filter(confirmed_by_stock=False)
         
         return queryset.order_by('-created_at')
 

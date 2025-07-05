@@ -14,6 +14,6 @@ class Migration(migrations.Migration):
         migrations.AlterField(
             model_name='eggsale',
             name='price_per_egg',
-            field=models.DecimalField(decimal_places=9, default=Decimal('316.66666666600002599807339720427989959716796875'), max_digits=12),
+            field=models.DecimalField(decimal_places=9, default=Decimal('316.666666666'), max_digits=12),
         ),
     ]

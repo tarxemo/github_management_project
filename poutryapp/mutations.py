@@ -268,61 +268,108 @@ class RecordEggSale(graphene.Mutation):
     @require_authentication
     def mutate(self, info, input):
         user = info.context.user
-        if not user.is_authenticated or user.user_type != 'STOCK_MANAGER':
-            raise GraphQLError("Only stock managers can record egg sales")
         
+        # Only sales managers can record sales
+        if not user.is_authenticated or user.user_type != 'SALES_MANAGER':
+            raise GraphQLError("Only sales managers can record egg sales")
+        
+        # Check inventory
         inventory = EggInventory.objects.first()
-        if not inventory or inventory.total_eggs < input.quantity:
-            raise GraphQLError("Not enough eggs in inventory for this sale")
+        if not inventory:
+            raise GraphQLError("Inventory not initialized")
+        
+        if input.egg_type == EggSale.GOOD_EGG and inventory.total_eggs < input.quantity:
+            raise GraphQLError("Not enough good eggs in inventory")
+        elif input.egg_type == EggSale.REJECTED_EGG and inventory.rejected_eggs < input.quantity:
+            raise GraphQLError("Not enough rejected eggs in inventory")
         
         sale = EggSale(
+            egg_type=input.egg_type,
             quantity=input.quantity,
             price_per_egg=input.price_per_egg,
             buyer_name=input.buyer_name,
             buyer_contact=input.get('buyer_contact', ''),
-            recorded_by=user
+            notes=input.get('notes', ''),
+            is_loss=input.get('is_loss', False),
+            loss_amount=input.get('loss_amount', 0),
+            loss_description=input.get('loss_description', ''),
+            recorded_by=user,
+            confirmed_by_sales=True  # Auto-confirm since sales manager is recording
         )
         sale.save()
         
+        # Update inventory (stock manager will confirm later)
         return RecordEggSale(sale=sale, inventory=EggInventory.objects.first())
 
-# In your schema/mutations.py
-class UpdateEggSale(graphene.Mutation):
+class ConfirmEggSale(graphene.Mutation):
     class Arguments:
-        id = graphene.ID(required=True)
-        input = EggSaleInput(required=True)
+        input = ConfirmSaleInput(required=True)
 
-    egg_sale = graphene.Field(EggSaleOutput)
+    sale = graphene.Field(EggSaleOutput)
+    inventory = graphene.Field(EggInventoryOutput)
 
+    @transaction.atomic
     @require_authentication
-    def mutate(self, info, id, input):
-        if not info.context.user.is_authenticated:
+    def mutate(self, info, input):
+        user = info.context.user
+        if not user.is_authenticated:
             raise GraphQLError("Authentication required")
 
         try:
-            egg_sale = EggSale.objects.get(pk=id)
+            sale = EggSale.objects.get(pk=input.sale_id)
         except EggSale.DoesNotExist:
             raise GraphQLError("Egg sale record not found")
 
-        # Sales manager can only confirm receipt
-        if info.context.user.user_type == 'SALES_MANAGER':
-            if input.get('remained_eggs') is not None:
-                egg_sale.remained_eggs = input.remained_eggs
-                if input.get('remained_eggs') < 1:
-                    egg_sale.confirm_sales = True
-            if input.get('rejected_eggs') is not None:
-                egg_sale.rejected_eggs = input.rejected_eggs
-                egg_sale.confirm_received = True
-            egg_sale.save()
-            return UpdateEggSale(egg_sale=egg_sale)
+        inventory = EggInventory.objects.first()
+        if not inventory:
+            raise GraphQLError("Inventory not initialized")
 
-        # Stock manager can update remaining/rejected eggs and confirm
-        if info.context.user.user_type == 'STOCK_MANAGER':
-            egg_sale.confirm_sales = True
-            egg_sale.save()
-            return UpdateEggSale(egg_sale=egg_sale)
+        if user.user_type == 'STOCK_MANAGER':
+            if not sale.confirmed_by_stock and input.confirm:
+                # Deduct from inventory only when confirming
+                if sale.egg_type == EggSale.GOOD_EGG:
+                    inventory.total_eggs -= sale.quantity
+                else:
+                    inventory.rejected_eggs -= sale.quantity
+                inventory.save()
+                
+            sale.confirmed_by_stock = input.confirm
+            sale.save()
+        else:
+            raise GraphQLError("Only stock managers can confirm sales")
 
-        raise GraphQLError("Unauthorized to update this record")
+        return ConfirmEggSale(sale=sale, inventory=inventory)
+
+class RecordEggLoss(graphene.Mutation):
+    class Arguments:
+        input = EggSaleInput(required=True)
+
+    sale = graphene.Field(EggSaleOutput)
+    inventory = graphene.Field(EggInventoryOutput)
+
+    @transaction.atomic
+    @require_authentication
+    def mutate(self, info, input):
+        user = info.context.user
+        if not user.is_authenticated or user.user_type != 'SALES_MANAGER':
+            raise GraphQLError("Only sales managers can record losses")
+
+        # For losses, we don't check inventory as these are eggs that couldn't be sold
+        sale = EggSale(
+            egg_type=input.egg_type,
+            quantity=input.quantity,
+            price_per_egg=0,  # Losses have no sale value
+            buyer_name="N/A",
+            is_loss=True,
+            loss_amount=input.loss_amount,
+            loss_description=input.loss_description,
+            recorded_by=user,
+            confirmed_by_sales=True,
+            confirmed_by_stock=True  # Auto-confirm losses
+        )
+        sale.save()
+        
+        return RecordEggLoss(sale=sale, inventory=EggInventory.objects.first())
 
 class CreateFoodType(graphene.Mutation):
     class Arguments:
@@ -743,8 +790,11 @@ class Mutation(graphene.ObjectType):
     # Egg Management
     record_egg_collection = RecordEggCollection.Field()
     confirm_egg_collection = ConfirmEggCollection.Field()
+    
+    #sales management
     record_egg_sale = RecordEggSale.Field()
-    update_egg_sale = UpdateEggSale.Field()
+    confirm_egg_sale = ConfirmEggSale.Field()
+    record_egg_loss = RecordEggLoss.Field()
     
     # Food Management
     create_food_type = CreateFoodType.Field()

@@ -158,17 +158,34 @@ class EggInventory(BaseModel):
         return f"Inventory: {self.total_eggs} eggs ({self.rejected_eggs} rejected)"
 
 class EggSale(BaseModel):
+    GOOD_EGG = 'good'
+    REJECTED_EGG = 'rejected'
+    EGG_TYPE_CHOICES = [
+        (GOOD_EGG, 'Good Eggs'),
+        (REJECTED_EGG, 'Rejected Eggs'),
+    ]
+    
+    egg_type = models.CharField(max_length=10, choices=EGG_TYPE_CHOICES, default=GOOD_EGG)
     quantity = models.PositiveIntegerField()
-    remained_eggs = models.PositiveIntegerField(default=0)
-    rejected_eggs = models.PositiveIntegerField(default=0)
-    price_per_egg = models.DecimalField(max_digits=10, decimal_places=6)
+    price_per_egg = models.DecimalField(max_digits=10, decimal_places=2)
     buyer_name = models.CharField(max_length=100)
     buyer_contact = models.CharField(max_length=20, blank=True)
     recorded_by = models.ForeignKey(User, on_delete=models.PROTECT)
-    confirm_received = models.BooleanField(default=False)
-    confirm_sales = models.BooleanField(default=False)
+    confirmed_by_sales = models.BooleanField(default=False)
+    confirmed_by_stock = models.BooleanField(default=False)
+    notes = models.TextField(blank=True)
+    
+    # For loss reporting
+    is_loss = models.BooleanField(default=False)
+    loss_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    loss_description = models.TextField(blank=True)
+    
     def __str__(self):
-        return f"Sold {self.quantity} eggs on {self.created_at}"
+        return f"{self.get_egg_type_display()} - {self.quantity} eggs on {self.sale_date}"
+    
+    @property
+    def total_amount(self):
+        return self.quantity * self.price_per_egg
 
 class FoodType(BaseModel):
     name = models.CharField(max_length=50, unique=True)
@@ -363,7 +380,7 @@ def add_back_remained_eggs_on_confirmation(sender, instance, **kwargs):
         return
 
     # If confirm_sales just changed from False to True
-    if not old_instance.confirm_sales and instance.confirm_sales:
+    if not old_instance.confirmed_by_sales and instance.confirmed_by_sales:
         inventory = EggInventory.objects.first()
         if inventory:
             inventory.total_eggs += instance.remained_eggs

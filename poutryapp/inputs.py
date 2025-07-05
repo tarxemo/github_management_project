@@ -51,19 +51,15 @@ class EggCollectionConfirmationInput(graphene.InputObjectType):
     confirmed = graphene.Boolean(required=True)
 
 class EggSaleInput(graphene.InputObjectType):
-    egg_type = graphene.String(required=True)
-    quantity = graphene.Int(required=True)
-    price_per_egg = graphene.Decimal(required=True)
-    buyer_name = graphene.String(required=True)
+    id = graphene.ID()
+    quantity = graphene.Int()
+    price_per_egg = graphene.Decimal()
+    buyer_name = graphene.String()
     buyer_contact = graphene.String()
-    notes = graphene.String()
-    is_loss = graphene.Boolean()
-    loss_amount = graphene.Decimal()
-    loss_description = graphene.String()
-
-class ConfirmSaleInput(graphene.InputObjectType):
-    sale_id = graphene.ID(required=True)
-    confirm = graphene.Boolean(required=True)
+    remained_eggs = graphene.Int()
+    rejected_eggs = graphene.Int()
+    confirm_received = graphene.Boolean()
+    confirm_sales = graphene.Boolean()
     
 class FoodTypeInput(graphene.InputObjectType):
     name = graphene.String(required=True)

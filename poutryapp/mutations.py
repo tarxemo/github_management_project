@@ -277,9 +277,7 @@ class RecordEggSale(graphene.Mutation):
         
         sale = EggSale(
             quantity=input.quantity,
-            price_per_egg=input.price_per_egg,
-            buyer_name=input.buyer_name,
-            buyer_contact=input.get('buyer_contact', ''),
+            rejected_eggs=input.rejected_eggs,
             recorded_by=user
         )
         sale.save()
@@ -306,11 +304,15 @@ class UpdateEggSale(graphene.Mutation):
 
         # Sales manager can only confirm receipt
         if info.context.user.user_type == 'SALES_MANAGER':
-            if input.get('remained_eggs') is not None:
-                egg_sale.remained_eggs = input.remained_eggs
-            if input.get('rejected_eggs') is not None:
-                egg_sale.rejected_eggs = input.rejected_eggs
-                egg_sale.confirm_received = True
+            egg_sale.buyer_contact = input.buyer_contact
+            egg_sale.buyer_name = input.buyer_name
+            egg_sale.price_per_egg = input.price_per_egg
+            egg_sale.rejected_eggs = input.rejected_eggs
+            egg_sale.sale_short = input.sale_short
+            egg_sale.short_reason = input.short_reason
+            egg_sale.reject_price = input.reject_price
+            egg_sale.confirm_received = True
+            egg_sale.confirm_sales = True
             egg_sale.save()
             return UpdateEggSale(egg_sale=egg_sale)
 

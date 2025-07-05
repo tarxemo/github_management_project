@@ -1,3 +1,4 @@
+from decimal import Decimal
 from django.db import models
 from django.contrib.auth.models import AbstractUser
 from django.db.models.signals import post_save, pre_save
@@ -161,12 +162,16 @@ class EggSale(BaseModel):
     quantity = models.PositiveIntegerField(default=0)
     remained_eggs = models.PositiveIntegerField(default=0)
     rejected_eggs = models.PositiveIntegerField(default=0)
-    price_per_egg = models.DecimalField(max_digits=10, decimal_places=2)
-    buyer_name = models.CharField(max_length=100)
+    price_per_egg = models.DecimalField(max_digits=12, decimal_places=9, default=Decimal(316.666666666))
+    buyer_name = models.CharField(max_length=100, null=True, blank=True)
     buyer_contact = models.CharField(max_length=20, blank=True)
     recorded_by = models.ForeignKey(User, on_delete=models.PROTECT)
     confirm_received = models.BooleanField(default=False)
     confirm_sales = models.BooleanField(default=False)
+    
+    sale_short = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    short_reason = models.TextField(default="no reason")
+    reject_price = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     def __str__(self):
         return f"Sold {self.quantity} eggs on {self.created_at}"
 
@@ -363,7 +368,7 @@ def add_back_remained_eggs_on_confirmation(sender, instance, **kwargs):
         return
 
     # If confirm_sales just changed from False to True
-    if not old_instance.confirmed_by_sales and instance.confirmed_by_sales:
+    if not old_instance.confirm_sales and instance.confirm_sales:
         inventory = EggInventory.objects.first()
         if inventory:
             inventory.total_eggs += instance.remained_eggs

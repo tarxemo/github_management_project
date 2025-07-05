@@ -68,7 +68,6 @@ class EggSaleOutput(BaseOutput):
     class Meta:
         model = EggSale
         fields = '__all__'
-        interfaces = (relay.Node,)
     
     total_amount = graphene.Decimal()
     recorded_by = graphene.Field(lambda: UserOutput)

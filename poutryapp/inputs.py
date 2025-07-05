@@ -60,6 +60,9 @@ class EggSaleInput(graphene.InputObjectType):
     rejected_eggs = graphene.Int()
     confirm_received = graphene.Boolean()
     confirm_sales = graphene.Boolean()
+    sale_short = graphene.Decimal()
+    short_reason = graphene.String()
+    reject_price = graphene.Int()
     
 class FoodTypeInput(graphene.InputObjectType):
     name = graphene.String(required=True)

@@ -158,34 +158,17 @@ class EggInventory(BaseModel):
         return f"Inventory: {self.total_eggs} eggs ({self.rejected_eggs} rejected)"
 
 class EggSale(BaseModel):
-    GOOD_EGG = 'good'
-    REJECTED_EGG = 'rejected'
-    EGG_TYPE_CHOICES = [
-        (GOOD_EGG, 'Good Eggs'),
-        (REJECTED_EGG, 'Rejected Eggs'),
-    ]
-    
-    egg_type = models.CharField(max_length=10, choices=EGG_TYPE_CHOICES, default=GOOD_EGG)
-    quantity = models.PositiveIntegerField()
+    quantity = models.PositiveIntegerField(default=0)
+    remained_eggs = models.PositiveIntegerField(default=0)
+    rejected_eggs = models.PositiveIntegerField(default=0)
     price_per_egg = models.DecimalField(max_digits=10, decimal_places=2)
     buyer_name = models.CharField(max_length=100)
     buyer_contact = models.CharField(max_length=20, blank=True)
     recorded_by = models.ForeignKey(User, on_delete=models.PROTECT)
-    confirmed_by_sales = models.BooleanField(default=False)
-    confirmed_by_stock = models.BooleanField(default=False)
-    notes = models.TextField(blank=True)
-    
-    # For loss reporting
-    is_loss = models.BooleanField(default=False)
-    loss_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0)
-    loss_description = models.TextField(blank=True)
-    
+    confirm_received = models.BooleanField(default=False)
+    confirm_sales = models.BooleanField(default=False)
     def __str__(self):
-        return f"{self.get_egg_type_display()} - {self.quantity} eggs on {self.sale_date}"
-    
-    @property
-    def total_amount(self):
-        return self.quantity * self.price_per_egg
+        return f"Sold {self.quantity} eggs on {self.created_at}"
 
 class FoodType(BaseModel):
     name = models.CharField(max_length=50, unique=True)

@@ -132,8 +132,8 @@ DATABASES = {
         'ENGINE': 'django.db.backends.postgresql',
         'NAME': 'leo',
         'USER': 'tarxemo',
-        # 'PASSWORD': '@SuperCoder',
-        'PASSWORD': '123456',
+        'PASSWORD': '@SuperCoder',
+        # 'PASSWORD': '123456',
         'HOST': 'localhost',  # or your remote server IP
         'PORT': '5432',
     }

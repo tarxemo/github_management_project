@@ -44,6 +44,13 @@ class Query(graphene.ObjectType):
         
         return queryset
 
+    
+    sales_managers = graphene.List(UserOutput)
+    
+    @require_authentication
+    def resolve_sales_managers(self, info):
+        return User.objects.filter(user_type="SALES_MANAGER")
+    
     # ------------------- Chicken House Queries -------------------
     chicken_houses = graphene.List(
         ChickenHouseOutput,
@@ -195,6 +202,7 @@ class Query(graphene.ObjectType):
         if start_date:
             queryset = queryset.filter(created_at__gte=start_date)
         if end_date:
+            end_date = end_date + timedelta(days=1)
             queryset = queryset.filter(created_at__lte=end_date)
         if buyer_name:
             queryset = queryset.filter(buyer_name__icontains=buyer_name)
@@ -238,6 +246,7 @@ class Query(graphene.ObjectType):
         if start_date:
             queryset = queryset.filter(created_at__gte=start_date)
         if end_date:
+            end_date = end_date + timedelta(days=1)
             queryset = queryset.filter(created_at__lte=end_date)
         
         return queryset.order_by('-created_at')
@@ -266,6 +275,7 @@ class Query(graphene.ObjectType):
         if start_date:
             queryset = queryset.filter(created_at__gte=start_date)
         if end_date:
+            end_date = end_date + timedelta(days=1)
             queryset = queryset.filter(created_at__lte=end_date)
         if confirmed_only:
             queryset = queryset.filter(worker_confirmed=True)
@@ -349,6 +359,7 @@ class Query(graphene.ObjectType):
         if start_date:
             queryset = queryset.filter(created_at__gte=start_date)
         if end_date:
+            end_date = end_date + timedelta(days=1)
             queryset = queryset.filter(created_at__lte=end_date)
         if user.user_type == 'DOCTOR':
             queryset = queryset
@@ -387,6 +398,7 @@ class Query(graphene.ObjectType):
         if start_date:
             queryset = queryset.filter(created_at__gte=start_date)
         if end_date:
+            end_date= end_date + timedelta(days=1)
             queryset = queryset.filter(created_at__lte=end_date)
         if needs_confirmation and user.user_type == 'DOCTOR':
             queryset = queryset.filter(confirmed_by__isnull=True)
@@ -568,6 +580,7 @@ class Query(graphene.ObjectType):
         if start_date:
             queryset = queryset.filter(created_at__gte=start_date)
         if end_date:
+            end_date = end_date + timedelta(days=1)
             queryset = queryset.filter(created_at__lte=end_date)
         if worker_id:
             queryset = queryset.filter(worker_id=worker_id)
@@ -641,3 +654,55 @@ class Query(graphene.ObjectType):
             return SystemLog.objects.get(pk=id)
         except SystemLog.DoesNotExist:
             return None
+    
+    egg_distributions = graphene.List(EggDistributionOutput)
+    sales_manager_inventory = graphene.Field(SalesManagerInventoryOutput, sales_manager_id=graphene.ID())
+    available_distributions = graphene.List(EggDistributionOutput, sales_manager_id=graphene.ID(required=True))
+    egg_inventory = graphene.Field(EggInventoryOutput)
+
+    @require_authentication
+    def resolve_egg_distributions(self, info):
+        user = info.context.user
+        if not user.is_authenticated:
+            raise GraphQLError("Authentication required")
+        
+        if user.user_type == 'STOCK_MANAGER':
+            return EggDistribution.objects.filter(stock_manager=user)
+        elif user.user_type == 'SALES_MANAGER':
+            return EggDistribution.objects.filter(sales_manager=user)
+        else:
+            return EggDistribution.objects.none()
+
+    @require_authentication
+    def resolve_sales_manager_inventory(self, info, sales_manager_id=None):
+        user = info.context.user
+        if not user.is_authenticated:
+            raise GraphQLError("Authentication required")
+        
+        manager_id = sales_manager_id or user.id
+        if user.user_type != 'STOCK_MANAGER' and str(user.id) != str(manager_id):
+            raise GraphQLError("Unauthorized to view this inventory")
+        
+        return SalesManagerInventory.objects.get_or_create(sales_manager_id=manager_id)[0]
+
+    @require_authentication
+    def resolve_available_distributions(self, info, sales_manager_id):
+        user = info.context.user
+        if not user.is_authenticated:
+            raise GraphQLError("Authentication required")
+        
+        if user.user_type != 'SALES_MANAGER' or str(user.id) != str(sales_manager_id):
+            raise GraphQLError("Unauthorized")
+        
+        return EggDistribution.objects.filter(
+            sales_manager_id=user.id
+        ).annotate(
+            remaining=Sum('quantity') - Sum('eggsale__quantity')
+        ).filter(remaining__gt=0)
+
+
+    @require_authentication
+    def resolve_egg_inventory(self, info):
+        if not info.context.user.is_authenticated:
+            raise GraphQLError("Authentication required")
+        return EggInventory.objects.first()

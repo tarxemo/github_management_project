@@ -6,6 +6,7 @@ from django.dispatch import receiver
 from django.core.exceptions import ValidationError
 from django.utils import timezone
 from django.contrib.auth.base_user import BaseUserManager
+from django.db.models import Sum
 
 
 class ActiveManager(models.Manager):
@@ -158,22 +159,67 @@ class EggInventory(BaseModel):
     def __str__(self):
         return f"Inventory: {self.total_eggs} eggs ({self.rejected_eggs} rejected)"
 
-class EggSale(BaseModel):
+class EggDistribution(BaseModel):
+    stock_manager = models.ForeignKey(User, on_delete=models.PROTECT, related_name='distributions_made')
+    sales_manager = models.ForeignKey(User, on_delete=models.PROTECT, related_name='distributions_received')
     quantity = models.PositiveIntegerField(default=0)
-    remained_eggs = models.PositiveIntegerField(default=0)
-    rejected_eggs = models.PositiveIntegerField(default=0)
+    notes = models.TextField(blank=True)
+    
+    @property
+    def sold_quantity(self):
+        return self.sales.aggregate(Sum('quantity'))['quantity__sum'] or 0
+    
+    @property
+    def remaining_quantity(self):
+        return self.quantity - self.sold_quantity
+    
+    def __str__(self):
+        return f"{self.quantity} eggs to {self.sales_manager.get_full_name()} on {self.created_at.date()}"
+
+class SalesManagerInventory(BaseModel):
+    sales_manager = models.OneToOneField(User, on_delete=models.PROTECT)
+    total_eggs = models.PositiveIntegerField(default=0)
+    sold_eggs = models.PositiveIntegerField(default=0)
+    
+    @property
+    def remaining_eggs(self):
+        return self.total_eggs - self.sold_eggs
+    
+    def update_inventory(self):
+        self.sold_eggs = EggSale.objects.filter(
+            sales_manager=self.sales_manager
+        ).aggregate(Sum('quantity'))['quantity__sum'] or 0
+        self.save()
+    
+    def __str__(self):
+        return f"Inventory for {self.sales_manager.get_full_name()}"
+
+class EggSale(BaseModel):
+    distribution = models.ForeignKey(EggDistribution, on_delete=models.PROTECT, null=True, blank=True, related_name='sales')
+    sales_manager = models.ForeignKey(User, on_delete=models.PROTECT, related_name='sales_made', null=True, blank=True)
+    quantity = models.PositiveIntegerField(default=0)
     price_per_egg = models.DecimalField(max_digits=10, decimal_places=6, default=0)
     buyer_name = models.CharField(max_length=100, null=True, blank=True)
     buyer_contact = models.CharField(max_length=20, blank=True)
-    recorded_by = models.ForeignKey(User, on_delete=models.PROTECT)
-    confirm_received = models.BooleanField(default=False)
-    confirm_sales = models.BooleanField(default=False)
-    
-    sale_short = models.DecimalField(max_digits=10, decimal_places=2, default=0)
-    short_reason = models.TextField(default="no reason")
+    confirmed = models.BooleanField(default=False)
+    sale_short = models.PositiveIntegerField(default=0)
+    short_reason = models.TextField(blank=True)
+    rejected_eggs = models.PositiveIntegerField(default=0)
     reject_price = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    
+    @property
+    def total_amount(self):
+        return (self.quantity - self.rejected_eggs) * self.price_per_egg
+    
+    def save(self, *args, **kwargs):
+        creating = not self.pk
+        super().save(*args, **kwargs)
+        if creating and self.distribution:
+            inventory = SalesManagerInventory.objects.get(sales_manager=self.sales_manager)
+            inventory.update_inventory()
+    
     def __str__(self):
-        return f"Sold {self.quantity} eggs on {self.created_at}"
+        return f"Sold {self.quantity} eggs to {self.buyer_name or 'anonymous'}"
 
 class FoodType(BaseModel):
     name = models.CharField(max_length=50, unique=True)
@@ -216,9 +262,9 @@ class FoodDistribution(BaseModel):
             raise ValidationError("Only stock managers can distribute food")
         if self.received_by.user_type != 'WORKER':
             raise ValidationError("Only workers can receive food")
-        if self.chicken_house != self.received_by.chicken_house:
+        if self.chicken_house.owner != self.received_by:
             raise ValidationError("Worker can only receive food for their assigned chicken house")
-    
+
     def __str__(self):
         return f"{self.sacks_distributed} sacks to {self.chicken_house.name} on {self.created_at}"
 
@@ -318,7 +364,7 @@ class Expense(BaseModel):
     
     def clean(self):
         # Calculate total cost before saving
-        self.total_cost = self.unit_cost * self.quantity
+        self.total_cost = Decimal(self.unit_cost * self.quantity)
     
     def save(self, *args, **kwargs):
         self.full_clean()  # This will call clean() and validate the model
@@ -347,144 +393,3 @@ class SalaryPayment(BaseModel):
     
     def __str__(self):
         return f"Salary for {self.worker.get_full_name()} - {self.amount}"
-    
-# Signals
-@receiver(post_save, sender=EggCollection)
-def update_egg_inventory(sender, instance, created, **kwargs):
-    if created:
-        inventory, _ = EggInventory.objects.get_or_create(pk=1)
-        inventory.total_eggs += instance.total_eggs
-        inventory.rejected_eggs += instance.rejected_eggs
-        inventory.save()
-
-@receiver(pre_save, sender=EggSale)
-def add_back_remained_eggs_on_confirmation(sender, instance, **kwargs):
-    if not instance.pk:  # Skip if it's a new object
-        return
-
-    try:
-        old_instance = EggSale.objects.get(pk=instance.pk)
-    except EggSale.DoesNotExist:
-        return
-
-    # If confirm_sales just changed from False to True
-    if not old_instance.confirm_sales and instance.confirm_sales:
-        inventory = EggInventory.objects.first()
-        if inventory:
-            inventory.total_eggs += instance.remained_eggs
-            inventory.rejected_eggs += instance.rejected_eggs
-            inventory.save()
-            
-@receiver(post_save, sender=EggSale)
-def deduct_sold_eggs(sender, instance, created, **kwargs):
-    if created:
-        inventory = EggInventory.objects.first()
-        if inventory:
-            if inventory.total_eggs >= instance.quantity:
-                inventory.total_eggs -= instance.quantity
-                inventory.save()
-            else:
-                raise ValidationError("Not enough eggs in inventory for this sale")
-
-@receiver(post_save, sender=FoodPurchase)
-def update_food_inventory(sender, instance, created, **kwargs):
-    if created:
-        inventory, _ = FoodInventory.objects.get_or_create(food_type=instance.food_type)
-        inventory.sacks_in_stock += instance.sacks_purchased
-        inventory.save()
-
-@receiver(pre_save, sender=FoodDistribution)
-def deduct_food_on_worker_confirmation(sender, instance, **kwargs):
-    if not instance.pk:
-        return  # Skip new instance, wait for update
-
-    try:
-        old_instance = FoodDistribution.objects.get(pk=instance.pk)
-    except FoodDistribution.DoesNotExist:
-        return
-
-    # If confirmation just changed from False → True
-    if not old_instance.worker_confirmed and instance.worker_confirmed:
-        inventory = FoodInventory.objects.get(food_type=instance.food_type)
-        if inventory.sacks_in_stock >= instance.sacks_distributed:
-            inventory.sacks_in_stock -= instance.sacks_distributed
-            inventory.save()
-        else:
-            raise ValidationError("Not enough food in inventory for this distribution")
-
-
-@receiver(post_save, sender=MedicinePurchase)
-def update_medicine_inventory(sender, instance, created, **kwargs):
-    if not created:
-        return
-
-    try:
-        # Try to get the existing inventory
-        inventory = MedicineInventory.objects.get(medicine=instance.medicine)
-        inventory.quantity_in_stock += instance.quantity
-        inventory.save()
-    except MedicineInventory.DoesNotExist:
-        # If it doesn't exist, create a new inventory record
-        MedicineInventory.objects.create(
-            medicine=instance.medicine,
-            quantity_in_stock=instance.quantity
-        )
-
-@receiver(pre_save, sender=MedicineDistribution)
-def deduct_distributed_medicine_on_confirm(sender, instance, **kwargs):
-    if not instance.pk:
-        return  # Skip if it's a new object; handle after save
-
-    try:
-        previous = MedicineDistribution.objects.get(pk=instance.pk)
-    except MedicineDistribution.DoesNotExist:
-        return
-
-    # If both doctor and worker confirmation just changed to True
-    if (not previous.doctor_confirmed and instance.doctor_confirmed) or \
-       (not previous.worker_confirmed and instance.worker_confirmed):
-
-        # Only act if now both are confirmed
-        if instance.doctor_confirmed and instance.worker_confirmed:
-            inventory = MedicineInventory.objects.get(medicine=instance.medicine)
-            if inventory.quantity_in_stock >= instance.quantity:
-                inventory.quantity_in_stock -= instance.quantity
-                inventory.save()
-            else:
-                raise ValidationError("Not enough medicine in inventory for this distribution")
-
-
-@receiver(pre_save, sender=EggCollection)
-def validate_egg_collection(sender, instance, **kwargs):
-    if instance.stock_manager_confirmed and not instance.stock_manager_confirmation_date:
-        instance.stock_manager_confirmation_date = timezone.now()
-
-@receiver(pre_save, sender=FoodDistribution)
-def validate_food_distribution(sender, instance, **kwargs):
-    if instance.worker_confirmed and not instance.confirmation_date:
-        instance.confirmation_date = timezone.now()
-
-@receiver(pre_save, sender=ChickenDeathRecord)
-def decrease_chicken_count_on_confirmation(sender, instance, **kwargs):
-    if not instance.pk:
-        # New record, wait until confirmed
-        return
-
-    try:
-        old_instance = ChickenDeathRecord.objects.get(pk=instance.pk)
-    except ChickenDeathRecord.DoesNotExist:
-        return
-
-    # If confirmed_by changed from None → someone
-    if old_instance.confirmed_by is None and instance.confirmed_by is not None:
-        # Make sure it's actually a doctor
-        if instance.confirmed_by.user_type != 'DOCTOR':
-            raise ValidationError("Only doctors can confirm death records.")
-
-        house = instance.chicken_house
-        if house.current_chicken_count >= instance.number_dead:
-            house.current_chicken_count -= instance.number_dead
-        else:
-            house.current_chicken_count = 0
-        house.save()
-

@@ -185,17 +185,15 @@ class AddChickensToHouse(graphene.Mutation):
         user = info.context.user
         if not user.is_authenticated or user.user_type != "ADMIN":
             raise GraphQLError("Only admin can add chickens")
-
-        try:
-            house = ChickenHouse.objects.get(pk=input.chicken_house_id)
-        except ChickenHouse.DoesNotExist:
-            raise GraphQLError("Chicken house not found")
-
+        
+        house = ChickenHouse.objects.get(pk=input.chicken_house_id)
+        
         if house.current_chicken_count + input.number_of_chickens > house.capacity:
             raise GraphQLError("Cannot exceed chicken house capacity")
-
+        print("attempting to save data")
         house.current_chicken_count += input.number_of_chickens
         house.save()
+        print("the data was saved")
         return AddChickensToHouse(chicken_house=house)
     
     
@@ -257,72 +255,89 @@ class ConfirmEggCollection(graphene.Mutation):
         except EggCollection.DoesNotExist:
             raise GraphQLError("Egg collection not found")
 
-class RecordEggSale(graphene.Mutation):
+class DistributeEggs(graphene.Mutation):
     class Arguments:
-        input = EggSaleInput(required=True)
+        input = EggDistributionInput(required=True)
 
-    sale = graphene.Field(EggSaleOutput)
+    distribution = graphene.Field(EggDistributionOutput)
     inventory = graphene.Field(EggInventoryOutput)
+    sales_manager_inventory = graphene.Field(SalesManagerInventoryOutput)
 
     @transaction.atomic
     @require_authentication
     def mutate(self, info, input):
         user = info.context.user
-        if not user.is_authenticated or user.user_type != 'STOCK_MANAGER':
-            raise GraphQLError("Only stock managers can record egg sales")
+        if user.user_type != 'STOCK_MANAGER':
+            raise GraphQLError("Only stock managers can distribute eggs")
+        
+        try:
+            sales_manager = User.objects.get(pk=input.sales_manager_id, user_type='SALES_MANAGER')
+        except User.DoesNotExist:
+            raise GraphQLError("Invalid sales manager")
         
         inventory = EggInventory.objects.first()
         if not inventory or inventory.total_eggs < input.quantity:
-            raise GraphQLError("Not enough eggs in inventory for this sale")
+            raise GraphQLError("Not enough eggs in main inventory")
         
-        sale = EggSale(
+        distribution = EggDistribution.objects.create(
+            stock_manager=user,
+            sales_manager=sales_manager,
             quantity=input.quantity,
-            rejected_eggs=input.rejected_eggs,
-            recorded_by=user
+            notes=input.notes
         )
-        sale.save()
+                
+        sm_inventory, _ = SalesManagerInventory.objects.get_or_create(sales_manager=sales_manager)
         
-        return RecordEggSale(sale=sale, inventory=EggInventory.objects.first())
+        return DistributeEggs(
+            distribution=distribution,
+            inventory=inventory,
+            sales_manager_inventory=sm_inventory
+        )
 
-# In your schema/mutations.py
-class UpdateEggSale(graphene.Mutation):
+class RecordEggSale(graphene.Mutation):
     class Arguments:
-        id = graphene.ID(required=True)
         input = EggSaleInput(required=True)
 
-    egg_sale = graphene.Field(EggSaleOutput)
+    sale = graphene.Field(EggSaleOutput)
+    inventory = graphene.Field(SalesManagerInventoryOutput)
 
+    @transaction.atomic
     @require_authentication
-    def mutate(self, info, id, input):
-        if not info.context.user.is_authenticated:
-            raise GraphQLError("Authentication required")
-
+    def mutate(self, info, input):
+        user = info.context.user
+        if user.user_type != 'SALES_MANAGER':
+            raise GraphQLError("Only sales managers can record sales")
+        
         try:
-            egg_sale = EggSale.objects.get(pk=id)
-        except EggSale.DoesNotExist:
-            raise GraphQLError("Egg sale record not found")
-
-        # Sales manager can only confirm receipt
-        if info.context.user.user_type == 'SALES_MANAGER':
-            egg_sale.buyer_contact = input.buyer_contact
-            egg_sale.buyer_name = input.buyer_name
-            egg_sale.price_per_egg = input.price_per_egg
-            egg_sale.rejected_eggs = input.rejected_eggs
-            egg_sale.sale_short = input.sale_short
-            egg_sale.short_reason = input.short_reason
-            egg_sale.reject_price = input.reject_price
-            egg_sale.confirm_received = True
-            egg_sale.confirm_sales = True
-            egg_sale.save()
-            return UpdateEggSale(egg_sale=egg_sale)
-
-        # Stock manager can update remaining/rejected eggs and confirm
-        if info.context.user.user_type == 'STOCK_MANAGER':
-            egg_sale.confirm_sales = True
-            egg_sale.save()
-            return UpdateEggSale(egg_sale=egg_sale)
-
-        raise GraphQLError("Unauthorized to update this record")
+            distribution = EggDistribution.objects.get(
+                pk=input.distribution_id,
+                sales_manager=user
+            )
+        except EggDistribution.DoesNotExist:
+            raise GraphQLError("Invalid distribution")
+        
+        available = distribution.remaining_quantity
+        if input.quantity > available:
+            raise GraphQLError(f"Only {available} eggs available in this distribution")
+        
+        sale = EggSale.objects.create(
+            distribution=distribution,
+            sales_manager=user,
+            quantity=input.quantity,
+            price_per_egg=input.price_per_egg,
+            buyer_name=input.buyer_name,
+            buyer_contact=input.buyer_contact,
+            # sale_short=input.sale_short,
+            # short_reason=input.short_reason,
+            rejected_eggs=input.rejected_eggs,
+            # reject_price=input.reject_price,
+            confirmed = True
+        )
+        
+        inventory = SalesManagerInventory.objects.get(sales_manager=user)
+        inventory.update_inventory()
+        
+        return RecordEggSale(sale=sale, inventory=inventory)
 
 class CreateFoodType(graphene.Mutation):
     class Arguments:
@@ -666,7 +681,7 @@ class RecordExpense(graphene.Mutation):
 
     expense = graphene.Field(ExpenseOutput)
 
-    @transaction.atomic
+    # @transaction.atomic
     @require_authentication
     def mutate(self, info, input):
         user = info.context.user
@@ -675,10 +690,8 @@ class RecordExpense(graphene.Mutation):
         
         try:
             category = ExpenseCategory.objects.get(pk=input.category_id)
-
             expense = Expense(
                 category=category,
-                created_at=input.get('date', date.today()),
                 description=input.description,
                 payment_method=input.get('payment_method', 'CASH'),
                 unit_cost=input.unit_cost,
@@ -688,6 +701,7 @@ class RecordExpense(graphene.Mutation):
                 recorded_by=user
             )
             expense.save()
+            print(expense)
             return RecordExpense(expense=expense)
         except ExpenseCategory.DoesNotExist:
             raise GraphQLError("Expense category not found")
@@ -745,8 +759,8 @@ class Mutation(graphene.ObjectType):
     confirm_egg_collection = ConfirmEggCollection.Field()
     
     #sales management
+    distribute_eggs = DistributeEggs.Field()
     record_egg_sale = RecordEggSale.Field()
-    update_egg_sale = UpdateEggSale.Field()
     
     # Food Management
     create_food_type = CreateFoodType.Field()

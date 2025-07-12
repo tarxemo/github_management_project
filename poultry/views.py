@@ -431,19 +431,26 @@ class ReportAPIView(APIView):
         response['Content-Disposition'] = f'attachment; filename="{report_type}_report.csv"'
         
         writer = csv.writer(response)
-        writer.writerow(report_data['columns'])
-        
+
+        # Write header row
+        header_row = [col[0] for col in report_data['columns']]
+        writer.writerow(header_row)
+
         for item in report_data['data']:
             row = []
-            for col in report_data['columns']:
-                col_key = col.lower().replace(' ', '_')
-                if isinstance(item, dict):
-                    value = item.get(col_key, '')
-                else:
-                    value = getattr(item, col_key, '')
+            for _, col_key in report_data['columns']:
+                value = item
+                for part in col_key.split('__'):
+                    if hasattr(value, part):
+                        value = getattr(value, part)
+                        if callable(value):
+                            value = value()
+                    else:
+                        value = ''  # fallback if key/method doesn't exist
+                        break
                 row.append(str(value))
             writer.writerow(row)
-        
+
         return response
 
 

@@ -1,4 +1,5 @@
 # reports/views.py
+from .utils import add_logo_watermark, add_text_watermark
 from poutryapp.models import *
 from rest_framework.views import APIView
 from rest_framework.response import Response
@@ -31,6 +32,9 @@ from reportlab.lib.colors import Color, HexColor
 from decimal import Decimal
 from datetime import datetime, time
 from django.utils.timezone import make_aware
+from reportlab.graphics.shapes import Drawing
+from reportlab.graphics.charts.piecharts import Pie
+
 
 class ReportAPIView(APIView):
     def get(self, request):
@@ -81,6 +85,7 @@ class ReportAPIView(APIView):
         if house_id:
             house_filter &= Q(chicken_house_id=house_id)
 
+
         if report_type == 'egg_collection':
             filters = get_date_filter('created_at')
             data = list(EggCollection.objects.filter(filters & house_filter).select_related(
@@ -88,23 +93,38 @@ class ReportAPIView(APIView):
             ).order_by('created_at'))
             return {
                 'data': data,
-                'columns': ['Date', 'Chicken House', 'Worker', 'Full Trays', 'Loose Eggs', 'Rejected', 'Total Eggs'],
+                'columns': [
+                    ('Date', 'created_at'),
+                    ('Chicken House', 'chicken_house__name'),
+                    ('Worker', 'worker__get_full_name'),
+                    ('Full Trays', 'full_trays'),
+                    ('Loose Eggs', 'loose_eggs'),
+                    ('Rejected', 'rejected_eggs'),
+                    ('Total Eggs', 'total_eggs')
+                ],
                 'title': 'Egg Collection Report',
                 'date_field': 'created_at'
             }
-        
+
         elif report_type == 'egg_sales':
             filters = get_date_filter('created_at')
             data = list(EggSale.objects.filter(filters).select_related(
-                'recorded_by'
+                'sales_manager'
             ).order_by('created_at'))
             return {
                 'data': data,
-                'columns': ['Date', 'Quantity', 'Price Per Egg', 'Total Amount', 'Buyer', 'Recorded By'],
+                'columns': [
+                    ('Date', 'created_at'),
+                    ('Quantity', 'quantity'),
+                    ('Price Per Egg', 'price_per_egg'),
+                    ('Total Amount', 'total_amount'),
+                    ('Buyer', 'buyer_name'),
+                    ('Recorded By', 'sales_manager__get_full_name')
+                ],
                 'title': 'Egg Sales Report',
                 'date_field': 'created_at'
             }
-        
+
         elif report_type == 'food_consumption':
             filters = get_date_filter('created_at')
             data = list(FoodDistribution.objects.filter(filters & house_filter).select_related(
@@ -112,11 +132,18 @@ class ReportAPIView(APIView):
             ).order_by('created_at'))
             return {
                 'data': data,
-                'columns': ['Date', 'Food Type', 'Chicken House', 'Sacks Distributed', 'Distributed By', 'Received By'],
+                'columns': [
+                    ('Date', 'created_at'),
+                    ('Food Type', 'food_type__name'),
+                    ('Chicken House', 'chicken_house__name'),
+                    ('Sacks Distributed', 'sacks_distributed'),
+                    ('Distributed By', 'distributed_by__get_full_name'),
+                    ('Received By', 'received_by__get_full_name')
+                ],
                 'title': 'Food Consumption Report',
                 'date_field': 'created_at'
             }
-        
+
         elif report_type == 'medicine_usage':
             filters = get_date_filter('created_at')
             data = list(MedicineDistribution.objects.filter(filters & house_filter).select_related(
@@ -124,11 +151,19 @@ class ReportAPIView(APIView):
             ).order_by('created_at'))
             return {
                 'data': data,
-                'columns': ['Date', 'Medicine', 'Chicken House', 'Quantity', 'Purpose', 'Distributed By', 'Received By'],
+                'columns': [
+                    ('Date', 'created_at'),
+                    ('Medicine', 'medicine__name'),
+                    ('Chicken House', 'chicken_house__name'),
+                    ('Quantity', 'quantity'),
+                    ('Purpose', 'purpose'),
+                    ('Distributed By', 'distributed_by__get_full_name'),
+                    ('Received By', 'received_by__get_full_name')
+                ],
                 'title': 'Medicine Usage Report',
                 'date_field': 'created_at'
             }
-        
+
         elif report_type == 'mortality':
             filters = get_date_filter('created_at')
             data = list(ChickenDeathRecord.objects.filter(filters & house_filter).select_related(
@@ -136,48 +171,69 @@ class ReportAPIView(APIView):
             ).order_by('created_at'))
             return {
                 'data': data,
-                'columns': ['Date', 'Chicken House', 'Number Dead', 'Possible Cause', 'Recorded By', 'Confirmed By'],
+                'columns': [
+                    ('Date', 'created_at'),
+                    ('Chicken House', 'chicken_house__name'),
+                    ('Number Dead', 'number_dead'),
+                    ('Possible Cause', 'possible_cause'),
+                    ('Recorded By', 'recorded_by__get_full_name'),
+                    ('Confirmed By', 'confirmed_by__get_full_name')
+                ],
                 'title': 'Chicken Mortality Report',
                 'date_field': 'created_at'
             }
-        
+
         elif report_type == 'expenses':
-            filters = get_date_filter('date')
+            filters = get_date_filter('created_at')
             data = list(Expense.objects.filter(filters).select_related(
                 'category', 'recorded_by'
-            ).order_by('date'))
+            ).order_by('created_at'))
             return {
                 'data': data,
-                'columns': ['Date', 'Category', 'Description', 'Payment Method', 'Quantity', 'Unit Cost', 'Total Cost', 'Recorded By'],
+                'columns': [
+                    ('Date', 'created_at'),
+                    ('Category', 'category__name'),
+                    ('Description', 'description'),
+                    ('Payment Method', 'payment_method'),
+                    ('Quantity', 'quantity'),
+                    ('Unit Cost', 'unit_cost'),
+                    ('Total Cost', 'total_cost'),
+                    ('Recorded By', 'recorded_by__get_full_name')
+                ],
                 'title': 'Expenses Report',
-                'date_field': 'date'
+                'date_field': 'created_at'
             }
-        
+
         elif report_type == 'productivity':
             filters = get_date_filter('created_at')
             houses = ChickenHouse.objects.all_objects()
             productivity_data = []
-            
+
             for house in houses:
                 eggs_agg = EggCollection.objects.filter(
                     chicken_house=house,
                     **({'created_at__range': [start_date, end_date]} if start_date and end_date else {})
                 ).aggregate(total_eggs=Sum(F('full_trays') * 30 + F('loose_eggs')))
-                
+
                 eggs = eggs_agg['total_eggs'] or 0
                 avg_chickens = house.current_chicken_count
                 productivity = (eggs / avg_chickens) if avg_chickens > 0 else 0
-                
+
                 productivity_data.append({
-                    'house': house.name,
+                    'chicken_house': house.name,
                     'total_eggs': eggs,
-                    'avg_chickens': avg_chickens,
-                    'productivity': round(productivity, 2)
+                    'average_chickens': avg_chickens,
+                    'eggs_per_chicken': round(productivity, 2)
                 })
-            
+            print(productivity_data)
             return {
                 'data': productivity_data,
-                'columns': ['Chicken House', 'Total Eggs', 'Average Chickens', 'Eggs per Chicken'],
+                'columns': [
+                    ('Chicken House', 'chicken_house'),
+                    ('Total Eggs', 'total_eggs'),
+                    ('Average Chickens', 'average_chickens'),
+                    ('Eggs per Chicken', 'eggs_per_chicken')
+                ],
                 'title': 'Productivity Report',
                 'date_field': None
             }
@@ -238,18 +294,36 @@ class ReportAPIView(APIView):
         
         # Prepare table data
         table_data = []
-        table_data.append([Paragraph(col, header_style) for col in report_data['columns']])
-        
+        # table_data.append([Paragraph(col, header_style) for col in report_data['columns']])
+        table_data.append([Paragraph(col[0], header_style) for col in report_data['columns']])
+
         # Add data rows
         for item in report_data['data']:
             row = []
-            for col in report_data['columns']:
-                col_key = col.lower().replace(' ', '_')
+            for label, col_key in report_data['columns']:
                 if isinstance(item, dict):
-                    value = str(item.get(col_key, ''))
+                    value = item.get(col_key, '')
                 else:
-                    value = str(getattr(item, col_key, ''))
-                row.append(Paragraph(value, body_style))
+                    attr = item
+                    for part in col_key.split('__'):
+                        attr = getattr(attr, part, '')
+                        if callable(attr):
+                            attr = attr()
+                    value = attr
+                row.append(Paragraph(str(value), body_style))
+
+            # for col_name, attr_path in report_data['columns']:
+            #     # Support dot-notation and method calls
+            #     value = item
+            #     for part in attr_path.split('__'):
+            #         try:
+            #             value = getattr(value, part)
+            #             if callable(value):
+            #                 value = value()
+            #         except Exception:
+            #             value = ''
+            #             break
+            #     row.append(Paragraph(str(value), body_style))
             table_data.append(row)
         
         # Calculate column widths
@@ -282,6 +356,10 @@ class ReportAPIView(APIView):
         # Create a template for each page
         def on_first_page(canvas, doc):
             canvas.saveState()
+            
+            # ✅ Add watermark here
+            add_logo_watermark(canvas, doc, logo_path='round_logo.png')
+
             # Draw header
             title.wrap(available_width, 30)
             title.drawOn(canvas, doc.leftMargin, height - doc.topMargin - 30)
@@ -290,21 +368,32 @@ class ReportAPIView(APIView):
                 canvas.setFont("Helvetica", 10)
                 canvas.drawString(doc.leftMargin, height - doc.topMargin - 50, date_text)
             
-            # Draw footer
+            # Footer
             canvas.setFont("Helvetica", 8)
             canvas.setFillColor(colors.grey)
-            canvas.drawRightString(width - doc.rightMargin, doc.bottomMargin/2, 
-                                 f"Page 1 - Generated on {datetime.now().strftime('%Y-%m-%d %H:%M')}")
+            canvas.drawRightString(
+                width - doc.rightMargin,
+                doc.bottomMargin / 2,
+                f"Page 1 - Generated on {datetime.now().strftime('%Y-%m-%d %H:%M')}"
+            )
             canvas.restoreState()
-        
+
         def on_later_pages(canvas, doc):
             canvas.saveState()
-            # Draw footer with page number
+            
+            # ✅ Add watermark here too
+            # add_logo_watermark(canvas, doc, logo_path='round_logo.png')
+            add_text_watermark(canvas, doc, text="Leonidas Farm", font_size=16, angle=45, opacity=0.05)
+
             canvas.setFont("Helvetica", 8)
             canvas.setFillColor(colors.grey)
-            canvas.drawRightString(width - doc.rightMargin, doc.bottomMargin/2, 
-                                 f"Page {doc.page} - Generated on {datetime.now().strftime('%Y-%m-%d %H:%M')}")
+            canvas.drawRightString(
+                width - doc.rightMargin,
+                doc.bottomMargin / 2,
+                f"Page {doc.page} - Generated on {datetime.now().strftime('%Y-%m-%d %H:%M')}"
+            )
             canvas.restoreState()
+
         
         # Create frame for content
         frame = Frame(
@@ -332,7 +421,6 @@ class ReportAPIView(APIView):
         # Build the document
         story = [table]
         doc.build(story)
-        
         buffer.seek(0)
         response = HttpResponse(buffer, content_type='application/pdf')
         response['Content-Disposition'] = f'attachment; filename="{report_type}_report.pdf"'
@@ -364,16 +452,8 @@ class FinancialDashboardReport(APIView):
         start_date = request.query_params.get('start_date')
         end_date = request.query_params.get('end_date')
         
-        # Validate dates
-        try:
-            if start_date:
-                start_date = make_aware(datetime.combine(datetime.strptime(start_date, '%Y-%m-%d'), time.min))
-            if end_date:
-                end_date = make_aware(datetime.combine(datetime.strptime(end_date, '%Y-%m-%d'), time.max))
-        except (ValueError, TypeError):
-            pass
-
-        
+        start_date = datetime.strptime(start_date, '%Y-%m-%d').date() if start_date else None
+        end_date = datetime.strptime(end_date, '%Y-%m-%d').date() if end_date else None
         # Calculate date filters
         created_at_filter = Q()
         if start_date and end_date:
@@ -431,9 +511,9 @@ class FinancialDashboardReport(APIView):
         }
         
         format = request.query_params.get('report_format', 'json')
-        if format == 'pdf':
+        if format == 'pdf_format':
             return self.generate_pdf_report(report_data)
-        elif format == 'csv':
+        elif format == 'csv_format':
             return self.generate_csv_report(report_data)
         else:
             return Response(report_data)
@@ -502,6 +582,7 @@ class FinancialDashboardReport(APIView):
         return analysis
     
     def generate_pdf_report(self, report_data):
+        print("$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$@@@@@@@@@@@@@@@@")
         buffer = BytesIO()
         doc = SimpleDocTemplate(buffer, pagesize=landscape(A4))
         
@@ -535,9 +616,9 @@ class FinancialDashboardReport(APIView):
         
         financial_data = [
             ["Metric", "Amount"],
-            ["Total Revenue", f"KES {report_data['financial_summary']['total_revenue']:,.2f}"],
-            ["Total Expenses", f"KES {report_data['financial_summary']['total_expenses']:,.2f}"],
-            ["Gross Profit", f"KES {report_data['financial_summary']['gross_profit']:,.2f}"]
+            ["Total Revenue", f"Tshs {report_data['financial_summary']['total_revenue']:,.2f}"],
+            ["Total Expenses", f"Tshs {report_data['financial_summary']['total_expenses']:,.2f}"],
+            ["Gross Profit", f"Tshs {report_data['financial_summary']['gross_profit']:,.2f}"]
         ]
         
         financial_table = Table(financial_data)
@@ -561,31 +642,30 @@ class FinancialDashboardReport(APIView):
             ["Salaries", report_data['financial_summary']['expense_breakdown']['salaries']],
             ["Other", report_data['financial_summary']['expense_breakdown']['other']]
         ]
-        
-        # Create a drawing object
-        drawing = Drawing(400, 200)
+        print("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@")
+        if any(item[1] > 0 for item in expense_data):
+            # [Pie chart code goes here...]
+            elements.append(Spacer(1, 24)) 
+            drawing = Drawing(400, 200)
+            pie = Pie()
+            pie.x = 150
+            pie.y = 50
+            pie.width = 300
+            pie.height = 200
+            pie.data = [item[1] for item in expense_data]
+            pie.labels = [item[0] for item in expense_data]
+            pie.slices.strokeWidth = 0.5
 
-        # Create pie chart
-        pie = Pie()
-        pie.x = 150
-        pie.y = 50
-        pie.width = 300
-        pie.height = 200
-        pie.data = [item[1] for item in expense_data]
-        pie.labels = [item[0] for item in expense_data]
-        pie.slices.strokeWidth = 0.5
+            pie.slices[0].fillColor = HexColor('#4e79a7')
+            pie.slices[1].fillColor = HexColor('#f28e2b')
+            pie.slices[2].fillColor = HexColor('#e15759')
+            pie.slices[3].fillColor = HexColor('#76b7b2')
 
-        # Customize slice colors if desired
-        pie.slices[0].fillColor = HexColor('#4e79a7')
-        pie.slices[1].fillColor = HexColor('#f28e2b')
-        pie.slices[2].fillColor = HexColor('#e15759')
-        pie.slices[3].fillColor = HexColor('#76b7b2')
+            drawing.add(pie)
+            elements.append(Paragraph("Expense Breakdown", subtitle_style))
+            elements.append(drawing)
+            elements.append(Spacer(1, 12))
 
-        # Add chart to drawing
-        drawing.add(pie)
-        elements.append(Paragraph("Expense Breakdown", subtitle_style))
-        elements.append(drawing)
-        elements.append(Spacer(1, 12))
         
         # Productivity Metrics
         elements.append(Paragraph("Productivity Metrics", subtitle_style))
@@ -627,8 +707,10 @@ class FinancialDashboardReport(APIView):
                 f"{house['mortality_rate']}%",
                 house['current_chickens'],
                 house['age_in_weeks'],
-                f"{house['avg_weight']}kg"
+                f"{house['avg_weight'] or 0}kg"
             ])
+        print("$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$")
+        print(comp_data)
         
         comp_table = Table(comp_data)
         comp_table.setStyle(TableStyle([
@@ -643,7 +725,16 @@ class FinancialDashboardReport(APIView):
         ]))
         
         elements.append(comp_table)
-        
+        try:
+            doc.build(elements)
+            buffer.seek(0)
+            response = HttpResponse(buffer, content_type='application/pdf')
+            response['Content-Disposition'] = 'attachment; filename="financial_dashboard.pdf"'
+            return response
+        except Exception as e:
+            return Response({"error": f"PDF generation failed: {str(e)}"}, status=500)
+        finally:
+            buffer.close()
         doc.build(elements)
         buffer.seek(0)
         response = HttpResponse(buffer, content_type='application/pdf')
@@ -667,7 +758,7 @@ class CostOfProductionReport(APIView):
         
         # Get all expenses
         expenses = Expense.objects.filter(
-            date__range=[start_date, end_date] if start_date and end_date else Q()
+            created_at__range=[start_date, end_date] if start_date and end_date else Q()
         ).values('category__name').annotate(
             total_cost=Sum('total_cost')
         ).order_by('-total_cost')
@@ -707,9 +798,9 @@ class CostOfProductionReport(APIView):
         }
         
         format = request.query_params.get('report_format', 'json')
-        if format == 'pdf':
+        if format == 'pdf_format':
             return self.generate_pdf_report(report_data)
-        elif format == 'csv':
+        elif format == 'csv_format':
             return self.generate_csv_report(report_data)
         else:
             return Response(report_data)
@@ -718,7 +809,7 @@ class CostOfProductionReport(APIView):
         """Compare costs and production across houses"""
         date_filter = Q()
         if start_date and end_date:
-            date_filter &= Q(date__range=[start_date, end_date])
+            date_filter &= Q(created_at__range=[start_date, end_date])
         
         houses = ChickenHouse.objects.all_objects()
         comparison = []
@@ -800,9 +891,9 @@ class CostOfProductionReport(APIView):
         summary_data = [
             ["Metric", "Value"],
             ["Total Eggs Produced", report_data['total_eggs_produced']],
-            ["Total Expenses", f"KES {report_data['total_expenses']:,.2f}"],
-            ["Cost per Egg", f"KES {report_data['cost_per_egg']:,.4f}"],
-            ["Cost per Chicken", f"KES {report_data['cost_per_chicken']:,.2f}"]
+            ["Total Expenses", f"Tshs {report_data['total_expenses']:,.2f}"],
+            ["Cost per Egg", f"Tshs {report_data['cost_per_egg']:,.4f}"],
+            ["Cost per Chicken", f"Tshs {report_data['cost_per_chicken']:,.2f}"]
         ]
         
         summary_table = Table(summary_data, colWidths=[200, 100])
@@ -822,7 +913,7 @@ class CostOfProductionReport(APIView):
         # Expense Breakdown
         elements.append(Paragraph("Expense Breakdown by Category", subtitle_style))
         
-        expense_data = [["Category", "Amount (KES)"]] + [
+        expense_data = [["Category", "Amount (Tshs)"]] + [
             [e['category__name'], f"{e['total_cost']:,.2f}"] 
             for e in report_data['expense_breakdown']
         ]
@@ -942,9 +1033,9 @@ class ProfitabilityTrendReport(APIView):
         }
         
         format = request.query_params.get('report_format', 'json')
-        if format == 'pdf':
+        if format == 'pdf_format':
             return self.generate_pdf_report(report_data)
-        elif format == 'csv':
+        elif format == 'csv_format':
             return self.generate_csv_report(report_data)
         else:
             return Response(report_data)
@@ -964,11 +1055,13 @@ class ProfitabilityTrendReport(APIView):
     def get_expenses_by_period(self, start_date, end_date, group_by):
         """Get expenses aggregated by time period"""
         expenses = Expense.objects.filter(
-            date__range=[start_date, end_date]
+            created_at__range=[start_date, end_date]  # ✅ Fixed
         ).annotate(
-            period=Trunc('date', group_by)
+            period=Trunc('created_at', group_by)
         ).values('period').annotate(
-            total_expenses=Sum('total_cost')).order_by('period')
+            total_expenses=Sum('total_cost')
+        ).order_by('period')
+
         
         return {e['period'].strftime('%Y-%m'): float(e['total_expenses']) for e in expenses}
     
@@ -1006,15 +1099,15 @@ class ProfitabilityTrendReport(APIView):
         
         summary_data = [
             ["Metric", "Average", "Best Period", "Worst Period"],
-            ["Sales (KES)", 
+            ["Sales (Tshs)", 
              f"{report_data['averages']['sales']:,.2f}", 
              f"{report_data['best_period']['sales']:,.2f} ({report_data['best_period']['period']})" if report_data['best_period'] else 'N/A',
              f"{report_data['worst_period']['sales']:,.2f} ({report_data['worst_period']['period']})" if report_data['worst_period'] else 'N/A'],
-            ["Expenses (KES)", 
+            ["Expenses (Tshs)", 
              f"{report_data['averages']['expenses']:,.2f}", 
              f"{report_data['best_period']['expenses']:,.2f} ({report_data['best_period']['period']})" if report_data['best_period'] else 'N/A',
              f"{report_data['worst_period']['expenses']:,.2f} ({report_data['worst_period']['period']})" if report_data['worst_period'] else 'N/A'],
-            ["Profit (KES)", 
+            ["Profit (Tshs)", 
              f"{report_data['averages']['profit']:,.2f}", 
              f"{report_data['best_period']['profit']:,.2f} ({report_data['best_period']['period']})" if report_data['best_period'] else 'N/A',
              f"{report_data['worst_period']['profit']:,.2f} ({report_data['worst_period']['period']})" if report_data['worst_period'] else 'N/A'],
@@ -1041,7 +1134,7 @@ class ProfitabilityTrendReport(APIView):
         # Trend Data
         elements.append(Paragraph("Detailed Trend Data", subtitle_style))
         
-        trend_headers = ["Period", "Sales (KES)", "Expenses (KES)", "Profit (KES)", "Margin (%)"]
+        trend_headers = ["Period", "Sales (Tshs)", "Expenses (Tshs)", "Profit (Tshs)", "Margin (%)"]
         trend_data = [trend_headers]
         
         for period in report_data['trend_data']:

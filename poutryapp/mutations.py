@@ -535,7 +535,7 @@ class DistributeMedicine(graphene.Mutation):
     @require_authentication
     def mutate(self, info, input):
         user = info.context.user
-        if not user.is_authenticated or user.user_type != 'STOCK_MANAGER':
+        if not user.is_authenticated or user.user_type != 'DOCTOR':
             raise GraphQLError("Only doctors can distribute medicine")
         
         try:
@@ -583,8 +583,8 @@ class ConfirmMedicineDistribution(graphene.Mutation):
             
             # Doctor can confirm their own distributions
             if input.doctor_confirmed is not None:
-                if user.user_type != 'DOCTOR':
-                    raise GraphQLError("Only the distributing doctor can confirm")
+                if user.user_type != 'STOCK_MANAGER':
+                    raise GraphQLError("Only the distributing STOCK MANAGER can confirm")
                 distribution.doctor_confirmed = input.doctor_confirmed
             
             # Worker can confirm their own receipts

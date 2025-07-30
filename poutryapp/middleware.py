@@ -194,6 +194,7 @@ class JWTAuthenticationMiddleware:
                     user_obj = User.objects.filter(phone_number=phone_number).first()
                     if user_obj:
                         user = user_obj
+                        print(user.phone_number)
                         logger.info(f"Authenticated user: {user.email}")
                     else:
                         logger.warning(f"No user found with id {phone_number} from token.")

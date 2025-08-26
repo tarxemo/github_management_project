@@ -42,7 +42,7 @@ for i in $(seq 1 $FAKE_COMMITS); do
 
     # Add + commit
     /usr/bin/git add "$FAKE_FILE" >> "$LOGFILE" 2>&1
-    /usr/bin/git commit -m "Fake commit $i on $DATE" >> "$LOGFILE" 2>&1
+    /usr/bin/git commit -m "added new file $i on $DATE" >> "$LOGFILE" 2>&1
 
     # Delete the file to avoid clutter
     rm "$FAKE_FILE"

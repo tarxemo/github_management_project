@@ -8,3 +8,5 @@ class UsersConfig(AppConfig):
     def ready(self):
         # Import signals to register them
         import users.signals  # noqa
+        # Import tasks to ensure they are registered
+        from . import tasks  # noqa

@@ -1,0 +1,183 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-12">
+        <h2>Unfollow Non-Followers</h2>
+        <p>Manage users who haven't followed you back.</p>
+        
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5>Unfollow Users</h5>
+            </div>
+            <div class="card-body">
+                <form method="post" class="mb-4">
+                    {% csrf_token %}
+                    <div class="form-group">
+                        <label for="days">Unfollow users who haven't followed back after:</label>
+                        <div class="input-group" style="max-width: 300px;">
+                            <input type="number" name="days" id="days" min="1" max="30" value="3" class="form-control">
+                            <div class="input-group-append">
+                                <span class="input-group-text">days</span>
+                            </div>
+                            <div class="input-group-append">
+                                <button type="submit" class="btn btn-danger">
+                                    <i class="fas fa-user-minus"></i> Unfollow
+                                </button>
+                            </div>
+                        </div>
+                        <small class="form-text text-muted">
+                            This will unfollow users who haven't followed you back within the specified number of days.
+                        </small>
+                    </div>
+                </form>
+                
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>User</th>
+                                <th>Followed On</th>
+                                <th>Status</th>
+                                <th>Last Checked</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for action in pending_actions %}
+                                <tr>
+                                    <td>
+                                        <div class="d-flex align-items-center">
+                                            <img src="{{ action.github_user.avatar_url }}" 
+                                                 alt="{{ action.github_user.username }}" 
+                                                 class="rounded-circle mr-2" 
+                                                 width="32" 
+                                                 height="32">
+                                            <div>
+                                                <div>{{ action.github_user.full_name }}</div>
+                                                <small class="text-muted">@{{ action.github_user.username }}</small>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td>{{ action.followed_at|date:"M d, Y" }}</td>
+                                    <td>
+                                        <span class="badge {% if action.status == 'followed_back' %}bg-success{% elif action.status == 'pending' %}bg-warning{% else %}bg-secondary{% endif %}">
+                                            {{ action.get_status_display }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        {% if action.last_checked %}
+                                            {{ action.last_checked|timesince }} ago
+                                        {% else %}
+                                            Never
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <a href="https://github.com/{{ action.github_user.username }}" 
+                                           target="_blank" 
+                                           class="btn btn-sm btn-outline-secondary"
+                                           title="View Profile">
+                                            <i class="fab fa-github"></i>
+                                        </a>
+                                        <button class="btn btn-sm btn-outline-info check-status-btn" 
+                                                data-action-id="{{ action.id }}"
+                                                title="Check Status">
+                                            <i class="fas fa-sync-alt"></i>
+                                        </button>
+                                    </td>
+                                </tr>
+                            {% empty %}
+                                <tr>
+                                    <td colspan="5" class="text-center">
+                                        <div class="alert alert-info mb-0">
+                                            No pending follow actions found.
+                                        </div>
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+$(document).ready(function() {
+    $('.check-status-btn').click(function() {
+        const button = $(this);
+        const actionId = button.data('action-id');
+        const icon = button.find('i');
+        const originalIcon = icon.attr('class');
+        
+        // Show loading state
+        icon.removeClass('fa-sync-alt').addClass('fa-spinner fa-spin');
+        
+        // Send AJAX request to update status
+        $.ajax({
+            url: `/github/update-status/${actionId}/`,
+            method: 'POST',
+            headers: {
+                'X-CSRFTTOKEN': '{{ csrf_token }}',
+                'Content-Type': 'application/json'
+            },
+            success: function(response) {
+                if (response.success) {
+                    // Update the status badge
+                    const statusBadge = button.closest('tr').find('.badge');
+                    statusBadge.removeClass('bg-warning bg-success bg-secondary');
+                    
+                    if (response.status === 'followed_back') {
+                        statusBadge.addClass('bg-success').text('Followed Back');
+                    } else if (response.status === 'not_followed_back') {
+                        statusBadge.addClass('bg-secondary').text('Not Followed Back');
+                    } else {
+                        statusBadge.addClass('bg-warning').text('Pending');
+                    }
+                    
+                    // Update last checked time
+                    if (response.last_checked) {
+                        button.closest('tr').find('td:nth-child(4)').text(response.last_checked + ' ago');
+                    }
+                    
+                    // Show success message
+                    const toast = `
+                        <div class="toast-container position-fixed bottom-0 end-0 p-3">
+                            <div class="toast show" role="alert" aria-live="assertive" aria-atomic="true">
+                                <div class="toast-header bg-success text-white">
+                                    <strong class="me-auto">Success</strong>
+                                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast" aria-label="Close"></button>
+                                </div>
+                                <div class="toast-body">
+                                    Status updated successfully
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                    $('body').append(toast);
+                    
+                    // Remove toast after 3 seconds
+                    setTimeout(() => {
+                        $('.toast-container').fadeOut(400, function() {
+                            $(this).remove();
+                        });
+                    }, 3000);
+                } else {
+                    alert('Error: ' + (response.message || 'Failed to update status'));
+                }
+            },
+            error: function(xhr) {
+                alert('An error occurred. Please try again.');
+            },
+            complete: function() {
+                // Restore original icon
+                icon.attr('class', originalIcon);
+            }
+        });
+    });
+});
+</script>
+{% endblock %}

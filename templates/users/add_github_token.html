@@ -1,0 +1,51 @@
+<!-- users/templates/users/add_github_token.html -->
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h4>Add GitHub Access Token</h4>
+                </div>
+                <div class="card-body">
+                    <p class="text-muted">
+                        To sync your GitHub followers and following, please add a personal access token with the following permissions:
+                        <ul>
+                            <li><code>user:follow</code> - To manage who you follow</li>
+                            <li><code>read:user</code> - To read your profile information</li>
+                        </ul>
+                        <a href="https://github.com/settings/tokens/new" target="_blank" class="btn btn-sm btn-outline-secondary">
+                            Create GitHub Token
+                        </a>
+                    </p>
+                    
+                    <form method="post">
+                        {% csrf_token %}
+                        {{ form.non_field_errors }}
+                        
+                        <div class="mb-3">
+                            {{ form.access_token.label_tag }}
+                            {{ form.access_token }}
+                            {% if form.access_token.errors %}
+                                <div class="invalid-feedback d-block">
+                                    {{ form.access_token.errors }}
+                                </div>
+                            {% endif %}
+                            <small class="form-text text-muted">
+                                Your token will be stored securely and only used to sync your GitHub relationships.
+                            </small>
+                        </div>
+                        
+                        <button type="submit" class="btn btn-primary">
+                            Save Token
+                        </button>
+                        <a href="{% url 'profile' %}" class="btn btn-secondary">Cancel</a>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

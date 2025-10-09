@@ -1,0 +1,342 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="container mt-4">
+    <!-- Stats Card -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card shadow-sm">
+                <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">Relationship Overview</h5>
+                    <span class="badge bg-secondary">{{ stats.total }} Total</span>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-lg-8 mb-3 mb-lg-0">
+                            <canvas id="relationshipChart" height="200"></canvas>
+                        </div>
+                        <div class="col-lg-4">
+                            <div class="d-grid gap-2">
+                                <div class="p-3 border rounded bg-light">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <span><i class="fas fa-user-plus text-primary"></i> Following</span>
+                                        <strong class="fs-5">{{ stats.following }}</strong>
+                                    </div>
+                                </div>
+                                <div class="p-3 border rounded bg-light">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <span><i class="fas fa-users text-success"></i> Followers</span>
+                                        <strong class="fs-5">{{ stats.followers }}</strong>
+                                    </div>
+                                </div>
+                                <div class="p-3 border rounded bg-light">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <span><i class="fas fa-handshake text-warning"></i> Mutual</span>
+                                        <strong class="fs-5">{{ stats.mutual }}</strong>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filters and Search -->
+    <div class="row mb-3">
+        <div class="col-12">
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <form method="get" id="filterForm">
+                        <div class="row g-3">
+                            <!-- Filter Buttons -->
+                            <div class="col-md-6">
+                                <div class="btn-group w-100" role="group">
+                                    <input type="radio" class="btn-check" name="filter" id="filter-all" value="all" {% if filter_type == 'all' %}checked{% endif %}>
+                                    <label class="btn btn-outline-secondary" for="filter-all">
+                                        <i class="fas fa-globe"></i> All ({{ stats.total }})
+                                    </label>
+                                    
+                                    <input type="radio" class="btn-check" name="filter" id="filter-following" value="following" {% if filter_type == 'following' %}checked{% endif %}>
+                                    <label class="btn btn-outline-primary" for="filter-following">
+                                        <i class="fas fa-user-plus"></i> Following ({{ stats.following }})
+                                    </label>
+                                    
+                                    <input type="radio" class="btn-check" name="filter" id="filter-followers" value="followers" {% if filter_type == 'followers' %}checked{% endif %}>
+                                    <label class="btn btn-outline-success" for="filter-followers">
+                                        <i class="fas fa-users"></i> Followers ({{ stats.followers }})
+                                    </label>
+                                    
+                                    <input type="radio" class="btn-check" name="filter" id="filter-mutual" value="mutual" {% if filter_type == 'mutual' %}checked{% endif %}>
+                                    <label class="btn btn-outline-warning" for="filter-mutual">
+                                        <i class="fas fa-handshake"></i> Mutual ({{ stats.mutual }})
+                                    </label>
+                                </div>
+                            </div>
+                            
+                            <!-- Search -->
+                            <div class="col-md-5">
+                                <div class="input-group">
+                                    <span class="input-group-text"><i class="fas fa-search"></i></span>
+                                    <input type="text" class="form-control" name="search" placeholder="Search by name or username..." value="{{ search_query }}">
+                                </div>
+                            </div>
+                            
+                            <!-- Per Page -->
+                            <div class="col-md-1">
+                                <select class="form-select" name="per_page" onchange="this.form.submit()">
+                                    <option value="12" {% if per_page == 12 %}selected{% endif %}>12</option>
+                                    <option value="24" {% if per_page == 24 %}selected{% endif %}>24</option>
+                                    <option value="48" {% if per_page == 48 %}selected{% endif %}>48</option>
+                                </select>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Users Grid -->
+    <div class="row">
+        {% if users %}
+            {% for user_obj in users %}
+            <div class="col-md-4 col-lg-3 mb-3">
+                <div class="card h-100 shadow-sm hover-shadow">
+                    <div class="card-body">
+                        <div class="d-flex align-items-start mb-2">
+                            <img src="{{ user_obj.github_avatar_url|default:'https://via.placeholder.com/50' }}" 
+                                 class="rounded-circle me-2" 
+                                 width="50" 
+                                 height="50"
+                                 alt="Avatar">
+                            <div class="flex-grow-1">
+                                <h6 class="mb-0">
+                                    <a href="{{ user_obj.github_profile_url }}" target="_blank" class="text-decoration-none text-dark">
+                                        {{ user_obj.get_full_name|default:user_obj.github_username }}
+                                    </a>
+                                </h6>
+                                <small class="text-muted">@{{ user_obj.github_username }}</small>
+                            </div>
+                        </div>
+                        
+                        <!-- Relationship Status Badge -->
+                        <div class="mb-2">
+                            {% if user_obj.relationship_status == 'mutual' %}
+                                <span class="badge bg-warning text-dark">
+                                    <i class="fas fa-handshake"></i> Mutual
+                                </span>
+                            {% elif user_obj.relationship_status == 'following' %}
+                                <span class="badge bg-primary">
+                                    <i class="fas fa-user-check"></i> Following
+                                </span>
+                            {% elif user_obj.relationship_status == 'follower' %}
+                                <span class="badge bg-success">
+                                    <i class="fas fa-user"></i> Follows You
+                                </span>
+                            {% endif %}
+                        </div>
+                        
+                        <!-- Action Buttons -->
+                        <div class="d-grid gap-2">
+                            {% if user_obj.is_following %}
+                                <a href="{% url 'unfollow_user' user_obj.github_username %}" 
+                                   class="btn btn-sm btn-outline-danger">
+                                    <i class="fas fa-user-minus"></i> Unfollow
+                                </a>
+                            {% else %}
+                                <a href="{% url 'follow_user' user_obj.github_username %}" 
+                                   class="btn btn-sm btn-primary">
+                                    <i class="fas fa-user-plus"></i> Follow Back
+                                </a>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        {% else %}
+            <div class="col-12">
+                <div class="alert alert-info text-center" role="alert">
+                    <i class="fas fa-info-circle fa-2x mb-3"></i>
+                    <h5>No relationships found</h5>
+                    <p class="mb-0">
+                        {% if search_query %}
+                            No users match your search query "{{ search_query }}".
+                        {% elif filter_type != 'all' %}
+                            You don't have any {{ filter_type }} relationships yet.
+                        {% else %}
+                            Start following other users to see them here!
+                        {% endif %}
+                    </p>
+                </div>
+            </div>
+        {% endif %}
+    </div>
+
+    <!-- Pagination -->
+    {% if users.has_other_pages %}
+    <div class="row mt-4">
+        <div class="col-12">
+            <nav aria-label="Page navigation">
+                <ul class="pagination justify-content-center">
+                    {% if users.has_previous %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page=1&filter={{ filter_type }}&search={{ search_query }}&per_page={{ per_page }}">
+                                <i class="fas fa-angle-double-left"></i>
+                            </a>
+                        </li>
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ users.previous_page_number }}&filter={{ filter_type }}&search={{ search_query }}&per_page={{ per_page }}">
+                                <i class="fas fa-angle-left"></i>
+                            </a>
+                        </li>
+                    {% else %}
+                        <li class="page-item disabled">
+                            <span class="page-link"><i class="fas fa-angle-double-left"></i></span>
+                        </li>
+                        <li class="page-item disabled">
+                            <span class="page-link"><i class="fas fa-angle-left"></i></span>
+                        </li>
+                    {% endif %}
+
+                    <!-- Page Numbers -->
+                    {% for num in users.paginator.page_range %}
+                        {% if users.number == num %}
+                            <li class="page-item active">
+                                <span class="page-link">{{ num }}</span>
+                            </li>
+                        {% elif num > users.number|add:'-3' and num < users.number|add:'3' %}
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ num }}&filter={{ filter_type }}&search={{ search_query }}&per_page={{ per_page }}">{{ num }}</a>
+                            </li>
+                        {% endif %}
+                    {% endfor %}
+
+                    {% if users.has_next %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ users.next_page_number }}&filter={{ filter_type }}&search={{ search_query }}&per_page={{ per_page }}">
+                                <i class="fas fa-angle-right"></i>
+                            </a>
+                        </li>
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ users.paginator.num_pages }}&filter={{ filter_type }}&search={{ search_query }}&per_page={{ per_page }}">
+                                <i class="fas fa-angle-double-right"></i>
+                            </a>
+                        </li>
+                    {% else %}
+                        <li class="page-item disabled">
+                            <span class="page-link"><i class="fas fa-angle-right"></i></span>
+                        </li>
+                        <li class="page-item disabled">
+                            <span class="page-link"><i class="fas fa-angle-double-right"></i></span>
+                        </li>
+                    {% endif %}
+                </ul>
+            </nav>
+            
+            <p class="text-center text-muted">
+                Showing {{ users.start_index }} to {{ users.end_index }} of {{ users.paginator.count }} users
+            </p>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Auto-submit form on filter change
+    const filterInputs = document.querySelectorAll('input[name="filter"]');
+    filterInputs.forEach(input => {
+        input.addEventListener('change', function() {
+            document.getElementById('filterForm').submit();
+        });
+    });
+    
+    // Search with debounce
+    const searchInput = document.querySelector('input[name="search"]');
+    let searchTimeout;
+    searchInput.addEventListener('input', function() {
+        clearTimeout(searchTimeout);
+        searchTimeout = setTimeout(() => {
+            document.getElementById('filterForm').submit();
+        }, 500);
+    });
+
+    // Initialize Chart
+    const ctx = document.getElementById('relationshipChart').getContext('2d');
+    new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels: ['Following', 'Followers', 'Mutual'],
+            datasets: [{
+                data: [
+                    {{ stats.following }},
+                    {{ stats.followers }},
+                    {{ stats.mutual }}
+                ],
+                backgroundColor: [
+                    'rgba(13, 110, 253, 0.8)',
+                    'rgba(25, 135, 84, 0.8)',
+                    'rgba(255, 193, 7, 0.8)'
+                ],
+                borderColor: [
+                    'rgba(13, 110, 253, 1)',
+                    'rgba(25, 135, 84, 1)',
+                    'rgba(255, 193, 7, 1)'
+                ],
+                borderWidth: 2
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'bottom',
+                    labels: {
+                        padding: 15,
+                        font: {
+                            size: 12
+                        }
+                    }
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            const label = context.label || '';
+                            const value = context.raw || 0;
+                            const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                            const percentage = total > 0 ? Math.round((value / total) * 100) : 0;
+                            return `${label}: ${value} (${percentage}%)`;
+                        }
+                    }
+                }
+            }
+        }
+    });
+});
+</script>
+
+<style>
+.hover-shadow {
+    transition: box-shadow 0.3s ease-in-out;
+}
+
+.hover-shadow:hover {
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15) !important;
+}
+
+.btn-check:checked + .btn-outline-secondary,
+.btn-check:checked + .btn-outline-primary,
+.btn-check:checked + .btn-outline-success,
+.btn-check:checked + .btn-outline-warning {
+    transform: scale(1.05);
+}
+</style>
+{% endblock %}

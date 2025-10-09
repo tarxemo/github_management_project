@@ -1,5 +1,5 @@
 """
-URL configuration for poultry project.
+URL configuration for github_management_project project.
 
 The `urlpatterns` list routes URLs to views. For more information please see:
     https://docs.djangoproject.com/en/5.1/topics/http/urls/
@@ -39,5 +39,6 @@ urlpatterns = [
     
     # GitHub Management URLs
     path('github/', include(("github_management.urls", "github_management"), namespace="github_management")),
+    path('relationships/', include('users.urls')),
 ]
 

@@ -1,5 +1,5 @@
 """
-WSGI config for poultry project.
+WSGI config for github_management_project project.
 
 It exposes the WSGI callable as a module-level variable named ``application``.
 
@@ -11,6 +11,6 @@ import os
 
 from django.core.wsgi import get_wsgi_application
 
-os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'poultry.settings')
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'github_management_project.settings')
 
 application = get_wsgi_application()

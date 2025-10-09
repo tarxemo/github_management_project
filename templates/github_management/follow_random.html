@@ -1,0 +1,154 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-12">
+        <h2>Follow Random Users from {{ country.name }}</h2>
+        <p>Follow random GitHub users from {{ country.name }} to increase your followers.</p>
+        
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5>Follow Multiple Users</h5>
+            </div>
+            <div class="card-body">
+                <form method="post" action="{% url 'github_management:follow_random' %}" class="form-inline">
+                    {% csrf_token %}
+                    <div class="form-group mr-2">
+                        <label for="count" class="mr-2">Number of users to follow:</label>
+                        <input type="number" name="count" id="count" min="1" max="50" value="10" class="form-control mr-2">
+                    </div>
+                    <button type="submit" class="btn btn-primary">Follow Random Users</button>
+                </form>
+            </div>
+        </div>
+        
+        <div class="card">
+            <div class="card-header">
+                <h5>Suggested Users to Follow</h5>
+            </div>
+            <div class="card-body">
+                {% if users %}
+                    <div class="row">
+                        {% for user in users %}
+                            <div class="col-md-4 mb-3">
+                                <div class="card h-100">
+                                    <div class="card-body">
+                                        <div class="d-flex align-items-center">
+                                            <img src="{{ user.avatar_url }}" alt="{{ user.username }}" 
+                                                 class="rounded-circle mr-3" width="50" height="50">
+                                            <div>
+                                                <h6 class="mb-0">{{ user.full_name }}</h6>
+                                                <small class="text-muted">@{{ user.username }}</small>
+                                                <div class="mt-1">
+                                                    <span class="badge badge-info mr-1">
+                                                        {{ user.followers|default:0 }} followers
+                                                    </span>
+                                                    <span class="badge badge-secondary">
+                                                        {{ user.contributions_last_year }} contributions
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="card-footer bg-white">
+                                        <button class="btn btn-sm btn-outline-primary follow-btn" 
+                                                data-user-id="{{ user.id }}">
+                                            <i class="fas fa-user-plus"></i> Follow
+                                        </button>
+                                        <a href="https://github.com/{{ user.username }}" 
+                                           target="_blank" 
+                                           class="btn btn-sm btn-outline-secondary">
+                                            <i class="fab fa-github"></i> Profile
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="alert alert-info">
+                        No users found. Please try a different country or check back later.
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+$(document).ready(function() {
+    $('.follow-btn').click(function() {
+        const button = $(this);
+        const userId = button.data('user-id');
+        
+        // Disable button and show loading state
+        button.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Following...');
+        
+        // Send AJAX request to follow user
+        $.ajax({
+            url: `/github/follow/${userId}/`,
+            method: 'POST',
+            headers: {
+                'X-CSRFTTOKEN': '{{ csrf_token }}',
+                'Content-Type': 'application/json'
+            },
+            success: function(response) {
+                if (response.success) {
+                    button.removeClass('btn-outline-primary')
+                          .addClass('btn-success')
+                          .html('<i class="fas fa-check"></i> Followed');
+                    
+                    // Start polling for follow status
+                    checkFollowStatus(response.action_id, button);
+                } else {
+                    button.prop('disabled', false).html('<i class="fas fa-user-plus"></i> Follow');
+                    alert('Error: ' + response.message);
+                }
+            },
+            error: function(xhr) {
+                button.prop('disabled', false).html('<i class="fas fa-user-plus"></i> Follow');
+                alert('An error occurred. Please try again.');
+            }
+        });
+    });
+    
+    function checkFollowStatus(actionId, button) {
+        $.ajax({
+            url: `/github/update-status/${actionId}/`,
+            method: 'POST',
+            headers: {
+                'X-CSRFTTOKEN': '{{ csrf_token }}',
+                'Content-Type': 'application/json'
+            },
+            success: function(response) {
+                if (response.success) {
+                    if (response.status === 'followed_back') {
+                        button.removeClass('btn-success')
+                              .addClass('btn-primary')
+                              .html('<i class="fas fa-users"></i> Followed Back');
+                    } else if (response.status === 'not_followed_back') {
+                        button.removeClass('btn-success')
+                              .addClass('btn-warning')
+                              .html('<i class="fas fa-clock"></i> Pending');
+                    }
+                    
+                    // Update last checked time
+                    if (response.last_checked) {
+                        button.attr('title', 'Last checked: ' + response.last_checked);
+                    }
+                    
+                    // Continue polling if still pending
+                    if (response.status === 'pending') {
+                        setTimeout(function() {
+                            checkFollowStatus(actionId, button);
+                        }, 30000); // Check every 30 seconds
+                    }
+                }
+            }
+        });
+    }
+});
+</script>
+{% endblock %}

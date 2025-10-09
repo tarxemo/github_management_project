@@ -125,11 +125,32 @@ SOCIALACCOUNT_PROVIDERS = {
 SITE_ID = 1
 
 # Authentication settings
-ACCOUNT_SIGNUP_FIELDS = ['email', 'password1', 'password2']
-ACCOUNT_LOGIN_METHOD = 'email'
-ACCOUNT_EMAIL_VERIFICATION = 'none'
+# settings.py
+ACCOUNT_ADAPTER = 'users.adapters.CustomAccountAdapter'
+SOCIALACCOUNT_ADAPTER = 'users.adapters.CustomSocialAccountAdapter'
+
+# User model settings - updated for latest django-allauth
+ACCOUNT_USER_MODEL_USERNAME_FIELD = None
 ACCOUNT_EMAIL_REQUIRED = True
+ACCOUNT_USERNAME_REQUIRED = False
+ACCOUNT_AUTHENTICATION_METHOD = 'email'
+ACCOUNT_EMAIL_VERIFICATION = 'none'
 ACCOUNT_UNIQUE_EMAIL = True
+
+# New allauth settings format
+ACCOUNT_LOGIN_METHODS = {'email'}
+ACCOUNT_SIGNUP_FIELDS = ['email', 'password1', 'password2']
+
+# Disable username fields completely
+ACCOUNT_FORMS = {
+    'signup': 'users.forms.CustomSignupForm',
+}
+
+# Social account settings
+SOCIALACCOUNT_EMAIL_VERIFICATION = 'none'
+SOCIALACCOUNT_EMAIL_REQUIRED = False
+SOCIALACCOUNT_QUERY_EMAIL = True
+SOCIALACCOUNT_AUTO_SIGNUP = True
 
 # Set the site domain for OAuth
 SITE_URL = 'http://127.0.0.1:8000'  # Change to your production domain in production

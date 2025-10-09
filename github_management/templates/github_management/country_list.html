@@ -1,0 +1,57 @@
+<!-- templates/github_management/country_list.html -->
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="bg-white shadow overflow-hidden sm:rounded-lg">
+    <div class="px-4 py-5 sm:px-6 flex justify-between items-center">
+        <h3 class="text-lg leading-6 font-medium text-gray-900">
+            Available Countries
+        </h3>
+        <div class="text-sm text-gray-500">
+            {{ countries.count }} countries
+        </div>
+    </div>
+    <div class="border-t border-gray-200">
+        <ul class="divide-y divide-gray-200">
+            {% for country in countries %}
+            <li class="px-4 py-4 sm:px-6 hover:bg-gray-50">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center">
+                        <span class="text-lg font-medium text-indigo-600">{{ country.name }}</span>
+                        {% if country.user_count > 0 %}
+                            <span class="ml-2 px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
+                                {{ country.user_count }} users
+                            </span>
+                        {% endif %}
+                        {% if country.is_fetching %}
+                            <span class="ml-2 px-2 inline-flex items-center text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">
+                                <span class="flex h-2 w-2 relative mr-1">
+                                    <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-yellow-400 opacity-75"></span>
+                                    <span class="relative inline-flex rounded-full h-2 w-2 bg-yellow-500"></span>
+                                </span>
+                                Fetching...
+                            </span>
+                        {% endif %}
+                    </div>
+                    <div class="ml-4 flex-shrink-0">
+                        <a href="{% url 'github_management:country_detail' slug=country.slug %}" 
+                           class="font-medium text-indigo-600 hover:text-indigo-500">
+                            View users
+                        </a>
+                    </div>
+                </div>
+                {% if country.last_updated %}
+                <div class="mt-1 text-sm text-gray-500">
+                    Last updated: {{ country.last_updated|date:"M d, Y H:i" }}
+                </div>
+                {% endif %}
+            </li>
+            {% empty %}
+            <li class="px-4 py-4 sm:px-6 text-center text-gray-500">
+                No countries found. Try running the fetch_countries management command.
+            </li>
+            {% endfor %}
+        </ul>
+    </div>
+</div>
+{% endblock %}

@@ -24,7 +24,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = 'django-insecure-bj0c9&^)t!@q#rs!^y8f^+31bj41=xhli@a_3ng=0#w!afy%fc'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = False
+DEBUG = True
 
 ALLOWED_HOSTS = ["13.60.60.39", "localhost", "127.0.0.1", "wwww.leonidasfarm.com", "sv.leonidasfarm.com", "leonidasfarm.com"]
 
@@ -47,24 +47,38 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'django.contrib.sites',  # Required by allauth
     
-    'graphql_jwt.refresh_token',
-    'poutryapp',
+    # Third-party apps
+    'corsheaders',
     'graphene_django',
-    'rest_framework',
+    'graphql_jwt.refresh_token.apps.RefreshTokenConfig',
+    'graphql_auth',
     'django_filters',
+    'rest_framework',
+    'allauth',
+    'allauth.account',
+    'allauth.socialaccount',
+    'allauth.socialaccount.providers.github',
+    
+    # Local apps
+    'users',
+    'github_management',
 ]
+
+# Custom user model
+AUTH_USER_MODEL = 'users.User'
 
  
 
-GRAPHENE = {
-    "SCHEMA": "poultry.main_schema.schema",
-    "MIDDLEWARE": [
-        "graphql_jwt.middleware.JSONWebTokenMiddleware",
-        "poutryapp.middleware.JWTAuthenticationMiddleware",
-        'poutryapp.middleware.AuditLogGraphQLMiddleware'
-    ],
-}
+# GRAPHENE = {
+#     "SCHEMA": "poultry.main_schema.schema",
+#     "MIDDLEWARE": [
+#         "graphql_jwt.middleware.JSONWebTokenMiddleware",
+#         "poutryapp.middleware.JWTAuthenticationMiddleware",
+#         'poutryapp.middleware.AuditLogGraphQLMiddleware'
+#     ],
+# }
 
 AUTHENTICATION_BACKENDS = [
     "graphql_jwt.backends.JSONWebTokenBackend",
@@ -77,8 +91,56 @@ GRAPHQL_JWT = {
 }
 
 
-AUTH_USER_MODEL = 'poutryapp.User'
+GITHUB_TOKEN = "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"
 
+# Allauth settings
+SITE_ID = 1
+
+# Authentication backends
+AUTHENTICATION_BACKENDS = (
+    'django.contrib.auth.backends.ModelBackend',
+    'allauth.account.auth_backends.AuthenticationBackend',
+)
+
+# Login/Logout redirects
+LOGIN_REDIRECT_URL = '/'
+LOGOUT_REDIRECT_URL = '/'
+
+# GitHub OAuth settings
+SOCIALACCOUNT_PROVIDERS = {
+    'github': {
+        'APP': {
+            'client_id': 'Ov23li1B8VnzcXarGNwY',  # Replace with your GitHub Client ID
+            'secret': 'c0239f913ceaae636da5fc56993a164db20e03e3',  # Replace with your GitHub Client Secret
+            'key': ''
+        },
+        'SCOPE': [
+            'user',
+            'user:email',
+        ],
+    }
+}
+
+# Site ID - required by Django's sites framework
+SITE_ID = 1
+
+# Authentication settings
+ACCOUNT_SIGNUP_FIELDS = ['email', 'password1', 'password2']
+ACCOUNT_LOGIN_METHOD = 'email'
+ACCOUNT_EMAIL_VERIFICATION = 'none'
+ACCOUNT_EMAIL_REQUIRED = True
+ACCOUNT_UNIQUE_EMAIL = True
+
+# Set the site domain for OAuth
+SITE_URL = 'http://127.0.0.1:8000'  # Change to your production domain in production
+
+# Celery Configuration
+CELERY_BROKER_URL = 'redis://localhost:6379/0'
+CELERY_RESULT_BACKEND = 'redis://localhost:6379/0'
+CELERY_ACCEPT_CONTENT = ['json']
+CELERY_TASK_SERIALIZER = 'json'
+CELERY_RESULT_SERIALIZER = 'json'
+CELERY_TIMEZONE = 'UTC'
 
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',  # Should be as high as possible
@@ -89,6 +151,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'allauth.account.middleware.AccountMiddleware',
 ]
 
 CSRF_TRUSTED_ORIGINS = [
@@ -101,7 +164,7 @@ ROOT_URLCONF = 'poultry.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
+        'DIRS': [BASE_DIR / 'templates'],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -132,8 +195,8 @@ DATABASES = {
         'ENGINE': 'django.db.backends.postgresql',
         'NAME': 'leo',
         'USER': 'tarxemo',
-        'PASSWORD': '@SuperCoder',
-        # 'PASSWORD': '123456',
+        # 'PASSWORD': '@SuperCoder',
+        'PASSWORD': '123456',
         'HOST': 'localhost',  # or your remote server IP
         'PORT': '5432',
     }

@@ -15,19 +15,29 @@ Including another URLconf
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
 from django.contrib import admin
-from django.urls import path,include
-from poultry.views import *
+from django.urls import path, include
+from django.views.generic import TemplateView
 from graphene_django.views import GraphQLView
 from django.views.decorators.csrf import csrf_exempt
-# from django_graphql_playground.views import playground
 from django.conf import settings
+from github_management.views_auth import HomeView, ProfileView
 
 urlpatterns = [
     path('hidfor/', admin.site.urls),
-    path('reports/', ReportAPIView.as_view(), name='reports-api'),
+    
+    # GraphQL endpoint
     path("gql/", csrf_exempt(GraphQLView.as_view(graphiql=settings.DEBUG))),
-    path("profits/", ProfitabilityTrendReport.as_view()),
-    path("costs/", CostOfProductionReport.as_view()),
-    path("financials/", FinancialDashboardReport.as_view())
+    
+    # Allauth URLs for authentication
+    path('accounts/', include('allauth.urls')),
+    
+    # Profile page (requires login)
+    path('profile/', ProfileView.as_view(), name='profile'),
+    
+    # Home page
+    path('', HomeView.as_view(), name='home'),
+    
+    # GitHub Management URLs
+    path('github/', include(("github_management.urls", "github_management"), namespace="github_management")),
 ]
 

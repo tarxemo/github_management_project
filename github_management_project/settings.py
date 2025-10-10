@@ -254,9 +254,9 @@ WSGI_APPLICATION = 'github_management_project.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'leo',
+        'NAME': 'github',
         'USER': 'tarxemo',
-        'PASSWORD': '123456',
+        'PASSWORD': '@SuperCoder',
         'HOST': 'localhost',  # or your remote server IP
         'PORT': '5432',
     }

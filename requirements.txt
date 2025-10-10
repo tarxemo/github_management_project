@@ -8,7 +8,7 @@ django-oauth-toolkit==2.3.0
 # Celery
 celery==5.3.6
 redis==5.0.1
-django-celery-beat==4.1.0  # Updated to support Django 5.2
+django-celery-beat==2.8.1  # Latest version compatible with Django 5.2
 django-celery-results==3.0.0  # Pinned to specific version
 
 # API Clients

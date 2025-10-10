@@ -11,14 +11,16 @@ logger = logging.getLogger(__name__)
 @shared_task(bind=True)
 def fetch_users_for_country(self, country_id):
     """Background task to fetch users for a specific country"""
-    country = Country.objects.get(id=country_id)
+    # country = Country.objects.get(id=country_id)
     
     try:
         client = GitHubAPIClient()
-        users = client.get_users_by_country(country.slug)
-        
-        with transaction.atomic():
-            # Delete existing users for this country
+        for country in Country.objects.all():
+            if GitHubUser.objects.filter(country=country).exists():
+                continue
+            users = client.get_users_by_country(country.slug)
+            # with transaction.atomic():
+                # Delete existing users for this country
             country.users.all().delete()
             
             # Create new users
@@ -36,7 +38,11 @@ def fetch_users_for_country(self, country_id):
                     avatar_url=user_data.get('avatar_url', f"https://github.com/{user_data['username']}.png")
                 ))
             
-            GitHubUser.objects.bulk_create(user_objs)
+            existing = GitHubUser.objects.filter(username__in=[obj.username for obj in user_objs])
+            existing_usernames = {user.username for user in existing}
+
+            to_create = [obj for obj in user_objs if obj.username not in existing_usernames]
+            GitHubUser.objects.bulk_create(to_create)
             
             # Update country stats
             country.user_count = len(user_objs)

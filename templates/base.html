@@ -36,7 +36,7 @@
                 </div>
                 <div class="hidden sm:ml-6 sm:flex sm:items-center">
                     {% if user.is_authenticated %}
-                        <span class="text-gray-700 mr-4">Welcome, {{ user.username }}</span>
+                        <span class="text-gray-700 mr-4">Welcome, {{ user.github_username }}</span>
                         <a href="{% url 'account_logout' %}" class="bg-gray-100 text-gray-700 px-3 py-2 rounded-md text-sm font-medium hover:bg-gray-200">
                             Logout
                         </a>

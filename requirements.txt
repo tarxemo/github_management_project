@@ -4,5 +4,10 @@ dotenv
 django-cors-headers
 django-countries
 graphene-django
-django-graphql-jwt
 django-graphql-auth
+django-graphql-jwt==0.3.0 
+PyJWT==1.7.1
+djangorestframework
+django-allauth
+psycopg2-binary
+PyGithub

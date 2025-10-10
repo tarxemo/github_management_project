@@ -13,6 +13,11 @@ https://docs.djangoproject.com/en/5.1/ref/settings/
 from pathlib import Path
 from datetime import timedelta
 import os
+
+import django.utils.translation
+if not hasattr(django.utils.translation, 'ugettext'):
+    django.utils.translation.ugettext = django.utils.translation.gettext
+
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -45,7 +50,6 @@ CORS_ALLOW_CREDENTIALS = True
 
 INSTALLED_APPS = [
     'corsheaders',
-    'django_countries',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',

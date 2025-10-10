@@ -1,72 +1,63 @@
 # Core Django
 Django==5.2.6
 djangorestframework==3.14.0
-
-# Authentication & User Management
 django-allauth==0.61.1
 django-cors-headers==4.3.1
 django-oauth-toolkit==2.3.0
 
-# Database
-psycopg2-binary==2.9.9
-django-countries==7.6.1
-
-# Async & Task Queue
+# Celery
 celery==5.3.6
 redis==5.0.1
-django-celery-beat==2.5.0
-django-celery-results
+django-celery-beat==4.1.0  # Updated to support Django 5.2
+django-celery-results==3.0.0  # Pinned to specific version
 
 # API Clients
-requests
-PyGithub
-python-dotenv
+requests==2.31.0
+PyGithub==2.1.1
+python-dotenv==1.0.0
 
 # Data Processing
-beautifulsoup4
-python-dateutil
+beautifulsoup4==4.12.2
+python-dateutil==2.8.2
 
 # Development Tools
-ipdb
-python-decouple
+ipdb==0.13.13
+python-decouple==3.8
 
 # Security
-cryptography
-python-jose
+cryptography==42.0.4
+python-jose==3.3.0
 
 # Monitoring
-sentry-sdk
+sentry-sdk==1.39.1
 
 # Production
-whitenoise
-gunicorn
-uvicorn
+whitenoise==6.6.0
+gunicorn==21.2.0
+uvicorn==0.24.0
 
 # Testing
-pytest
-pytest-django
-pytest-cov
+pytest==7.4.3
+pytest-django==4.7.0
+pytest-cov==4.1.0
 
 # Linting & Code Quality
-black
-flake8
-isort
+black==23.11.0
+flake8==6.1.0
+isort==5.12.0
 
 # Documentation
-Sphinx
-sphinx-rtd-theme
+Sphinx==7.2.6
+sphinx-rtd-theme==1.3.0
 
 # Other Utilities
-python-slugify
-Pillow
+python-slugify==8.0.1
+Pillow==10.1.0
 
 # Deployment
-dj-database-url
-dj-static
+dj-database-url==2.1.0
+dj-static==3.0.1
 
 # Google Authentication
-google-auth
-google-auth-oauthlib
-
-# Environment Management
-python-dotenv
+google-auth==2.23.4
+google-auth-oauthlib==1.1.0

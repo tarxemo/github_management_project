@@ -133,10 +133,12 @@ print_message "Configuration collected successfully!"
 # Summary
 print_step "Configuration Summary"
 echo "Domain Name: $DOMAIN_NAME"
+echo "All Domains: $DOMAINS"
 echo "SSL Email: $SSL_EMAIL"
 echo "Project Path: $PROJECT_PATH"
 echo "Project Name: $PROJECT_NAME"
 echo "App User: $APP_USER"
+echo "App Port: $APP_PORT"
 echo "Setup SSL: $SETUP_SSL"
 echo ""
 read -p "Continue with these settings? (y/n): " CONFIRM
@@ -196,9 +198,7 @@ apt-get install -y python3-dev libffi-dev libssl-dev
 # Install requirements if exists, otherwise install essential packages
 if [ -f "$PROJECT_PATH/requirements.txt" ]; then
     print_message "Installing from requirements.txt..."
-    # Install cryptography first as it might need system dependencies
     pip install cryptography
-    # Then install the rest of the requirements
     pip install -r "$PROJECT_PATH/requirements.txt"
 else
     print_warning "requirements.txt not found. Installing essential packages..."
@@ -206,19 +206,18 @@ else
         cryptography django-celery-beat django-celery-results redis python-dotenv
 fi
 
-deactivate
 print_message "Python dependencies installed"
 
 # Create necessary directories
-print_step "STEP 5: Setting Up Directories and Permissions"
+print_step "STEP 6: Setting Up Directories and Permissions"
 mkdir -p $PROJECT_PATH/static
 mkdir -p $PROJECT_PATH/media
 mkdir -p $PROJECT_PATH/logs
 
-# Collect static files
+# Collect static files using virtualenv python
 print_message "Collecting static files..."
 cd $PROJECT_PATH
-python3 manage.py collectstatic --noinput || print_warning "Static files collection failed or not configured"
+$VENV_PATH/bin/python manage.py collectstatic --noinput || print_warning "Static files collection failed or not configured"
 
 # Set proper permissions
 print_message "Setting file permissions..."
@@ -228,8 +227,11 @@ chmod -R 775 $PROJECT_PATH/static
 chmod -R 775 $PROJECT_PATH/media
 chmod -R 775 $PROJECT_PATH/logs
 
+# Deactivate virtualenv before creating services
+deactivate
+
 # Create Gunicorn systemd service
-print_step "STEP 6: Creating Gunicorn Service"
+print_step "STEP 7: Creating Gunicorn Service"
 GUNICORN_SERVICE="/etc/systemd/system/gunicorn.service"
 
 cat > $GUNICORN_SERVICE << EOF
@@ -249,6 +251,9 @@ ExecStart=$VENV_PATH/bin/gunicorn \\
     --error-logfile $PROJECT_PATH/logs/gunicorn-error.log \\
     --log-level info \\
     $PROJECT_NAME.wsgi:application
+
+Restart=on-failure
+RestartSec=5s
 
 [Install]
 WantedBy=multi-user.target
@@ -277,17 +282,29 @@ print_message "Starting Gunicorn service..."
 systemctl daemon-reload
 systemctl start gunicorn.socket
 systemctl enable gunicorn.socket
-systemctl restart gunicorn
+systemctl stop gunicorn 2>/dev/null || true
+systemctl start gunicorn
+systemctl enable gunicorn
+
+# Wait a moment for Gunicorn to start
+sleep 3
 
 # Check Gunicorn status
 if systemctl is-active --quiet gunicorn; then
     print_message "Gunicorn is running successfully!"
+    print_message "Checking if Gunicorn is listening on port $APP_PORT..."
+    if lsof -i :$APP_PORT > /dev/null 2>&1; then
+        print_message "Gunicorn is listening on port $APP_PORT"
+    else
+        print_warning "Gunicorn is active but not listening on port $APP_PORT. Check logs."
+    fi
 else
-    print_error "Gunicorn failed to start. Check logs with: journalctl -u gunicorn"
+    print_error "Gunicorn failed to start. Check logs with: journalctl -u gunicorn -n 50"
+    journalctl -u gunicorn -n 20 --no-pager
 fi
 
 # Configure Celery service
-print_step "Configuring Celery Service"
+print_step "STEP 8: Configuring Celery Service"
 
 # Create directories for Celery
 CELERY_LOG_DIR="/var/log/celery"
@@ -350,7 +367,6 @@ WorkingDirectory=$PROJECT_PATH
 RuntimeDirectory=celery
 RuntimeDirectoryMode=0775
 
-# Use full path to celery and specify the worker command directly
 ExecStart=$VENV_PATH/bin/celery -A \${CELERY_APP} worker \
     --loglevel=\${CELERYD_LOG_LEVEL} \
     --logfile=\${CELERYD_LOG_FILE} \
@@ -359,22 +375,16 @@ ExecStart=$VENV_PATH/bin/celery -A \${CELERY_APP} worker \
     --max-tasks-per-child=100 \
     --max-memory-per-child=1200000
 
-# Graceful shutdown
 ExecStop=$VENV_PATH/bin/celery control shutdown
-
-# Restart on failure
-Restart=always
-RestartSec=10s
-
-# Ensure the log directory exists
-PermissionsStartOnly=true
-ExecStartPre=/bin/mkdir -p /var/log/celery
-ExecStartPre=/bin/chown -R $APP_USER:www-data /var/log/celery
-ExecStartPre=/bin/chmod -R 755 /var/log/celery
 
 Restart=always
 RestartSec=10s
 StartLimitInterval=0
+
+PermissionsStartOnly=true
+ExecStartPre=/bin/mkdir -p /var/log/celery
+ExecStartPre=/bin/chown -R $APP_USER:www-data /var/log/celery
+ExecStartPre=/bin/chmod -R 755 /var/log/celery
 
 [Install]
 WantedBy=multi-user.target
@@ -396,16 +406,11 @@ WorkingDirectory=$PROJECT_PATH
 RuntimeDirectory=celery
 RuntimeDirectoryMode=0775
 
-# Use full path to celery and specify the beat command directly
 ExecStart=$VENV_PATH/bin/celery -A \${CELERY_APP} beat \
     --scheduler django_celery_beat.schedulers:DatabaseScheduler \
     --loglevel=\${CELERYD_LOG_LEVEL} \
     --pidfile=$CELERY_RUN_DIR/beat.pid \
     --logfile=$CELERY_LOG_DIR/beat.log
-
-# Restart on failure
-Restart=always
-RestartSec=10s
 
 Restart=always
 RestartSec=10s
@@ -441,15 +446,12 @@ EOF
 # Reload systemd to apply changes
 systemctl daemon-reload
 
-# Start and enable services
+# Start and enable Celery services
 for service in celery celery-beat; do
-    # Stop the service if it's running
     systemctl stop $service 2>/dev/null || true
-    
-    # Enable and start the service
     systemctl enable $service
     if systemctl start $service; then
-        sleep 2  # Give it a moment to start
+        sleep 2
         if systemctl is-active --quiet $service; then
             print_message "$service is running successfully!"
         else
@@ -463,46 +465,25 @@ for service in celery celery-beat; do
 done
 
 # Configure Nginx
-print_step "STEP 7: Configuring Nginx"
+print_step "STEP 9: Configuring Nginx"
 NGINX_CONF="/etc/nginx/sites-available/$DOMAIN_NAME"
 
 # Create Nginx configuration with all domains
-cat > $NGINX_CONF << EOF
-# HTTP server - redirect to HTTPS
+cat > $NGINX_CONF << 'NGINX_EOF'
+# HTTP server - redirect to HTTPS (will be updated after SSL setup)
 server {
     listen 80;
     listen [::]:80;
-    server_name $DOMAINS;
+    server_name DOMAINS_PLACEHOLDER;
     
     # Security headers
-    add_header X-Content-Type-Options "nosniff" always;
-    add_header X-Frame-Options "SAMEORIGIN" always;
-    add_header X-XSS-Protection "1; mode=block" always;
-    
-    # Redirect all HTTP requests to HTTPS
-    return 301 https://\$host\$request_uri;
-}
-
-# HTTPS server configuration will be added by Certbot
-# This is a template that will be updated by Certbot
-server {
-    listen 443 ssl http2;
-    listen [::]:443 ssl http2;
-    server_name $DOMAINS;
-    
-    # SSL configuration will be managed by Certbot
-    # ssl_certificate /etc/letsencrypt/live/\$host/fullchain.pem;
-    # ssl_certificate_key /etc/letsencrypt/live/\$host/privkey.pem;
-    
-    # Security headers
-    add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
     add_header X-Content-Type-Options "nosniff" always;
     add_header X-Frame-Options "SAMEORIGIN" always;
     add_header X-XSS-Protection "1; mode=block" always;
     
     # Logging
-    access_log /var/log/nginx/\$host-access.log;
-    error_log /var/log/nginx/\$host-error.log warn;
+    access_log /var/log/nginx/DOMAIN_PLACEHOLDER-access.log;
+    error_log /var/log/nginx/DOMAIN_PLACEHOLDER-error.log warn;
     
     # Max upload size
     client_max_body_size 100M;
@@ -516,7 +497,7 @@ server {
     
     # Static files
     location /static/ {
-        alias $PROJECT_PATH/static/;
+        alias PROJECT_PATH_PLACEHOLDER/static/;
         expires 30d;
         access_log off;
         add_header Cache-Control "public, max-age=2592000";
@@ -524,7 +505,7 @@ server {
     
     # Media files
     location /media/ {
-        alias $PROJECT_PATH/media/;
+        alias PROJECT_PATH_PLACEHOLDER/media/;
         expires 30d;
         access_log off;
         add_header Cache-Control "public, max-age=2592000";
@@ -539,14 +520,14 @@ server {
     
     # Proxy configuration for Django
     location / {
-        proxy_pass http://127.0.0.1:$APP_PORT;
+        proxy_pass http://127.0.0.1:APP_PORT_PLACEHOLDER;
         proxy_http_version 1.1;
-        proxy_set_header Upgrade \$http_upgrade;
+        proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection "upgrade";
-        proxy_set_header Host \$host;
-        proxy_set_header X-Real-IP \$remote_addr;
-        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto \$scheme;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
         proxy_read_timeout 300s;
         proxy_connect_timeout 300s;
         
@@ -575,11 +556,15 @@ server {
         root /usr/share/nginx/html;
     }
 }
+NGINX_EOF
 
-# Include Let's Encrypt challenge directory for certificate renewal
-include /etc/letsencrypt/options-ssl-nginx.conf;
-include /etc/letsencrypt/options-ssl-nginx-*.conf;
+# Replace placeholders
+sed -i "s|DOMAINS_PLACEHOLDER|$DOMAINS|g" $NGINX_CONF
+sed -i "s|DOMAIN_PLACEHOLDER|$DOMAIN_NAME|g" $NGINX_CONF
+sed -i "s|PROJECT_PATH_PLACEHOLDER|$PROJECT_PATH|g" $NGINX_CONF
+sed -i "s|APP_PORT_PLACEHOLDER|$APP_PORT|g" $NGINX_CONF
 
+print_message "Nginx configuration created"
 
 # Enable Nginx site
 ln -sf $NGINX_CONF /etc/nginx/sites-enabled/
@@ -591,89 +576,15 @@ if nginx -t; then
     print_message "Nginx configuration is valid"
     systemctl restart nginx
     systemctl enable nginx
+    print_message "Nginx restarted successfully"
 else
     print_error "Nginx configuration test failed!"
+    nginx -t
     exit 1
 fi
 
-# SSL Setup Instructions
-print_step "STEP 8: SSL Certificate Setup (Manual Step Required)"
-
-# Create a script for easy SSL setup later
-SSL_SETUP_SCRIPT="/usr/local/bin/setup_ssl_${DOMAIN_NAME//./_}.sh"
-cat > $SSL_SETUP_SCRIPT << EOF
-#!/bin/bash
-echo "Setting up SSL for $DOMAIN_NAME..."
-if [ "\$EUID" -ne 0 ]
-  then echo "Please run as root (use sudo)"
-  exit 1
-fi
-
-# Install certbot if not installed
-if ! command -v certbot &> /dev/null; then
-    echo "Installing certbot..."
-    apt-get update
-    apt-get install -y certbot python3-certbot-nginx
-fi
-
-# Build the certbot command
-CERTBOT_CMD="certbot --nginx -d $DOMAIN_NAME -d www.$DOMAIN_NAME"
-for sub in "${SUBDOMAINS[@]}"; do
-    if [ -n "\$sub" ]; then
-        CERTBOT_CMD+=" -d \$sub.$DOMAIN_NAME"
-    fi
-done
-
-# Add email if provided
-if [ -n "$SSL_EMAIL" ]; then
-    CERTBOT_CMD+=" --email $SSL_EMAIL --agree-tos"
-else
-    CERTBOT_CMD+=" --register-unsafely-without-email"
-fi
-
-# Add non-interactive and redirect options
-CERTBOT_CMD+=" --non-interactive --redirect"
-
-echo "Running: \$ $CERTBOT_CMD"
-eval "\$CERTBOT_CMD"
-
-if [ \$? -eq 0 ]; then
-    echo -e "\n${GREEN}SSL certificate installed successfully!${NC}"
-    echo "Testing Nginx configuration..."
-    nginx -t && systemctl restart nginx
-    echo -e "\n${GREEN}SSL setup complete! Your site is now secured with HTTPS.${NC}"
-else
-    echo -e "\n${RED}Failed to install SSL certificate.${NC}"
-    echo "Common issues:"
-    echo "1. DNS not properly configured (check with: dig +short $DOMAIN_NAME)"
-    echo "2. Port 80 is blocked (check with: sudo ufw status)"
-    echo "3. Nginx is not running (check with: systemctl status nginx)"
-    exit 1
-fi
-EOF
-
-# Make SSL setup script executable
-if [ -f "$SSL_SETUP_SCRIPT" ]; then
-    chmod +x "$SSL_SETUP_SCRIPT"
-else
-    print_warning "SSL setup script not found at $SSL_SETUP_SCRIPT"
-fi
-
-echo -e "\n${YELLOW}IMPORTANT: Your site is now running on HTTP. To set up SSL:${NC}"
-echo "1. Make sure your domain ($DOMAIN_NAME) points to this server's IP"
-echo "2. Wait for DNS propagation (use: dig +short $DOMAIN_NAME to verify)"
-echo -e "3. Run: ${GREEN}sudo $SSL_SETUP_SCRIPT${NC}"
-echo -e "\nOr run the certbot command manually:"
-echo -e "${GREEN}sudo certbot --nginx -d $DOMAIN_NAME -d www.$DOMAIN_NAME \\
-    --non-interactive \\
-    --agree-tos \\
-    --email $SSL_EMAIL \\
-    --redirect${NC}"
-
-# Install Certbot but don't run it yet
-if ! command -v certbot &> /dev/null; then
 # Configure firewall
-print_step "STEP 9: Configuring Firewall"
+print_step "STEP 10: Configuring Firewall"
 if command -v ufw &> /dev/null; then
     print_message "Configuring UFW firewall..."
     ufw allow 'Nginx Full'
@@ -684,31 +595,123 @@ else
     print_warning "UFW not found. Please configure your firewall manually to allow ports 80 and 443"
 fi
 
+# SSL Setup Instructions
+print_step "STEP 11: SSL Certificate Setup"
+
+# Install Certbot
+if ! command -v certbot &> /dev/null; then
+    print_message "Installing certbot..."
+    apt-get update
+    apt-get install -y certbot python3-certbot-nginx
+fi
+
+# Create a script for easy SSL setup
+SSL_SETUP_SCRIPT="/usr/local/bin/setup_ssl_${DOMAIN_NAME//./_}.sh"
+cat > $SSL_SETUP_SCRIPT << 'SSL_SCRIPT_EOF'
+#!/bin/bash
+echo "Setting up SSL for SSL_DOMAIN_PLACEHOLDER..."
+if [ "$EUID" -ne 0 ]; then
+    echo "Please run as root (use sudo)"
+    exit 1
+fi
+
+# Build the certbot command with all domains
+CERTBOT_CMD="certbot --nginx"
+CERTBOT_CMD+=" -d SSL_DOMAIN_PLACEHOLDER"
+CERTBOT_CMD+=" -d www.SSL_DOMAIN_PLACEHOLDER"
+
+# Add subdomains
+SSL_SUBDOMAINS_ARRAY=(SSL_SUBDOMAINS_PLACEHOLDER)
+for sub in "${SSL_SUBDOMAINS_ARRAY[@]}"; do
+    if [ -n "$sub" ]; then
+        CERTBOT_CMD+=" -d $sub.SSL_DOMAIN_PLACEHOLDER"
+    fi
+done
+
+# Add email and options
+if [ -n "SSL_EMAIL_PLACEHOLDER" ]; then
+    CERTBOT_CMD+=" --email SSL_EMAIL_PLACEHOLDER --agree-tos"
+else
+    CERTBOT_CMD+=" --register-unsafely-without-email"
+fi
+
+CERTBOT_CMD+=" --non-interactive --redirect"
+
+echo "Running: $CERTBOT_CMD"
+eval "$CERTBOT_CMD"
+
+if [ $? -eq 0 ]; then
+    echo -e "\nSSL certificate installed successfully!"
+    echo "Testing Nginx configuration..."
+    nginx -t && systemctl restart nginx
+    echo -e "\nSSL setup complete! Your site is now secured with HTTPS."
+else
+    echo -e "\nFailed to install SSL certificate."
+    echo "Common issues:"
+    echo "1. DNS not properly configured (check with: dig +short SSL_DOMAIN_PLACEHOLDER)"
+    echo "2. Port 80/443 is blocked (check with: sudo ufw status)"
+    echo "3. Nginx is not running (check with: systemctl status nginx)"
+    exit 1
+fi
+SSL_SCRIPT_EOF
+
+# Replace placeholders in SSL script
+sed -i "s|SSL_DOMAIN_PLACEHOLDER|$DOMAIN_NAME|g" $SSL_SETUP_SCRIPT
+sed -i "s|SSL_EMAIL_PLACEHOLDER|$SSL_EMAIL|g" $SSL_SETUP_SCRIPT
+sed -i "s|SSL_SUBDOMAINS_PLACEHOLDER|${SUBDOMAINS[@]}|g" $SSL_SETUP_SCRIPT
+
+chmod +x "$SSL_SETUP_SCRIPT"
+
+echo -e "\n${YELLOW}═══════════════════════════════════════════════════${NC}"
+echo -e "${YELLOW}       SSL SETUP INSTRUCTIONS${NC}"
+echo -e "${YELLOW}═══════════════════════════════════════════════════${NC}"
+echo -e "\n${YELLOW}IMPORTANT: Your site is now running on HTTP.${NC}"
+echo -e "\nTo set up SSL/HTTPS:"
+echo -e "1. Make sure your domain points to this server's IP"
+echo -e "   Current domains: ${GREEN}$DOMAINS${NC}"
+echo -e "2. Verify DNS propagation:"
+echo -e "   ${GREEN}dig +short $DOMAIN_NAME${NC}"
+for sub in "${SUBDOMAINS[@]}"; do
+    if [ -n "$sub" ]; then
+        echo -e "   ${GREEN}dig +short $sub.$DOMAIN_NAME${NC}"
+    fi
+done
+echo -e "3. Run the SSL setup script:"
+echo -e "   ${GREEN}sudo $SSL_SETUP_SCRIPT${NC}"
+echo -e "\n${YELLOW}═══════════════════════════════════════════════════${NC}\n"
+
 # Create management script
-print_step "STEP 10: Creating Management Scripts"
+print_step "STEP 12: Creating Management Scripts"
 MANAGE_SCRIPT="$PROJECT_PATH/manage-app.sh"
 
-cat > $MANAGE_SCRIPT << 'EOFSCRIPT'
+cat > $MANAGE_SCRIPT << 'MANAGE_EOF'
 #!/bin/bash
 
 # Management script for Django application
+PROJECT_PATH="MANAGE_PROJECT_PATH_PLACEHOLDER"
 
 case "$1" in
     start)
         echo "Starting application..."
         sudo systemctl start gunicorn
+        sudo systemctl start celery
+        sudo systemctl start celery-beat
         sudo systemctl start nginx
         echo "Application started"
         ;;
     stop)
         echo "Stopping application..."
         sudo systemctl stop gunicorn
+        sudo systemctl stop celery
+        sudo systemctl stop celery-beat
         sudo systemctl stop nginx
         echo "Application stopped"
         ;;
     restart)
         echo "Restarting application..."
         sudo systemctl restart gunicorn
+        sudo systemctl restart celery
+        sudo systemctl restart celery-beat
         sudo systemctl restart nginx
         echo "Application restarted"
         ;;
@@ -716,22 +719,34 @@ case "$1" in
         echo "=== Gunicorn Status ==="
         sudo systemctl status gunicorn --no-pager
         echo ""
+        echo "=== Celery Status ==="
+        sudo systemctl status celery --no-pager
+        echo ""
+        echo "=== Celery Beat Status ==="
+        sudo systemctl status celery-beat --no-pager
+        echo ""
         echo "=== Nginx Status ==="
         sudo systemctl status nginx --no-pager
         ;;
     logs)
         echo "=== Gunicorn Logs ==="
         sudo journalctl -u gunicorn -n 50 --no-pager
+        echo ""
+        echo "=== Celery Logs ==="
+        sudo journalctl -u celery -n 50 --no-pager
         ;;
     update)
         echo "Updating application..."
-        cd PROJECT_PATH_PLACEHOLDER
+        cd $PROJECT_PATH
         git pull
         source venv/bin/activate
         pip install -r requirements.txt
         python manage.py migrate
         python manage.py collectstatic --noinput
+        deactivate
         sudo systemctl restart gunicorn
+        sudo systemctl restart celery
+        sudo systemctl restart celery-beat
         echo "Application updated"
         ;;
     *)
@@ -739,16 +754,16 @@ case "$1" in
         exit 1
         ;;
 esac
-EOFSCRIPT
+MANAGE_EOF
 
-sed -i "s|PROJECT_PATH_PLACEHOLDER|$PROJECT_PATH|g" $MANAGE_SCRIPT
+sed -i "s|MANAGE_PROJECT_PATH_PLACEHOLDER|$PROJECT_PATH|g" $MANAGE_SCRIPT
 chmod +x $MANAGE_SCRIPT
 chown $APP_USER:$APP_USER $MANAGE_SCRIPT
 
 print_message "Management script created at $MANAGE_SCRIPT"
 
 # Final verification
-print_step "STEP 11: Final Verification"
+print_step "STEP 13: Final Verification"
 
 echo "Checking services..."
 SERVICES_OK=true
@@ -760,6 +775,20 @@ else
     SERVICES_OK=false
 fi
 
+if systemctl is-active --quiet celery; then
+    echo -e "${GREEN}✓${NC} Celery is running"
+else
+    echo -e "${RED}✗${NC} Celery is not running"
+    SERVICES_OK=false
+fi
+
+if systemctl is-active --quiet celery-beat; then
+    echo -e "${GREEN}✓${NC} Celery Beat is running"
+else
+    echo -e "${RED}✗${NC} Celery Beat is not running"
+    SERVICES_OK=false
+fi
+
 if systemctl is-active --quiet nginx; then
     echo -e "${GREEN}✓${NC} Nginx is running"
 else
@@ -767,57 +796,118 @@ else
     SERVICES_OK=false
 fi
 
+# Check if port is listening
+echo ""
+echo "Checking port $APP_PORT..."
+if lsof -i :$APP_PORT > /dev/null 2>&1; then
+    echo -e "${GREEN}✓${NC} Application is listening on port $APP_PORT"
+else
+    echo -e "${RED}✗${NC} Nothing is listening on port $APP_PORT"
+    SERVICES_OK=false
+fi
+
 # Display summary
 print_step "Deployment Complete!"
 
-cat << EOF
+cat << SUMMARY_EOF
 
 ${GREEN}╔═══════════════════════════════════════════════════╗
 ║           Deployment Summary                       ║
 ╚═══════════════════════════════════════════════════╝${NC}
 
-${GREEN}✓${NC} Your Django application is now deployed!
+${GREEN}✓${NC} Your Django application has been deployed!
 
-Domain: http://$DOMAIN_NAME
-$([ "$SETUP_SSL" = "y" ] && echo "HTTPS: https://$DOMAIN_NAME")
+Domain Configuration:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  • Main Domain: http://$DOMAIN_NAME
+  • All Configured Domains: $DOMAINS
+  • Port: $APP_PORT
 
 Important Files and Locations:
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   • Project Path: $PROJECT_PATH
   • Virtual Environment: $VENV_PATH
-  • Gunicorn Socket: $PROJECT_PATH/gunicorn.sock
   • Nginx Config: $NGINX_CONF
   • Logs Directory: $PROJECT_PATH/logs
   • Static Files: $PROJECT_PATH/static
   • Media Files: $PROJECT_PATH/media
   • Management Script: $MANAGE_SCRIPT
+  • SSL Setup Script: $SSL_SETUP_SCRIPT
 
-Useful Commands:
+Service Management:
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  • Restart app: sudo systemctl restart gunicorn
-  • Restart nginx: sudo systemctl restart nginx
-  • View logs: sudo journalctl -u gunicorn -f
-  • Check status: sudo systemctl status gunicorn
-  • Manage app: $MANAGE_SCRIPT {start|stop|restart|status|logs|update}
+  • Restart all: $MANAGE_SCRIPT restart
+  • Check status: $MANAGE_SCRIPT status
+  • View logs: $MANAGE_SCRIPT logs
+  • Update app: $MANAGE_SCRIPT update
 
-Next Steps:
+Individual Services:
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  1. Update your DNS settings to point to this server's IP
-  2. Configure your Django ALLOWED_HOSTS in settings.py:
-     ALLOWED_HOSTS = ['$DOMAIN_NAME', 'www.$DOMAIN_NAME']
-  3. Set DEBUG = False in production
-  4. Configure your database settings
-  5. Run migrations: cd $PROJECT_PATH && source venv/bin/activate && python manage.py migrate
+  • Restart Gunicorn: sudo systemctl restart gunicorn
+  • Restart Celery: sudo systemctl restart celery
+  • Restart Celery Beat: sudo systemctl restart celery-beat
+  • Restart Nginx: sudo systemctl restart nginx
+  • View Gunicorn logs: sudo journalctl -u gunicorn -f
+  • View Celery logs: sudo journalctl -u celery -f
+  • View Nginx logs: sudo tail -f /var/log/nginx/$DOMAIN_NAME-error.log
+
+Testing Your Deployment:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  1. Test locally: curl http://localhost:$APP_PORT
+  2. Test via Nginx: curl http://localhost
+  3. Check from external: curl http://$DOMAIN_NAME
+
+Next Steps (IMPORTANT):
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  1. Update Django settings.py:
+     ${YELLOW}ALLOWED_HOSTS = [$ALLOWED_HOSTS]
+     DEBUG = False${NC}
+
+  2. Configure your database in settings.py or .env
+
+  3. Run database migrations:
+     ${GREEN}cd $PROJECT_PATH
+     source venv/bin/activate
+     python manage.py migrate
+     python manage.py createsuperuser  # Optional
+     deactivate${NC}
+
+  4. Update DNS records to point to this server's IP:
+     ${GREEN}$(curl -s ifconfig.me 2>/dev/null || echo "Run: curl ifconfig.me")${NC}
+
+  5. After DNS propagates, set up SSL:
+     ${GREEN}sudo $SSL_SETUP_SCRIPT${NC}
+
+Troubleshooting:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  • If site not reachable:
+    - Check Gunicorn: sudo systemctl status gunicorn
+    - Check Nginx: sudo systemctl status nginx
+    - Check port: sudo lsof -i :$APP_PORT
+    - Check logs: sudo journalctl -u gunicorn -n 100
+
+  • If 502 Bad Gateway:
+    - Gunicorn may not be running or crashed
+    - Check: sudo journalctl -u gunicorn -n 50
+    - Restart: sudo systemctl restart gunicorn
+
+  • If static files not loading:
+    - Run: cd $PROJECT_PATH && source venv/bin/activate
+    - Then: python manage.py collectstatic --noinput
+    - Check permissions: ls -la $PROJECT_PATH/static
 
 $(if [ "$SERVICES_OK" = false ]; then
-    echo -e "${YELLOW}⚠ Warning: Some services are not running properly."
-    echo -e "   Check the logs with: sudo journalctl -u gunicorn -n 50${NC}"
+    echo -e "${YELLOW}⚠ WARNING: Some services are not running properly!"
+    echo -e "   Please check the logs:"
+    echo -e "   - Gunicorn: sudo journalctl -u gunicorn -n 50"
+    echo -e "   - Celery: sudo journalctl -u celery -n 50"
+    echo -e "   - Nginx: sudo journalctl -u nginx -n 50${NC}"
 fi)
 
 ${GREEN}Happy deploying! 🚀${NC}
 
-EOF
+For support and documentation, visit: https://docs.djangoproject.com/
 
-deactivate 2>/dev/null || true
+SUMMARY_EOF
 
 exit 0

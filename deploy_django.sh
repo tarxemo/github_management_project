@@ -253,7 +253,6 @@ ExecStart=$VENV_PATH/bin/gunicorn \\
 [Install]
 WantedBy=multi-user.target
 EOF
-{{ ... }}
 
 print_message "Gunicorn service file created"
 

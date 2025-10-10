@@ -13,3 +13,8 @@ psycopg2-binary
 PyGithub
 gunicorn
 beautifulsoup4
+cryptography
+django-celery-beat
+django-celery-results
+redis
+python-dotenv

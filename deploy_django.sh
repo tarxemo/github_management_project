@@ -175,16 +175,25 @@ fi
 # Install Python dependencies
 print_step "STEP 5: Installing Python Dependencies"
 source $VENV_PATH/bin/activate
+
+# Upgrade pip and install build dependencies
 pip install --upgrade pip
-pip install wheel setuptools
+pip install --upgrade wheel setuptools
+
+# Install system dependencies required for some Python packages
+apt-get install -y python3-dev libffi-dev libssl-dev
 
 # Install requirements if exists, otherwise install essential packages
 if [ -f "$PROJECT_PATH/requirements.txt" ]; then
     print_message "Installing from requirements.txt..."
-    pip install -r $PROJECT_PATH/requirements.txt
+    # Install cryptography first as it might need system dependencies
+    pip install cryptography
+    # Then install the rest of the requirements
+    pip install -r "$PROJECT_PATH/requirements.txt"
 else
     print_warning "requirements.txt not found. Installing essential packages..."
-    pip install django gunicorn psycopg2-binary python-decouple beautifulsoup4
+    pip install django gunicorn psycopg2-binary python-decouple beautifulsoup4 \
+        cryptography django-celery-beat django-celery-results redis python-dotenv
 fi
 
 deactivate
@@ -633,7 +642,12 @@ else
 fi
 EOF
 
-chmod +x $SSL_SETUP_SCRIPT
+# Make SSL setup script executable
+if [ -f "$SSL_SETUP_SCRIPT" ]; then
+    chmod +x "$SSL_SETUP_SCRIPT"
+else
+    print_warning "SSL setup script not found at $SSL_SETUP_SCRIPT"
+fi
 
 echo -e "\n${YELLOW}IMPORTANT: Your site is now running on HTTP. To set up SSL:${NC}"
 echo "1. Make sure your domain ($DOMAIN_NAME) points to this server's IP"

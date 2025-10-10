@@ -58,10 +58,11 @@ read -p "Enter the path to your Django project directory (e.g., /home/ubuntu/myp
 read -p "Enter your Django project name (the folder containing settings.py): " PROJECT_NAME
 read -p "Enter the system user to run the application (default: ubuntu): " APP_USER
 APP_USER=${APP_USER:-ubuntu}
-read -p "Enter the Python version to use (e.g., python3.11, default: python3): " PYTHON_VERSION
-PYTHON_VERSION=${PYTHON_VERSION:-python3}
 read -p "Do you want to set up HTTPS with Let's Encrypt? (y/n, default: y): " SETUP_SSL
 SETUP_SSL=${SETUP_SSL:-y}
+
+# Set default Python version
+PYTHON_VERSION=python3
 
 # Process subdomains
 SUBDOMAINS=($SUBDOMAINS_INPUT)
@@ -106,7 +107,6 @@ echo "SSL Email: $SSL_EMAIL"
 echo "Project Path: $PROJECT_PATH"
 echo "Project Name: $PROJECT_NAME"
 echo "App User: $APP_USER"
-echo "Python Version: $PYTHON_VERSION"
 echo "Setup SSL: $SETUP_SSL"
 echo ""
 read -p "Continue with these settings? (y/n): " CONFIRM
@@ -122,24 +122,15 @@ apt-get upgrade -y
 
 # Install required packages
 print_step "STEP 3: Installing Required Packages"
-apt-get install -y $PYTHON_VERSION $PYTHON_VERSION-venv $PYTHON_VERSION-dev \
-    nginx postgresql postgresql-contrib libpq-dev \
+apt-get install -y nginx postgresql postgresql-contrib libpq-dev \
     build-essential git curl software-properties-common
-
-# Install pip if not present
-if ! command -v pip3 &> /dev/null; then
-    print_message "Installing pip..."
-    curl https://bootstrap.pypa.io/get-pip.py -o get-pip.py
-    $PYTHON_VERSION get-pip.py
-    rm get-pip.py
-fi
 
 # Create virtual environment
 print_step "STEP 4: Setting Up Python Virtual Environment"
 VENV_PATH="$PROJECT_PATH/venv"
 if [ ! -d "$VENV_PATH" ]; then
     print_message "Creating virtual environment..."
-    $PYTHON_VERSION -m venv $VENV_PATH
+    python3 -m venv $VENV_PATH
 else
     print_warning "Virtual environment already exists"
 fi

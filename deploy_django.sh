@@ -145,13 +145,31 @@ print_step "STEP 3: Installing Required Packages"
 apt-get install -y nginx postgresql postgresql-contrib libpq-dev \
     build-essential git curl software-properties-common
 
+# Set virtual environment path
+VENV_PATH="${PROJECT_PATH}/venv"
+
 # Create virtual environment
 print_step "STEP 4: Creating Python Virtual Environment"
 if [ ! -d "$VENV_PATH" ]; then
-    python3 -m venv $VENV_PATH
-    print_message "Virtual environment created at $VENV_PATH"
+    print_message "Creating virtual environment at $VENV_PATH..."
+    python3 -m venv "$VENV_PATH"
+    if [ $? -eq 0 ]; then
+        print_message "Virtual environment created successfully at $VENV_PATH"
+    else
+        print_error "Failed to create virtual environment. Trying with --clear flag..."
+        python3 -m venv --clear "$VENV_PATH" || {
+            print_error "Failed to create virtual environment. Please check Python installation and permissions."
+            exit 1
+        }
+    fi
 else
     print_message "Virtual environment already exists at $VENV_PATH"
+fi
+
+# Ensure virtual environment is activated
+if [ ! -f "$VENV_PATH/bin/activate" ]; then
+    print_error "Virtual environment activation script not found at $VENV_PATH/bin/activate"
+    exit 1
 fi
 
 # Install Python dependencies

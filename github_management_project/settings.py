@@ -85,9 +85,9 @@ INSTALLED_APPS = [
     'allauth.socialaccount.providers.google',
     
     # Local apps
-    'users',
     'github_management',
     'django_celery_beat',
+    'users',
 ]
 
 MIDDLEWARE = [

@@ -15,8 +15,13 @@ from datetime import timedelta
 import os
 
 import django.utils.translation
+
+# Backward compatibility patch for Django 4+ / 5+
 if not hasattr(django.utils.translation, 'ugettext'):
     django.utils.translation.ugettext = django.utils.translation.gettext
+
+if not hasattr(django.utils.translation, 'ugettext_lazy'):
+    django.utils.translation.ugettext_lazy = django.utils.translation.gettext_lazy
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent

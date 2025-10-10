@@ -48,17 +48,37 @@ cat << "EOF"
 EOF
 echo -e "${NC}"
 
-# Interactive prompts
+# Interactive prompts with default values
 print_step "STEP 1: Gathering Configuration Information"
 
-read -p "Enter your main domain name (e.g., example.com): " DOMAIN_NAME
-read -p "Enter subdomains (space-separated, e.g., api app www): " SUBDOMAINS_INPUT
-read -p "Enter your email for SSL certificate (Let's Encrypt): " SSL_EMAIL
-read -p "Enter the path to your Django project directory (e.g., /home/ubuntu/myproject): " PROJECT_PATH
-read -p "Enter your Django project name (the folder containing settings.py): " PROJECT_NAME
-read -p "Enter the system user to run the application (default: ubuntu): " APP_USER
-APP_USER=${APP_USER:-ubuntu}
-read -p "Do you want to set up HTTPS with Let's Encrypt? (y/n, default: y): " SETUP_SSL
+# Set default values
+DEFAULT_DOMAIN="tarxemo.com"
+DEFAULT_SUBDOMAINS="github"
+DEFAULT_EMAIL="tarxemo@gmail.com"
+DEFAULT_PROJECT_PATH="/home/ubuntu/github_management_project/RB"
+DEFAULT_PROJECT_NAME="github_management_project"
+DEFAULT_APP_USER="ubuntu"
+
+# Get user input with defaults
+read -p "Enter your main domain name (e.g., example.com) [${DEFAULT_DOMAIN}]: " DOMAIN_NAME
+DOMAIN_NAME=${DOMAIN_NAME:-$DEFAULT_DOMAIN}
+
+read -p "Enter subdomains (space-separated, e.g., api app www) [${DEFAULT_SUBDOMAINS}]: " SUBDOMAINS_INPUT
+SUBDOMAINS_INPUT=${SUBDOMAINS_INPUT:-$DEFAULT_SUBDOMAINS}
+
+read -p "Enter your email for SSL certificate (Let's Encrypt) [${DEFAULT_EMAIL}]: " SSL_EMAIL
+SSL_EMAIL=${SSL_EMAIL:-$DEFAULT_EMAIL}
+
+read -p "Enter the path to your Django project directory [${DEFAULT_PROJECT_PATH}]: " PROJECT_PATH
+PROJECT_PATH=${PROJECT_PATH:-$DEFAULT_PROJECT_PATH}
+
+read -p "Enter your Django project name [${DEFAULT_PROJECT_NAME}]: " PROJECT_NAME
+PROJECT_NAME=${PROJECT_NAME:-$DEFAULT_PROJECT_NAME}
+
+read -p "Enter the system user to run the application [${DEFAULT_APP_USER}]: " APP_USER
+APP_USER=${APP_USER:-$DEFAULT_APP_USER}
+
+read -p "Do you want to set up HTTPS with Let's Encrypt? (y/n) [y]: " SETUP_SSL
 SETUP_SSL=${SETUP_SSL:-y}
 
 # Set default Python version

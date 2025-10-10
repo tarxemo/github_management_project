@@ -58,6 +58,7 @@ DEFAULT_EMAIL="tarxemo@gmail.com"
 DEFAULT_PROJECT_PATH="/home/ubuntu/github_management_project/RB"
 DEFAULT_PROJECT_NAME="github_management_project"
 DEFAULT_APP_USER="ubuntu"
+DEFAULT_APP_PORT="8000"
 
 # Get user input with defaults
 read -p "Enter your main domain name (e.g., example.com) [${DEFAULT_DOMAIN}]: " DOMAIN_NAME
@@ -77,6 +78,15 @@ PROJECT_NAME=${PROJECT_NAME:-$DEFAULT_PROJECT_NAME}
 
 read -p "Enter the system user to run the application [${DEFAULT_APP_USER}]: " APP_USER
 APP_USER=${APP_USER:-$DEFAULT_APP_USER}
+
+read -p "Enter the port for the application [${DEFAULT_APP_PORT}]: " APP_PORT
+APP_PORT=${APP_PORT:-$DEFAULT_APP_PORT}
+
+# Validate port number
+if ! [[ "$APP_PORT" =~ ^[0-9]+$ ]] || [ "$APP_PORT" -lt 1024 ] || [ "$APP_PORT" -gt 65535 ]; then
+    print_error "Invalid port number. Please enter a number between 1024 and 65535."
+    exit 1
+fi
 
 read -p "Do you want to set up HTTPS with Let's Encrypt? (y/n) [y]: " SETUP_SSL
 SETUP_SSL=${SETUP_SSL:-y}
@@ -234,7 +244,7 @@ WorkingDirectory=$PROJECT_PATH
 Environment="PATH=$VENV_PATH/bin"
 ExecStart=$VENV_PATH/bin/gunicorn \\
     --workers 3 \\
-    --bind unix:$PROJECT_PATH/gunicorn.sock \\
+    --bind 127.0.0.1:$APP_PORT \\
     --access-logfile $PROJECT_PATH/logs/gunicorn-access.log \\
     --error-logfile $PROJECT_PATH/logs/gunicorn-error.log \\
     --log-level info \\
@@ -243,6 +253,7 @@ ExecStart=$VENV_PATH/bin/gunicorn \\
 [Install]
 WantedBy=multi-user.target
 EOF
+{{ ... }}
 
 print_message "Gunicorn service file created"
 
@@ -529,7 +540,7 @@ server {
     
     # Proxy configuration for Django
     location / {
-        proxy_pass http://unix:$PROJECT_PATH/gunicorn.sock;
+        proxy_pass http://127.0.0.1:$APP_PORT;
         proxy_http_version 1.1;
         proxy_set_header Upgrade \$http_upgrade;
         proxy_set_header Connection "upgrade";

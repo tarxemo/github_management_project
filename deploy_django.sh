@@ -316,49 +316,20 @@ done
 # Configure Nginx
 print_step "STEP 7: Configuring Nginx"
 NGINX_CONF="/etc/nginx/sites-available/$DOMAIN_NAME"
-
 # Create Nginx configuration with all domains
 cat > $NGINX_CONF << EOF
-# Main server block that redirects HTTP to HTTPS
 server {
     listen 80;
-    listen [::]:80;
     server_name $DOMAINS;
-    return 301 https://\$host\$request_uri;
-}
 
-# Main HTTPS server block
-server {
-    listen 443 ssl http2;
-    listen [::]:443 ssl http2;
-    server_name $DOMAINS;
-    
-    # SSL configuration will be managed by certbot
-    ssl_certificate /etc/letsencrypt/live/$DOMAIN_NAME/fullchain.pem;
-    ssl_certificate_key /etc/letsencrypt/live/$DOMAIN_NAME/privkey.pem;
-    include /etc/letsencrypt/options-ssl-nginx.conf;
-    ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem;
-    
-    client_max_body_size 100M;
-    
-    access_log $PROJECT_PATH/logs/nginx-access.log;
-    error_log $PROJECT_PATH/logs/nginx-error.log;
-
-    location = /favicon.ico { 
-        access_log off; 
-        log_not_found off; 
-    }
+    location = /favicon.ico { access_log off; log_not_found off; }
     
     location /static/ {
-        alias $PROJECT_PATH/static/;
-        expires 30d;
-        add_header Cache-Control "public, immutable";
+        root $PROJECT_PATH;
     }
-    
+
     location /media/ {
-        alias $PROJECT_PATH/media/;
-        expires 30d;
-        add_header Cache-Control "public, immutable";
+        root $PROJECT_PATH;
     }
 
     location / {
@@ -370,6 +341,10 @@ server {
         proxy_redirect off;
     }
 }
+
+# SSL configuration will be added by certbot
+# when you run: sudo certbot --nginx -d $DOMAIN_NAME -d www.$DOMAIN_NAME \
+#     --non-interactive --agree-tos --email $SSL_EMAIL --redirect
 EOF
 
 # Enable Nginx site
@@ -390,11 +365,67 @@ fi
 # SSL Setup Instructions
 print_step "STEP 8: SSL Certificate Setup (Manual Step Required)"
 
-echo -e "${YELLOW}IMPORTANT: To complete SSL setup, please follow these steps:${NC}"
-echo "1. First, make sure your domain ($DOMAIN_NAME) is pointing to this server's IP address"
-echo "2. Wait for DNS propagation (this can take up to 48 hours, but usually a few minutes)"
-echo "3. Run the following command to set up SSL:"
-echo -e "\n${GREEN}sudo certbot --nginx -d $DOMAIN_NAME -d www.$DOMAIN_NAME \\
+# Create a script for easy SSL setup later
+SSL_SETUP_SCRIPT="/usr/local/bin/setup_ssl_${DOMAIN_NAME//./_}.sh"
+cat > $SSL_SETUP_SCRIPT << EOF
+#!/bin/bash
+echo "Setting up SSL for $DOMAIN_NAME..."
+if [ "\$EUID" -ne 0 ]
+  then echo "Please run as root (use sudo)"
+  exit 1
+fi
+
+# Install certbot if not installed
+if ! command -v certbot &> /dev/null; then
+    echo "Installing certbot..."
+    apt-get update
+    apt-get install -y certbot python3-certbot-nginx
+fi
+
+# Build the certbot command
+CERTBOT_CMD="certbot --nginx -d $DOMAIN_NAME -d www.$DOMAIN_NAME"
+for sub in "${SUBDOMAINS[@]}"; do
+    if [ -n "\$sub" ]; then
+        CERTBOT_CMD+=" -d \$sub.$DOMAIN_NAME"
+    fi
+done
+
+# Add email if provided
+if [ -n "$SSL_EMAIL" ]; then
+    CERTBOT_CMD+=" --email $SSL_EMAIL --agree-tos"
+else
+    CERTBOT_CMD+=" --register-unsafely-without-email"
+fi
+
+# Add non-interactive and redirect options
+CERTBOT_CMD+=" --non-interactive --redirect"
+
+echo "Running: \$ $CERTBOT_CMD"
+eval "\$CERTBOT_CMD"
+
+if [ \$? -eq 0 ]; then
+    echo -e "\n${GREEN}SSL certificate installed successfully!${NC}"
+    echo "Testing Nginx configuration..."
+    nginx -t && systemctl restart nginx
+    echo -e "\n${GREEN}SSL setup complete! Your site is now secured with HTTPS.${NC}"
+else
+    echo -e "\n${RED}Failed to install SSL certificate.${NC}"
+    echo "Common issues:"
+    echo "1. DNS not properly configured (check with: dig +short $DOMAIN_NAME)"
+    echo "2. Port 80 is blocked (check with: sudo ufw status)"
+    echo "3. Nginx is not running (check with: systemctl status nginx)"
+    exit 1
+fi
+EOF
+
+chmod +x $SSL_SETUP_SCRIPT
+
+echo -e "\n${YELLOW}IMPORTANT: Your site is now running on HTTP. To set up SSL:${NC}"
+echo "1. Make sure your domain ($DOMAIN_NAME) points to this server's IP"
+echo "2. Wait for DNS propagation (use: dig +short $DOMAIN_NAME to verify)"
+echo -e "3. Run: ${GREEN}sudo $SSL_SETUP_SCRIPT${NC}"
+echo -e "\nOr run the certbot command manually:"
+echo -e "${GREEN}sudo certbot --nginx -d $DOMAIN_NAME -d www.$DOMAIN_NAME \\
     --non-interactive \\
     --agree-tos \\
     --email $SSL_EMAIL \\

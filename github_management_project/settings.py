@@ -239,7 +239,7 @@ TEMPLATES = [
 ]
 
 WSGI_APPLICATION = 'github_management_project.wsgi.application'
-
+#/home/ubuntu/github_management_project/RB
 # DATABASES = {
 #     'default': {
 #         'ENGINE': 'django.db.backends.sqlite3',

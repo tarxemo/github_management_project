@@ -11,3 +11,4 @@ djangorestframework
 django-allauth
 psycopg2-binary
 PyGithub
+gunicorn

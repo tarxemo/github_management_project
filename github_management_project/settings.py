@@ -32,9 +32,12 @@ CORS_ALLOWED_ORIGINS = [
     "http://localhost:5173",
     "http://127.0.0.1:5173",
     "https://www.leonidasfarm.com",
-    "https://leonidasfarm.com"
+    "https://leonidasfarm.com",
+    "http://localhost:8000",
+    "http://127.0.0.1:8000",
 ]
 
+CORS_ALLOW_CREDENTIALS = True
  
 
 
@@ -60,6 +63,7 @@ INSTALLED_APPS = [
     'allauth.account',
     'allauth.socialaccount',
     'allauth.socialaccount.providers.github',
+    'allauth.socialaccount.providers.google',
     
     # Local apps
     'users',
@@ -99,24 +103,57 @@ AUTHENTICATION_BACKENDS = (
     'allauth.account.auth_backends.AuthenticationBackend',
 )
 
-# Login/Logout redirects
-LOGIN_REDIRECT_URL = '/'
-LOGOUT_REDIRECT_URL = '/'
-
-# GitHub OAuth settings
+# Social Account Providers Configuration
 SOCIALACCOUNT_PROVIDERS = {
     'github': {
-        'APP': {
-            'client_id': 'Ov23li1B8VnzcXarGNwY',  # Replace with your GitHub Client ID
-            'secret': 'c0239f913ceaae636da5fc56993a164db20e03e3',  # Replace with your GitHub Client Secret
-            'key': ''
-        },
         'SCOPE': [
             'user',
-            'user:email',
+            'repo',
+            'read:org',
         ],
+        'APP': {
+            'client_id': os.getenv('GITHUB_OAUTH2_CLIENT_ID'),  # GitHub Client ID
+            'secret': os.getenv('GITHUB_OAUTH2_SECRET'),  # GitHub Client Secret
+            'key': ''
+        }
+    },
+    'google': {
+        'SCOPE': [
+            'profile',
+            'email',
+        ],
+        'AUTH_PARAMS': {
+            'access_type': 'online',
+        },
+        'OAUTH_PKCE_ENABLED': True,
     }
 }
+
+# Social Account Settings
+SOCIALACCOUNT_QUERY_EMAIL = True
+ACCOUNT_EMAIL_REQUIRED = True
+ACCOUNT_EMAIL_VERIFICATION = 'optional'
+ACCOUNT_AUTHENTICATION_METHOD = 'email'
+ACCOUNT_UNIQUE_EMAIL = True
+LOGIN_REDIRECT_URL = '/profile/'
+LOGOUT_REDIRECT_URL = '/'
+
+# Google OAuth2 settings
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
+
+GOOGLE_OAUTH2_CLIENT_ID = os.getenv('GOOGLE_OAUTH2_CLIENT_ID')
+GOOGLE_OAUTH2_SECRET = os.getenv('GOOGLE_OAUTH2_SECRET')
+
+# Add Google app to social account providers
+if GOOGLE_OAUTH2_CLIENT_ID and GOOGLE_OAUTH2_SECRET:
+    SOCIALACCOUNT_PROVIDERS['google']['APP'] = {
+        'client_id': GOOGLE_OAUTH2_CLIENT_ID,
+        'secret': GOOGLE_OAUTH2_SECRET,
+        'key': ''
+    }
 
 # Site ID - required by Django's sites framework
 SITE_ID = 1
@@ -190,6 +227,7 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
+                'users.context_processors.google_auth',
             ],
         },
     },

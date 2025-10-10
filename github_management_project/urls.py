@@ -20,7 +20,7 @@ from django.views.generic import TemplateView
 from graphene_django.views import GraphQLView
 from django.views.decorators.csrf import csrf_exempt
 from django.conf import settings
-from github_management.views_auth import HomeView, ProfileView
+from github_management.views_auth import HomeView, ProfileView, google_one_tap_auth
 
 urlpatterns = [
     path('hidfor/', admin.site.urls),
@@ -37,8 +37,10 @@ urlpatterns = [
     # Home page
     path('', HomeView.as_view(), name='home'),
     
+    # Google One Tap authentication
+    path('accounts/google/onetap/', google_one_tap_auth, name='google_one_tap_auth'),
+    
     # GitHub Management URLs
     path('github/', include(("github_management.urls", "github_management"), namespace="github_management")),
     path('relationships/', include('users.urls')),
 ]
-

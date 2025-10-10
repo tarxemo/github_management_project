@@ -28,6 +28,11 @@
                     </span>
                     Continue with GitHub
                 </a>
+                {% load socialaccount %}
+
+                <a href="{% provider_login_url 'google' %}" class="btn btn-google">
+                <i class="fab fa-google"></i> Continue with Google
+                </a>
             </div>
 
             <div class="relative">

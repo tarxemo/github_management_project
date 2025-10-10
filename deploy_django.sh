@@ -121,35 +121,36 @@ apt-get update -y
 apt-get install -y redis-server
 apt-get upgrade -y
 
-# Install required packages
 print_step "STEP 3: Installing Required Packages"
 apt-get install -y nginx postgresql postgresql-contrib libpq-dev \
     build-essential git curl software-properties-common
 
 # Create virtual environment
-print_step "STEP 4: Setting Up Python Virtual Environment"
-VENV_PATH="$PROJECT_PATH/venv"
+print_step "STEP 4: Creating Python Virtual Environment"
 if [ ! -d "$VENV_PATH" ]; then
-    print_message "Creating virtual environment..."
     python3 -m venv $VENV_PATH
+    print_message "Virtual environment created at $VENV_PATH"
 else
-    print_warning "Virtual environment already exists"
+    print_message "Virtual environment already exists at $VENV_PATH"
 fi
 
-# Activate virtual environment and install dependencies
-print_message "Installing Python dependencies..."
+# Install Python dependencies
+print_step "STEP 5: Installing Python Dependencies"
 source $VENV_PATH/bin/activate
 pip install --upgrade pip
-pip install gunicorn
+pip install wheel setuptools
 
-# Check for requirements.txt
+# Install requirements if exists, otherwise install essential packages
 if [ -f "$PROJECT_PATH/requirements.txt" ]; then
     print_message "Installing from requirements.txt..."
     pip install -r $PROJECT_PATH/requirements.txt
 else
     print_warning "requirements.txt not found. Installing essential packages..."
-    pip install django gunicorn psycopg2-binary python-decouple
+    pip install django gunicorn psycopg2-binary python-decouple beautifulsoup4
 fi
+
+deactivate
+print_message "Python dependencies installed"
 
 # Create necessary directories
 print_step "STEP 5: Setting Up Directories and Permissions"

@@ -12,3 +12,4 @@ django-allauth
 psycopg2-binary
 PyGithub
 gunicorn
+beautifulsoup4

@@ -15,13 +15,21 @@ from datetime import timedelta
 import os
 
 import django.utils.translation
+from django.dispatch import Signal
 
-# Backward compatibility patch for Django 4+ / 5+
+# ---- Translation Backward Compatibility ----
 if not hasattr(django.utils.translation, 'ugettext'):
     django.utils.translation.ugettext = django.utils.translation.gettext
-
 if not hasattr(django.utils.translation, 'ugettext_lazy'):
     django.utils.translation.ugettext_lazy = django.utils.translation.gettext_lazy
+
+# ---- Signal Backward Compatibility ----
+# Old versions of django-graphql-jwt use "providing_args", which Django >=4.0 removed.
+if 'providing_args' not in Signal.__init__.__code__.co_varnames:
+    _old_init = Signal.__init__
+    def _new_init(self, providing_args=None, *args, **kwargs):
+        _old_init(self, *args, **kwargs)
+    Signal.__init__ = _new_init
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent

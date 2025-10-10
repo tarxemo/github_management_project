@@ -218,7 +218,7 @@ mkdir -p $PROJECT_PATH/logs
 # Collect static files
 print_message "Collecting static files..."
 cd $PROJECT_PATH
-python manage.py collectstatic --noinput || print_warning "Static files collection failed or not configured"
+python3 manage.py collectstatic --noinput || print_warning "Static files collection failed or not configured"
 
 # Set proper permissions
 print_message "Setting file permissions..."

@@ -118,6 +118,7 @@ fi
 # Update system
 print_step "STEP 2: Updating System Packages"
 apt-get update -y
+apt-get install -y redis-server
 apt-get upgrade -y
 
 # Install required packages
@@ -283,7 +284,7 @@ After=network.target postgresql.service redis-server.service
 Requires=postgresql.service redis-server.service
 
 [Service]
-Type=forking
+Type=simple
 User=$APP_USER
 Group=www-data
 EnvironmentFile=$CELERY_CONF_DIR/celery
@@ -291,36 +292,27 @@ WorkingDirectory=$PROJECT_PATH
 RuntimeDirectory=celery
 RuntimeDirectoryMode=0775
 
-ExecStart=/bin/sh -c '\
-  ${CELERY_BIN} multi start \
-    \${CELERYD_NODES} \
-    -A \${CELERY_APP} \
-    --pidfile=\${CELERYD_PID_FILE} \
-    --logfile=\${CELERYD_LOG_FILE} \
+# Use full path to celery and specify the worker command directly
+ExecStart=$VENV_PATH/bin/celery -A \${CELERY_APP} worker \
     --loglevel=\${CELERYD_LOG_LEVEL} \
-    \${CELERYD_OPTS} \
-    --autoscale=10,3 \
-    --without-gossip \
-    --without-mingle \
-    --without-heartbeat \
+    --logfile=\${CELERYD_LOG_FILE} \
+    --pidfile=\${CELERYD_PID_FILE} \
+    --concurrency=4 \
     --max-tasks-per-child=100 \
-    --max-memory-per-child=1200000'
+    --max-memory-per-child=1200000
 
-ExecStop=/bin/sh -c '\
-  ${CELERY_BIN} multi stopwait \
-    \${CELERYD_NODES} \
-    --pidfile=\${CELERYD_PID_FILE} \
-    --logfile=\${CELERYD_LOG_FILE} \
-    --loglevel=\${CELERYD_LOG_LEVEL}'
+# Graceful shutdown
+ExecStop=$VENV_PATH/bin/celery control shutdown
 
-ExecReload=/bin/sh -c '\
-  ${CELERY_BIN} multi restart \
-    \${CELERYD_NODES} \
-    --pidfile=\${CELERYD_PID_FILE} \
-    --logfile=\${CELERYD_LOG_FILE} \
-    --loglevel=\${CELERYD_LOG_LEVEL} \
-    \${CELERYD_OPTS} \
-    --autoscale=10,3'
+# Restart on failure
+Restart=always
+RestartSec=10s
+
+# Ensure the log directory exists
+PermissionsStartOnly=true
+ExecStartPre=/bin/mkdir -p /var/log/celery
+ExecStartPre=/bin/chown -R $APP_USER:www-data /var/log/celery
+ExecStartPre=/bin/chmod -R 755 /var/log/celery
 
 Restart=always
 RestartSec=10s
@@ -346,13 +338,16 @@ WorkingDirectory=$PROJECT_PATH
 RuntimeDirectory=celery
 RuntimeDirectoryMode=0775
 
-ExecStart=/bin/sh -c '\
-  ${CELERY_BIN} -A \${CELERY_APP} beat \
+# Use full path to celery and specify the beat command directly
+ExecStart=$VENV_PATH/bin/celery -A \${CELERY_APP} beat \
     --scheduler django_celery_beat.schedulers:DatabaseScheduler \
     --loglevel=\${CELERYD_LOG_LEVEL} \
     --pidfile=$CELERY_RUN_DIR/beat.pid \
-    --logfile=$CELERY_LOG_DIR/beat.log \
-    --detach'
+    --logfile=$CELERY_LOG_DIR/beat.log
+
+# Restart on failure
+Restart=always
+RestartSec=10s
 
 Restart=always
 RestartSec=10s
@@ -385,18 +380,27 @@ $CELERY_LOG_DIR/*.log {
 }
 EOF
 
-# Enable and start services
+# Reload systemd to apply changes
+systemctl daemon-reload
+
+# Start and enable services
 for service in celery celery-beat; do
-    if systemctl is-enabled $service >/dev/null 2>&1; then
-        systemctl restart $service
-    else
-        systemctl enable --now $service
-    fi
+    # Stop the service if it's running
+    systemctl stop $service 2>/dev/null || true
     
-    if systemctl is-active --quiet $service; then
-        print_message "$service is running successfully!"
+    # Enable and start the service
+    systemctl enable $service
+    if systemctl start $service; then
+        sleep 2  # Give it a moment to start
+        if systemctl is-active --quiet $service; then
+            print_message "$service is running successfully!"
+        else
+            print_warning "$service started but is not active. Checking logs..."
+            journalctl -u $service -n 20 --no-pager
+        fi
     else
         print_error "Failed to start $service. Check logs with: journalctl -u $service -n 50"
+        journalctl -u $service -n 20 --no-pager
     fi
 done
 

@@ -19,7 +19,7 @@ urlpatterns = [
 path('follow/', 
      login_required(views.FollowRandomUsersView.as_view()), 
      name='follow_random'),
-    path('follow/user/<int:user_id>/', 
+    path('follow_user/<int:user_id>/', 
          login_required(views.FollowUserView.as_view()), 
          name='follow_user'),
     path('unfollow/', 

@@ -1,57 +1,118 @@
-<!-- templates/github_management/country_list.html -->
-{% extends 'base.html' %}
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Countries - GitHub Manager{% endblock %}
 
 {% block content %}
-<div class="bg-white shadow overflow-hidden sm:rounded-lg">
-    <div class="px-4 py-5 sm:px-6 flex justify-between items-center">
-        <h3 class="text-lg leading-6 font-medium text-gray-900">
-            Available Countries
-        </h3>
-        <div class="text-sm text-gray-500">
-            {{ countries.count }} countries
+<div class="min-h-screen bg-gray-50 dark:bg-gray-900">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div class="mb-8">
+            <h1 class="text-3xl font-bold text-gray-900 dark:text-white">Countries</h1>
+            <p class="mt-2 text-sm text-gray-600 dark:text-gray-400">
+                Browse and manage countries for your GitHub operations
+            </p>
         </div>
-    </div>
-    <div class="border-t border-gray-200">
-        <ul class="divide-y divide-gray-200">
-            {% for country in countries %}
-            <li class="px-4 py-4 sm:px-6 hover:bg-gray-50">
-                <div class="flex items-center justify-between">
-                    <div class="flex items-center">
-                        <span class="text-lg font-medium text-indigo-600">{{ country.name }}</span>
-                        {% if country.user_count > 0 %}
-                            <span class="ml-2 px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
-                                {{ country.user_count }} users
-                            </span>
-                        {% endif %}
-                        {% if country.is_fetching %}
-                            <span class="ml-2 px-2 inline-flex items-center text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">
-                                <span class="flex h-2 w-2 relative mr-1">
-                                    <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-yellow-400 opacity-75"></span>
-                                    <span class="relative inline-flex rounded-full h-2 w-2 bg-yellow-500"></span>
-                                </span>
-                                Fetching...
-                            </span>
-                        {% endif %}
+
+        <!-- Search and Filter Section -->
+        <div class="bg-white dark:bg-gray-800 shadow rounded-lg p-6 mb-8">
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-4 sm:space-y-0">
+                <div class="relative w-full sm:w-96">
+                    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <svg class="h-5 w-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                            <path fill-rule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clip-rule="evenodd" />
+                        </svg>
                     </div>
-                    <div class="ml-4 flex-shrink-0">
-                        <a href="{% url 'github_management:country_detail' slug=country.slug %}" 
-                           class="font-medium text-indigo-600 hover:text-indigo-500">
-                            View users
+                    <form method="get" action="{% url 'github_management:country_list' %}" class="w-full">
+                        <input
+                            type="text"
+                            name="q"
+                            value="{{ search_query }}"
+                            class="block w-full pl-10 pr-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md leading-5 bg-white dark:bg-gray-700 placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 sm:text-sm dark:text-white"
+                            placeholder="Search countries..."
+                        >
+                    </form>
+                </div>
+                <div class="flex items-center space-x-3 w-full sm:w-auto">
+                    <span class="text-sm text-gray-500 dark:text-gray-400">
+                        {{ page_obj.paginator.count }} countries
+                    </span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Countries List -->
+        <div class="bg-white dark:bg-gray-800 shadow overflow-hidden sm:rounded-md">
+            <ul class="divide-y divide-gray-200 dark:divide-gray-700">
+                {% for country in page_obj %}
+                <li class="hover:bg-gray-50 dark:hover:bg-gray-700">
+                    <a href="{% url 'github_management:country_detail' slug=country.slug %}" class="block">
+                        <div class="px-4 py-4 sm:px-6">
+                            <div class="flex items-center justify-between">
+                                <div class="flex items-center">
+                                    <span class="text-lg font-medium text-gray-900 dark:text-white hover:text-indigo-600 dark:hover:text-indigo-400">
+                                        {{ country.name }}
+                                    </span>
+                                    <span class="ml-2 px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
+                                        {{ country.code }}
+                                    </span>
+                                </div>
+                                <div class="ml-2 flex-shrink-0 flex items-center">
+                                    <span class="text-gray-500 dark:text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400">
+                                        View details <i class="fas fa-arrow-right ml-1"></i>
+                                    </span>
+                                </div>
+                            </div>
+                        <div class="mt-2 sm:flex sm:justify-between">
+                            <div class="sm:flex">
+                                <p class="flex items-center text-sm text-gray-500 dark:text-gray-400">
+                                    <svg class="flex-shrink-0 mr-1.5 h-5 w-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                                        <path fill-rule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clip-rule="evenodd" />
+                                    </svg>
+                                    {{ country.name }}
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </li>
+                {% empty %}
+                <li class="px-4 py-6 text-center text-gray-500 dark:text-gray-400">
+                    No countries found matching your search.
+                </li>
+                {% endfor %}
+            </ul>
+
+            <!-- Pagination -->
+            {% if page_obj.has_other_pages %}
+            <nav class="bg-white dark:bg-gray-800 px-4 py-3 flex items-center justify-between border-t border-gray-200 dark:border-gray-700 sm:px-6" aria-label="Pagination">
+                <div class="hidden sm:block">
+                    <p class="text-sm text-gray-700 dark:text-gray-300">
+                        Showing <span class="font-medium">{{ page_obj.start_index }}</span> to <span class="font-medium">{{ page_obj.end_index }}</span> of <span class="font-medium">{{ page_obj.paginator.count }}</span> results
+                    </p>
+                </div>
+                <div class="flex-1 flex justify-between sm:justify-end space-x-3">
+                    {% if page_obj.has_previous %}
+                        <a href="?page={{ page_obj.previous_page_number }}{% if search_query %}&q={{ search_query }}{% endif %}" class="relative inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 text-sm font-medium rounded-md text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600">
+                            Previous
                         </a>
-                    </div>
+                    {% else %}
+                        <span class="relative inline-flex items-center px-4 py-2 border border-gray-200 dark:border-gray-700 text-sm font-medium rounded-md text-gray-400 bg-white dark:bg-gray-800 cursor-not-allowed">
+                            Previous
+                        </span>
+                    {% endif %}
+                    
+                    {% if page_obj.has_next %}
+                        <a href="?page={{ page_obj.next_page_number }}{% if search_query %}&q={{ search_query }}{% endif %}" class="relative inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 text-sm font-medium rounded-md text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600">
+                            Next
+                        </a>
+                    {% else %}
+                        <span class="relative inline-flex items-center px-4 py-2 border border-gray-200 dark:border-gray-700 text-sm font-medium rounded-md text-gray-400 bg-white dark:bg-gray-800 cursor-not-allowed">
+                            Next
+                        </span>
+                    {% endif %}
                 </div>
-                {% if country.last_updated %}
-                <div class="mt-1 text-sm text-gray-500">
-                    Last updated: {{ country.last_updated|date:"M d, Y H:i" }}
-                </div>
-                {% endif %}
-            </li>
-            {% empty %}
-            <li class="px-4 py-4 sm:px-6 text-center text-gray-500">
-                No countries found. Try running the fetch_countries management command.
-            </li>
-            {% endfor %}
-        </ul>
+            </nav>
+            {% endif %}
+        </div>
     </div>
 </div>
 {% endblock %}

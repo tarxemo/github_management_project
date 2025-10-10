@@ -138,7 +138,7 @@ class GitHubFollowAction(models.Model):
         # Check if already following
         existing = cls.objects.filter(
             user=user,
-            github_user=GitHubUser.objects.get(id=github_user)
+            github_user=GitHubUser.objects.get(id=github_user.id)
         ).first()
         
         if existing:
@@ -147,10 +147,10 @@ class GitHubFollowAction(models.Model):
         # Create new follow action
         follow_action = cls.objects.create(
             user=user,
-            github_user=GitHubUser.objects.get(id=github_user),
+            github_user=GitHubUser.objects.get(id=github_user.id),
             status=cls.FollowStatus.PENDING
         )
-        GitHubService.follow_user_on_github(user, GitHubUser.objects.get(id=github_user).username)
+        GitHubService.follow_user_on_github(user, GitHubUser.objects.get(id=github_user.id).username)
         return follow_action
     
     @classmethod

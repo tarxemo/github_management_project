@@ -16,20 +16,43 @@ from users.models import UserFollowing
 
 logger = logging.getLogger(__name__)
 
-class CountryListView(View):
-    """View to list all available countries"""
-    def get(self, request):
-        countries = Country.objects.all().order_by('name')
-        return render(request, 'github_management/country_list.html', {
-            'countries': countries,
-            'active_tab': 'countries'
-        })
+from django.views.generic import ListView
+from django.contrib.auth.mixins import LoginRequiredMixin
+from django.db.models import Q
+from django_countries import countries
 
-class CountryDetailView(View):
+class CountryListView(LoginRequiredMixin, ListView):
+    """View to list all available countries with search and pagination"""
+    model = Country
+    template_name = 'github_management/country_list.html'
+    context_object_name = 'countries'
+    paginate_by = 20
+    ordering = ['name']
+
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        search_query = self.request.GET.get('q', '').strip()
+        
+        if search_query:
+            queryset = queryset.filter(
+                Q(name__icontains=search_query) 
+            )
+            
+        return queryset
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['search_query'] = self.request.GET.get('q', '')
+        context['active_tab'] = 'countries'
+        return context
+
+class CountryDetailView(LoginRequiredMixin, View):
     """View to show users for a specific country"""
     def get(self, request, slug):
         country = get_object_or_404(Country, slug=slug)
-        users = country.users.all().order_by('rank')
+        
+        # Get users for this country
+        users = GitHubUser.objects.filter(country=country).order_by('-contributions_last_year')
         
         # Pagination
         paginator = Paginator(users, 25)  # Show 25 users per page

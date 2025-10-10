@@ -1,296 +1,374 @@
-{% extends 'base.html' %}
+{% extends "base.html" %}
 {% load static %}
 
+{% block title %}Relationship Management | GitHub Manager{% endblock %}
+
+{% block extra_head %}
+<link href="https://cdn.jsdelivr.net/npm/chart.js@3.7.0/dist/chart.min.css" rel="stylesheet">
+{% endblock %}
+
 {% block content %}
-<div class="container mt-4">
-    <!-- Stats Card -->
-    <div class="row mb-4">
-        <div class="col-12">
-            <div class="card shadow-sm">
-                <div class="card-header bg-white d-flex justify-content-between align-items-center">
-                    <h5 class="mb-0">Relationship Overview</h5>
-                    <span class="badge bg-secondary">{{ stats.total }} Total</span>
-                </div>
-                <div class="card-body">
-                    <div class="row">
-                        <div class="col-lg-8 mb-3 mb-lg-0">
-                            <canvas id="relationshipChart" height="200"></canvas>
+<div class="min-h-screen bg-gray-50 dark:bg-gray-900">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <!-- Page Header -->
+        <div class="mb-8">
+            <h1 class="text-3xl font-extrabold text-gray-900 dark:text-white sm:text-4xl">
+                Relationship Management
+            </h1>
+            <p class="mt-3 text-lg text-gray-500 dark:text-gray-400">
+                Manage your GitHub following and followers
+            </p>
+        </div>
+
+        <!-- Stats Overview -->
+        <div class="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4 mb-8">
+            <!-- Total Relationships Card -->
+            <div class="bg-white dark:bg-gray-800 overflow-hidden shadow rounded-lg">
+                <div class="px-4 py-5 sm:p-6">
+                    <div class="flex items-center">
+                        <div class="flex-shrink-0 bg-indigo-500 rounded-md p-3">
+                            <svg class="h-6 w-6 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                            </svg>
                         </div>
-                        <div class="col-lg-4">
-                            <div class="d-grid gap-2">
-                                <div class="p-3 border rounded bg-light">
-                                    <div class="d-flex justify-content-between align-items-center">
-                                        <span><i class="fas fa-user-plus text-primary"></i> Following</span>
-                                        <strong class="fs-5">{{ stats.following }}</strong>
-                                    </div>
-                                </div>
-                                <div class="p-3 border rounded bg-light">
-                                    <div class="d-flex justify-content-between align-items-center">
-                                        <span><i class="fas fa-users text-success"></i> Followers</span>
-                                        <strong class="fs-5">{{ stats.followers }}</strong>
-                                    </div>
-                                </div>
-                                <div class="p-3 border rounded bg-light">
-                                    <div class="d-flex justify-content-between align-items-center">
-                                        <span><i class="fas fa-handshake text-warning"></i> Mutual</span>
-                                        <strong class="fs-5">{{ stats.mutual }}</strong>
-                                    </div>
-                                </div>
-                            </div>
+                        <div class="ml-5 w-0 flex-1">
+                            <dl>
+                                <dt class="text-sm font-medium text-gray-500 dark:text-gray-400 truncate">Total Relationships</dt>
+                                <dd class="flex items-baseline">
+                                    <div class="text-2xl font-semibold text-gray-900 dark:text-white">{{ stats.total }}</div>
+                                </dd>
+                            </dl>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Following Card -->
+            <div class="bg-white dark:bg-gray-800 overflow-hidden shadow rounded-lg">
+                <div class="px-4 py-5 sm:p-6">
+                    <div class="flex items-center">
+                        <div class="flex-shrink-0 bg-blue-500 rounded-md p-3">
+                            <svg class="h-6 w-6 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+                            </svg>
+                        </div>
+                        <div class="ml-5 w-0 flex-1">
+                            <dl>
+                                <dt class="text-sm font-medium text-gray-500 dark:text-gray-400 truncate">Following</dt>
+                                <dd class="flex items-baseline">
+                                    <div class="text-2xl font-semibold text-gray-900 dark:text-white">{{ stats.following }}</div>
+                                </dd>
+                            </dl>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Followers Card -->
+            <div class="bg-white dark:bg-gray-800 overflow-hidden shadow rounded-lg">
+                <div class="px-4 py-5 sm:p-6">
+                    <div class="flex items-center">
+                        <div class="flex-shrink-0 bg-green-500 rounded-md p-3">
+                            <svg class="h-6 w-6 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+                            </svg>
+                        </div>
+                        <div class="ml-5 w-0 flex-1">
+                            <dl>
+                                <dt class="text-sm font-medium text-gray-500 dark:text-gray-400 truncate">Followers</dt>
+                                <dd class="flex items-baseline">
+                                    <div class="text-2xl font-semibold text-gray-900 dark:text-white">{{ stats.followers }}</div>
+                                </dd>
+                            </dl>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Mutual Connections Card -->
+            <div class="bg-white dark:bg-gray-800 overflow-hidden shadow rounded-lg">
+                <div class="px-4 py-5 sm:p-6">
+                    <div class="flex items-center">
+                        <div class="flex-shrink-0 bg-yellow-500 rounded-md p-3">
+                            <svg class="h-6 w-6 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                            </svg>
+                        </div>
+                        <div class="ml-5 w-0 flex-1">
+                            <dl>
+                                <dt class="text-sm font-medium text-gray-500 dark:text-gray-400 truncate">Mutual</dt>
+                                <dd class="flex items-baseline">
+                                    <div class="text-2xl font-semibold text-gray-900 dark:text-white">{{ stats.mutual }}</div>
+                                </dd>
+                            </dl>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
-    </div>
 
-    <!-- Filters and Search -->
-    <div class="row mb-3">
-        <div class="col-12">
-            <div class="card shadow-sm">
-                <div class="card-body">
-                    <form method="get" id="filterForm">
-                        <div class="row g-3">
-                            <!-- Filter Buttons -->
-                            <div class="col-md-6">
-                                <div class="btn-group w-100" role="group">
-                                    <input type="radio" class="btn-check" name="filter" id="filter-all" value="all" {% if filter_type == 'all' %}checked{% endif %}>
-                                    <label class="btn btn-outline-secondary" for="filter-all">
-                                        <i class="fas fa-globe"></i> All ({{ stats.total }})
-                                    </label>
-                                    
-                                    <input type="radio" class="btn-check" name="filter" id="filter-following" value="following" {% if filter_type == 'following' %}checked{% endif %}>
-                                    <label class="btn btn-outline-primary" for="filter-following">
-                                        <i class="fas fa-user-plus"></i> Following ({{ stats.following }})
-                                    </label>
-                                    
-                                    <input type="radio" class="btn-check" name="filter" id="filter-followers" value="followers" {% if filter_type == 'followers' %}checked{% endif %}>
-                                    <label class="btn btn-outline-success" for="filter-followers">
-                                        <i class="fas fa-users"></i> Followers ({{ stats.followers }})
-                                    </label>
-                                    
-                                    <input type="radio" class="btn-check" name="filter" id="filter-mutual" value="mutual" {% if filter_type == 'mutual' %}checked{% endif %}>
-                                    <label class="btn btn-outline-warning" for="filter-mutual">
-                                        <i class="fas fa-handshake"></i> Mutual ({{ stats.mutual }})
-                                    </label>
-                                </div>
-                            </div>
-                            
-                            <!-- Search -->
-                            <div class="col-md-5">
-                                <div class="input-group">
-                                    <span class="input-group-text"><i class="fas fa-search"></i></span>
-                                    <input type="text" class="form-control" name="search" placeholder="Search by name or username..." value="{{ search_query }}">
-                                </div>
-                            </div>
-                            
-                            <!-- Per Page -->
-                            <div class="col-md-1">
-                                <select class="form-select" name="per_page" onchange="this.form.submit()">
-                                    <option value="12" {% if per_page == 12 %}selected{% endif %}>12</option>
-                                    <option value="24" {% if per_page == 24 %}selected{% endif %}>24</option>
-                                    <option value="48" {% if per_page == 48 %}selected{% endif %}>48</option>
-                                </select>
-                            </div>
-                        </div>
-                    </form>
+        <!-- Relationship Chart -->
+        <div class="bg-white dark:bg-gray-800 shadow overflow-hidden rounded-lg mb-8">
+            <div class="px-4 py-5 sm:p-6">
+                <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-4">Relationship Overview</h3>
+                <div class="h-64">
+                    <canvas id="relationshipChart"></canvas>
                 </div>
             </div>
         </div>
-    </div>
 
-    <!-- Users Grid -->
-    <div class="row">
+        <!-- Filters and Search -->
+        <div class="bg-white dark:bg-gray-800 shadow overflow-hidden rounded-lg mb-8">
+            <div class="px-4 py-5 sm:p-6">
+                <form method="get" class="space-y-4">
+                    <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                        <div>
+                            <label for="relationship" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Relationship Type</label>
+                            <select id="relationship" name="relationship" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md">
+                                <option value="" {% if not request.GET.relationship %}selected{% endif %}>All Relationships</option>
+                                <option value="following" {% if request.GET.relationship == 'following' %}selected{% endif %}>Following</option>
+                                <option value="followers" {% if request.GET.relationship == 'followers' %}selected{% endif %}>Followers</option>
+                                <option value="mutual" {% if request.GET.relationship == 'mutual' %}selected{% endif %}>Mutual</option>
+                                <option value="non_followers" {% if request.GET.relationship == 'non_followers' %}selected{% endif %}>Not Following Back</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label for="sort" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Sort By</label>
+                            <select id="sort" name="sort" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md">
+                                <option value="-created_at" {% if request.GET.sort == '-created_at' or not request.GET.sort %}selected{% endif %}>Recently Added</option>
+                                <option value="username" {% if request.GET.sort == 'username' %}selected{% endif %}>Username (A-Z)</option>
+                                <option value="-follower_count" {% if request.GET.sort == '-follower_count' %}selected{% endif %}>Most Followers</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label for="search" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Search</label>
+                            <div class="mt-1 relative rounded-md shadow-sm">
+                                <input type="text" name="q" id="search" value="{{ request.GET.q }}" class="focus:ring-indigo-500 focus:border-indigo-500 block w-full pl-4 pr-12 sm:text-sm border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-md" placeholder="Search by username or name">
+                                <div class="absolute inset-y-0 right-0 flex items-center">
+                                    <button type="submit" class="h-full py-0 px-4 rounded-r-md border border-l-0 border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-gray-500 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600 focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500">
+                                        <svg class="h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                                        </svg>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Users Grid -->
         {% if users %}
-            {% for user_obj in users %}
-            <div class="col-md-4 col-lg-3 mb-3">
-                <div class="card h-100 shadow-sm hover-shadow">
-                    <div class="card-body">
-                        <div class="d-flex align-items-start mb-2">
-                            <img src="{{ user_obj.github_avatar_url|default:'https://via.placeholder.com/50' }}" 
-                                 class="rounded-circle me-2" 
-                                 width="50" 
-                                 height="50"
-                                 alt="Avatar">
-                            <div class="flex-grow-1">
-                                <h6 class="mb-0">
-                                    <a href="{{ user_obj.github_profile_url }}" target="_blank" class="text-decoration-none text-dark">
-                                        {{ user_obj.get_full_name|default:user_obj.github_username }}
+            <div class="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                {% for user_obj in users %}
+                <div class="bg-white dark:bg-gray-800 shadow overflow-hidden rounded-lg hover:shadow-lg transition-shadow duration-200">
+                    <div class="px-4 py-5 sm:p-6">
+                        <div class="flex items-center">
+                            <div class="flex-shrink-0">
+                                <img class="h-16 w-16 rounded-full" src="{{ user_obj.github_avatar_url|default:'https://via.placeholder.com/150' }}" alt="{{ user_obj.username }}">
+                            </div>
+                            <div class="ml-4
+                            <div class="ml-4">
+                                <h3 class="text-lg font-medium text-gray-900 dark:text-white">
+                                    <a href="https://github.com/{{ user_obj.github_username }}" target="_blank" class="hover:text-indigo-600 dark:hover:text-indigo-400">
+                                        {{ user_obj.name|default:user_obj.github_username }}
                                     </a>
-                                </h6>
-                                <small class="text-muted">@{{ user_obj.github_username }}</small>
+                                </h3>
+                                <p class="text-sm text-gray-500 dark:text-gray-400">@{{ user_obj.github_username }}</p>
+                                
+                                <div class="mt-2 flex space-x-2">
+                                    {% if user_obj.is_following %}
+                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
+                                        Following
+                                    </span>
+                                    {% endif %}
+                                    
+                                    {% if user_obj.is_follower %}
+                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
+                                        Follows You
+                                    </span>
+                                    {% endif %}
+                                </div>
+                                
+                                {% if user_obj.bio %}
+                                <p class="mt-2 text-sm text-gray-600 dark:text-gray-300 line-clamp-2">
+                                    {{ user_obj.bio }}
+                                </p>
+                                {% endif %}
+                                
+                                <div class="mt-3 flex items-center text-sm text-gray-500 dark:text-gray-400">
+                                    <div class="flex items-center">
+                                        <svg class="h-4 w-4 mr-1" fill="currentColor" viewBox="0 0 24 24">
+                                            <path d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2zm0 18c-4.418 0-8-3.582-8-8s3.582-8 8-8 8 3.582 8 8-3.582 8-8 8z"/>
+                                            <path d="M13 7h-2v6h6v-2h-4z"/>
+                                        </svg>
+                                        <span>{{ user_obj.follower_count|default:0 }} followers</span>
+                                    </div>
+                                    <div class="ml-4 flex items-center">
+                                        <svg class="h-4 w-4 mr-1" fill="currentColor" viewBox="0 0 24 24">
+                                            <path d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2zm0 18c-4.418 0-8-3.582-8-8s3.582-8 8-8 8 3.582 8 8-3.582 8-8 8z"/>
+                                            <path d="M12 6v6l4 2-4 2v-8z"/>
+                                        </svg>
+                                        <span>{{ user_obj.following_count|default:0 }} following</span>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                         
-                        <!-- Relationship Status Badge -->
-                        <div class="mb-2">
-                            {% if user_obj.relationship_status == 'mutual' %}
-                                <span class="badge bg-warning text-dark">
-                                    <i class="fas fa-handshake"></i> Mutual
-                                </span>
-                            {% elif user_obj.relationship_status == 'following' %}
-                                <span class="badge bg-primary">
-                                    <i class="fas fa-user-check"></i> Following
-                                </span>
-                            {% elif user_obj.relationship_status == 'follower' %}
-                                <span class="badge bg-success">
-                                    <i class="fas fa-user"></i> Follows You
-                                </span>
-                            {% endif %}
-                        </div>
-                        
-                        <!-- Action Buttons -->
-                        <div class="d-grid gap-2">
-                            {% if user_obj.is_following %}
-                                <a href="{% url 'unfollow_user' user_obj.github_username %}" 
-                                   class="btn btn-sm btn-outline-danger">
-                                    <i class="fas fa-user-minus"></i> Unfollow
-                                </a>
-                            {% else %}
-                                <a href="{% url 'follow_user' user_obj.github_username %}" 
-                                   class="btn btn-sm btn-primary">
-                                    <i class="fas fa-user-plus"></i> Follow Back
-                                </a>
-                            {% endif %}
+                        <div class="mt-4 flex justify-between items-center">
+                            <a href="https://github.com/{{ user_obj.github_username }}" target="_blank" class="inline-flex items-center text-sm text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-300">
+                                View Profile
+                                <svg class="ml-1 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                                </svg>
+                            </a>
+                            
+                            <div class="flex space-x-2">
+                                {% if user_obj.is_following %}
+                                    <form method="post" action="{% url 'unfollow_user' user_obj.github_username %}" class="inline">
+                                        {% csrf_token %}
+                                        <button type="submit" class="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md text-red-700 bg-red-100 hover:bg-red-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 dark:bg-red-900/30 dark:text-red-300 dark:hover:bg-red-900/50">
+                                            Unfollow
+                                        </button>
+                                    </form>
+                                {% else %}
+                                    <form method="post" action="{% url 'follow_user' user_obj.github_username %}" class="inline">
+                                        {% csrf_token %}
+                                        <button type="submit" class="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                                            Follow
+                                        </button>
+                                    </form>
+                                {% endif %}
+                            </div>
                         </div>
                     </div>
                 </div>
+                {% endfor %}
             </div>
-            {% endfor %}
+            
+            <!-- Pagination -->
+            {% if users.has_other_pages %}
+            <div class="bg-white dark:bg-gray-800 px-4 py-3 flex items-center justify-between border-t border-gray-200 dark:border-gray-700 sm:px-6 mt-8 rounded-lg shadow">
+                <div class="flex-1 flex justify-between sm:hidden">
+                    {% if users.has_previous %}
+                        <a href="?page={{ users.previous_page_number }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}" class="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 dark:bg-gray-700 dark:text-gray-200 dark:border-gray-600 dark:hover:bg-gray-600">
+                            Previous
+                        </a>
+                    {% else %}
+                        <span class="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-300 bg-white cursor-not-allowed dark:bg-gray-700 dark:border-gray-600">
+                            Previous
+                        </span>
+                    {% endif %}
+                    
+                    {% if users.has_next %}
+                        <a href="?page={{ users.next_page_number }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}" class="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 dark:bg-gray-700 dark:text-gray-200 dark:border-gray-600 dark:hover:bg-gray-600">
+                            Next
+                        </a>
+                    {% else %}
+                        <span class="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-300 bg-white cursor-not-allowed dark:bg-gray-700 dark:border-gray-600">
+                            Next
+                        </span>
+                    {% endif %}
+                </div>
+                <div class="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+                    <div>
+                        <p class="text-sm text-gray-700 dark:text-gray-300">
+                            Showing <span class="font-medium">{{ users.start_index }}</span> to <span class="font-medium">{{ users.end_index }}</span> of <span class="font-medium">{{ users.paginator.count }}</span> results
+                        </p>
+                    </div>
+                    <div>
+                        <nav class="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
+                            {% if users.has_previous %}
+                                <a href="?page=1{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}" class="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-600">
+                                    <span class="sr-only">First</span>
+                                    <svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                                        <path fill-rule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clip-rule="evenodd" />
+                                    </svg>
+                                </a>
+                                <a href="?page={{ users.previous_page_number }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}" class="bg-white border-gray-300 text-gray-500 hover:bg-gray-50 relative inline-flex items-center px-4 py-2 border text-sm font-medium dark:bg-gray-700 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-600">
+                                    Previous
+                                </a>
+                            {% endif %}
+                            
+                            {% for num in users.paginator.page_range %}
+                                {% if users.number == num %}
+                                    <span class="z-10 bg-indigo-50 border-indigo-500 text-indigo-600 relative inline-flex items-center px-4 py-2 border text-sm font-medium dark:bg-indigo-900/30 dark:text-indigo-200 dark:border-indigo-700">
+                                        {{ num }}
+                                    </span>
+                                {% elif num > users.number|add:'-3' and num < users.number|add:'3' %}
+                                    <a href="?page={{ num }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}" class="bg-white border-gray-300 text-gray-500 hover:bg-gray-50 relative inline-flex items-center px-4 py-2 border text-sm font-medium dark:bg-gray-700 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-600">
+                                        {{ num }}
+                                    </a>
+                                {% endif %}
+                            {% endfor %}
+                            
+                            {% if users.has_next %}
+                                <a href="?page={{ users.next_page_number }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}" class="bg-white border-gray-300 text-gray-500 hover:bg-gray-50 relative inline-flex items-center px-4 py-2 border text-sm font-medium dark:bg-gray-700 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-600">
+                                    Next
+                                </a>
+                                <a href="?page={{ users.paginator.num_pages }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}" class="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-600">
+                                    <span class="sr-only">Last</span>
+                                    <svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                                        <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd" />
+                                    </svg>
+                                </a>
+                            {% endif %}
+                        </nav>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
         {% else %}
-            <div class="col-12">
-                <div class="alert alert-info text-center" role="alert">
-                    <i class="fas fa-info-circle fa-2x mb-3"></i>
-                    <h5>No relationships found</h5>
-                    <p class="mb-0">
-                        {% if search_query %}
-                            No users match your search query "{{ search_query }}".
-                        {% elif filter_type != 'all' %}
-                            You don't have any {{ filter_type }} relationships yet.
-                        {% else %}
-                            Start following other users to see them here!
-                        {% endif %}
-                    </p>
+            <div class="text-center py-12">
+                <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <h3 class="mt-2 text-sm font-medium text-gray-900 dark:text-white">No users found</h3>
+                <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                    No users match your current filters. Try adjusting your search or filter criteria.
+                </p>
+                <div class="mt-6">
+                    <a href="?" class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                        <svg class="-ml-1 mr-2 h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 110 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clip-rule="evenodd" />
+                        </svg>
+                        Reset Filters
+                    </a>
                 </div>
             </div>
         {% endif %}
     </div>
-
-    <!-- Pagination -->
-    {% if users.has_other_pages %}
-    <div class="row mt-4">
-        <div class="col-12">
-            <nav aria-label="Page navigation">
-                <ul class="pagination justify-content-center">
-                    {% if users.has_previous %}
-                        <li class="page-item">
-                            <a class="page-link" href="?page=1&filter={{ filter_type }}&search={{ search_query }}&per_page={{ per_page }}">
-                                <i class="fas fa-angle-double-left"></i>
-                            </a>
-                        </li>
-                        <li class="page-item">
-                            <a class="page-link" href="?page={{ users.previous_page_number }}&filter={{ filter_type }}&search={{ search_query }}&per_page={{ per_page }}">
-                                <i class="fas fa-angle-left"></i>
-                            </a>
-                        </li>
-                    {% else %}
-                        <li class="page-item disabled">
-                            <span class="page-link"><i class="fas fa-angle-double-left"></i></span>
-                        </li>
-                        <li class="page-item disabled">
-                            <span class="page-link"><i class="fas fa-angle-left"></i></span>
-                        </li>
-                    {% endif %}
-
-                    <!-- Page Numbers -->
-                    {% for num in users.paginator.page_range %}
-                        {% if users.number == num %}
-                            <li class="page-item active">
-                                <span class="page-link">{{ num }}</span>
-                            </li>
-                        {% elif num > users.number|add:'-3' and num < users.number|add:'3' %}
-                            <li class="page-item">
-                                <a class="page-link" href="?page={{ num }}&filter={{ filter_type }}&search={{ search_query }}&per_page={{ per_page }}">{{ num }}</a>
-                            </li>
-                        {% endif %}
-                    {% endfor %}
-
-                    {% if users.has_next %}
-                        <li class="page-item">
-                            <a class="page-link" href="?page={{ users.next_page_number }}&filter={{ filter_type }}&search={{ search_query }}&per_page={{ per_page }}">
-                                <i class="fas fa-angle-right"></i>
-                            </a>
-                        </li>
-                        <li class="page-item">
-                            <a class="page-link" href="?page={{ users.paginator.num_pages }}&filter={{ filter_type }}&search={{ search_query }}&per_page={{ per_page }}">
-                                <i class="fas fa-angle-double-right"></i>
-                            </a>
-                        </li>
-                    {% else %}
-                        <li class="page-item disabled">
-                            <span class="page-link"><i class="fas fa-angle-right"></i></span>
-                        </li>
-                        <li class="page-item disabled">
-                            <span class="page-link"><i class="fas fa-angle-double-right"></i></span>
-                        </li>
-                    {% endif %}
-                </ul>
-            </nav>
-            
-            <p class="text-center text-muted">
-                Showing {{ users.start_index }} to {{ users.end_index }} of {{ users.paginator.count }} users
-            </p>
-        </div>
-    </div>
-    {% endif %}
 </div>
 {% endblock %}
 
 {% block extra_js %}
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@3.7.0/dist/chart.min.js"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // Auto-submit form on filter change
-    const filterInputs = document.querySelectorAll('input[name="filter"]');
-    filterInputs.forEach(input => {
-        input.addEventListener('change', function() {
-            document.getElementById('filterForm').submit();
-        });
-    });
-    
-    // Search with debounce
-    const searchInput = document.querySelector('input[name="search"]');
-    let searchTimeout;
-    searchInput.addEventListener('input', function() {
-        clearTimeout(searchTimeout);
-        searchTimeout = setTimeout(() => {
-            document.getElementById('filterForm').submit();
-        }, 500);
-    });
-
-    // Initialize Chart
+    // Initialize the chart
     const ctx = document.getElementById('relationshipChart').getContext('2d');
-    new Chart(ctx, {
+    const chart = new Chart(ctx, {
         type: 'doughnut',
         data: {
             labels: ['Following', 'Followers', 'Mutual'],
             datasets: [{
                 data: [
-                    {{ stats.following }},
-                    {{ stats.followers }},
-                    {{ stats.mutual }}
+                    {{ stats.following|default:0 }}, 
+                    {{ stats.followers|default:0 }}, 
+                    {{ stats.mutual|default:0 }}
                 ],
                 backgroundColor: [
-                    'rgba(13, 110, 253, 0.8)',
-                    'rgba(25, 135, 84, 0.8)',
-                    'rgba(255, 193, 7, 0.8)'
+                    'rgba(59, 130, 246, 0.7)',  // blue
+                    'rgba(16, 185, 129, 0.7)',  // green
+                    'rgba(245, 158, 11, 0.7)'   // yellow
                 ],
                 borderColor: [
-                    'rgba(13, 110, 253, 1)',
-                    'rgba(25, 135, 84, 1)',
-                    'rgba(255, 193, 7, 1)'
+                    'rgba(59, 130, 246, 1)',
+                    'rgba(16, 185, 129, 1)',
+                    'rgba(245, 158, 11, 1)'
                 ],
-                borderWidth: 2
+                borderWidth: 1
             }]
         },
         options: {
@@ -298,11 +376,11 @@ document.addEventListener('DOMContentLoaded', function() {
             maintainAspectRatio: false,
             plugins: {
                 legend: {
-                    position: 'bottom',
+                    position: 'right',
                     labels: {
-                        padding: 15,
+                        color: window.matchMedia('(prefers-color-scheme: dark)').matches ? '#E5E7EB' : '#374151',
                         font: {
-                            size: 12
+                            size: 14
                         }
                     }
                 },
@@ -312,31 +390,27 @@ document.addEventListener('DOMContentLoaded', function() {
                             const label = context.label || '';
                             const value = context.raw || 0;
                             const total = context.dataset.data.reduce((a, b) => a + b, 0);
-                            const percentage = total > 0 ? Math.round((value / total) * 100) : 0;
+                            const percentage = Math.round((value / total) * 100) || 0;
                             return `${label}: ${value} (${percentage}%)`;
                         }
                     }
                 }
+            },
+            cutout: '70%',
+            animation: {
+                animateScale: true,
+                animateRotate: true
             }
         }
     });
+
+    // Update chart colors when dark mode changes
+    const darkModeMediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+    darkModeMediaQuery.addListener((e) => {
+        const isDarkMode = e.matches;
+        chart.options.plugins.legend.labels.color = isDarkMode ? '#E5E7EB' : '#374151';
+        chart.update();
+    });
 });
 </script>
-
-<style>
-.hover-shadow {
-    transition: box-shadow 0.3s ease-in-out;
-}
-
-.hover-shadow:hover {
-    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15) !important;
-}
-
-.btn-check:checked + .btn-outline-secondary,
-.btn-check:checked + .btn-outline-primary,
-.btn-check:checked + .btn-outline-success,
-.btn-check:checked + .btn-outline-warning {
-    transform: scale(1.05);
-}
-</style>
 {% endblock %}

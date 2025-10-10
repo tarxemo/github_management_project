@@ -1,154 +1,172 @@
 {% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Follow Random Users | GitHub Manager{% endblock %}
 
 {% block content %}
-<div class="row">
-    <div class="col-md-12">
-        <h2>Follow Random Users from {{ country.name }}</h2>
-        <p>Follow random GitHub users from {{ country.name }} to increase your followers.</p>
-        
-        <div class="card mb-4">
-            <div class="card-header">
-                <h5>Follow Multiple Users</h5>
-            </div>
-            <div class="card-body">
-                <form method="post" action="{% url 'github_management:follow_random' %}" class="form-inline">
+<div class="min-h-screen bg-gray-50 dark:bg-gray-900">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <!-- Header Section -->
+        <div class="mb-8">
+            <h1 class="text-3xl font-bold text-gray-900 dark:text-white">Follow Random Users</h1>
+            <p class="mt-2 text-sm text-gray-600 dark:text-gray-400">
+                Follow random GitHub users to increase your followers and grow your network.
+            </p>
+        </div>
+
+        <!-- Follow Multiple Users Card -->
+        <div class="bg-white dark:bg-gray-800 shadow overflow-hidden sm:rounded-lg mb-8">
+            <div class="px-4 py-5 sm:p-6">
+                <h3 class="text-lg font-medium leading-6 text-gray-900 dark:text-white">Follow Multiple Users</h3>
+                <div class="mt-2 max-w-xl text-sm text-gray-500 dark:text-gray-400">
+                    <p>Enter the number of users you'd like to follow and click the button below.</p>
+                </div>
+                <form method="post" action="{% url 'github_management:follow_random' %}" class="mt-5 sm:flex sm:items-center">
                     {% csrf_token %}
-                    <div class="form-group mr-2">
-                        <label for="count" class="mr-2">Number of users to follow:</label>
-                        <input type="number" name="count" id="count" min="1" max="500" value="10" class="form-control mr-2">
+                    <div class="w-full sm:max-w-xs">
+                        <label for="count" class="sr-only">Number of users to follow</label>
+                        <input type="number" 
+                               name="count" 
+                               id="count" 
+                               min="1" 
+                               max="500" 
+                               value="10" 
+                               class="shadow-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-md"
+                               required>
                     </div>
-                    <button type="submit" class="btn btn-primary">Follow Random Users</button>
+                    <button type="submit" 
+                            class="mt-3 w-full inline-flex items-center justify-center px-4 py-2 border border-transparent shadow-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm">
+                        <svg class="-ml-1 mr-2 h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                            <path d="M8 9a3 3 0 100-6 3 3 0 000 6zM8 11a6 6 0 016 6H2a6 6 0 016-6z" />
+                        </svg>
+                        Follow Users
+                    </button>
                 </form>
             </div>
         </div>
-        
-        <div class="card">
-            <div class="card-header">
-                <h5>Suggested Users to Follow</h5>
+
+        <!-- Suggested Users Section -->
+        <div class="bg-white dark:bg-gray-800 shadow overflow-hidden sm:rounded-lg">
+            <div class="px-4 py-5 border-b border-gray-200 dark:border-gray-700 sm:px-6">
+                <h3 class="text-lg font-medium leading-6 text-gray-900 dark:text-white">Suggested Users to Follow</h3>
+                <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                    Here are some users you might want to follow based on your activity.
+                </p>
             </div>
-            <div class="card-body">
-                {% if users %}
-                    <div class="row">
-                        {% for user in users %}
-                            <div class="col-md-4 mb-3">
-                                <div class="card h-100">
-                                    <div class="card-body">
-                                        <div class="d-flex align-items-center">
-                                            <img src="{{ user.avatar_url }}" alt="{{ user.username }}" 
-                                                 class="rounded-circle mr-3" width="50" height="50">
-                                            <div>
-                                                <h6 class="mb-0">{{ user.full_name }}</h6>
-                                                <small class="text-muted">@{{ user.username }}</small>
-                                                <div class="mt-1">
-                                                    <span class="badge badge-info mr-1">
-                                                        {{ user.followers|default:0 }} followers
-                                                    </span>
-                                                    <span class="badge badge-secondary">
-                                                        {{ user.contributions_last_year }} contributions
-                                                    </span>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div class="card-footer bg-white">
-                                        <button class="btn btn-sm btn-outline-primary follow-btn" 
-                                                data-user-id="{{ user.id }}">
-                                            <i class="fas fa-user-plus"></i> Follow
-                                        </button>
-                                        <a href="https://github.com/{{ user.username }}" 
-                                           target="_blank" 
-                                           class="btn btn-sm btn-outline-secondary">
-                                            <i class="fab fa-github"></i> Profile
-                                        </a>
-                                    </div>
+            
+            {% if users %}
+            <ul class="divide-y divide-gray-200 dark:divide-gray-700">
+                {% for user in users %}
+                <li class="px-4 py-4 sm:px-6 hover:bg-gray-50 dark:hover:bg-gray-700 transition duration-150 ease-in-out">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center">
+                            <div class="flex-shrink-0 h-12 w-12">
+                                <img class="h-12 w-12 rounded-full" src="{{ user.avatar_url|default:'https://via.placeholder.com/48' }}" alt="{{ user.username }}">
+                            </div>
+                            <div class="ml-4">
+                                <div class="text-sm font-medium text-gray-900 dark:text-white">
+                                    {{ user.full_name|default:user.username }}
+                                </div>
+                                <div class="text-sm text-gray-500 dark:text-gray-400">
+                                    @{{ user.username }}
+                                </div>
+                                <div class="mt-1 flex space-x-2">
+                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
+                                        {{ user.followers|default:0 }} followers
+                                    </span>
+                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
+                                        {{ user.contributions_last_year|default:0 }} contributions
+                                    </span>
                                 </div>
                             </div>
-                        {% endfor %}
+                        </div>
+                        <div class="ml-4 flex-shrink-0">
+                            {% if user.is_following %}
+                                <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
+                                    Following
+                                </span>
+                            {% else %}
+                                <button onclick="followUser('{{ user.id }}', this)" 
+                                        class="inline-flex items-center px-3 py-1 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                                    Follow
+                                </button>
+                            {% endif %}
+                        </div>
                     </div>
-                {% else %}
-                    <div class="alert alert-info">
-                        No users found. Please try a different country or check back later.
-                    </div>
-                {% endif %}
+                </li>
+                {% endfor %}
+            </ul>
+            {% else %}
+            <div class="px-4 py-12 text-center">
+                <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+                </svg>
+                <h3 class="mt-2 text-sm font-medium text-gray-900 dark:text-white">No users found</h3>
+                <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                    No suggested users available at the moment. Try refreshing the page or check back later.
+                </p>
+                <div class="mt-6">
+                    <button onclick="window.location.reload()" class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                        <svg class="-ml-1 mr-2 h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 110 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clip-rule="evenodd" />
+                        </svg>
+                        Refresh
+                    </button>
+                </div>
             </div>
+            {% endif %}
         </div>
     </div>
 </div>
-{% endblock %}
 
-{% block extra_js %}
 <script>
-$(document).ready(function() {
-    $('.follow-btn').click(function() {
-        const button = $(this);
-        const userId = button.data('user-id');
-        
-        // Disable button and show loading state
-        button.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Following...');
-        
-        // Send AJAX request to follow user
-        $.ajax({
-            url: `/github/follow/${userId}/`,
-            method: 'POST',
-            headers: {
-                'X-CSRFTTOKEN': '{{ csrf_token }}',
-                'Content-Type': 'application/json'
-            },
-            success: function(response) {
-                if (response.success) {
-                    button.removeClass('btn-outline-primary')
-                          .addClass('btn-success')
-                          .html('<i class="fas fa-check"></i> Followed');
-                    
-                    // Start polling for follow status
-                    checkFollowStatus(response.action_id, button);
-                } else {
-                    button.prop('disabled', false).html('<i class="fas fa-user-plus"></i> Follow');
-                    alert('Error: ' + response.message);
-                }
-            },
-            error: function(xhr) {
-                button.prop('disabled', false).html('<i class="fas fa-user-plus"></i> Follow');
-                alert('An error occurred. Please try again.');
-            }
-        });
-    });
+function followUser(userId, button) {
+    const url = `/github/follow_user/${userId}/`;
+    const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
     
-    function checkFollowStatus(actionId, button) {
-        $.ajax({
-            url: `/github/update-status/${actionId}/`,
-            method: 'POST',
-            headers: {
-                'X-CSRFTTOKEN': '{{ csrf_token }}',
-                'Content-Type': 'application/json'
-            },
-            success: function(response) {
-                if (response.success) {
-                    if (response.status === 'followed_back') {
-                        button.removeClass('btn-success')
-                              .addClass('btn-primary')
-                              .html('<i class="fas fa-users"></i> Followed Back');
-                    } else if (response.status === 'not_followed_back') {
-                        button.removeClass('btn-success')
-                              .addClass('btn-warning')
-                              .html('<i class="fas fa-clock"></i> Pending');
-                    }
-                    
-                    // Update last checked time
-                    if (response.last_checked) {
-                        button.attr('title', 'Last checked: ' + response.last_checked);
-                    }
-                    
-                    // Continue polling if still pending
-                    if (response.status === 'pending') {
-                        setTimeout(function() {
-                            checkFollowStatus(actionId, button);
-                        }, 30000); // Check every 30 seconds
-                    }
-                }
-            }
-        });
-    }
-});
+    // Show loading state
+    const originalText = button.innerHTML;
+    button.disabled = true;
+    button.innerHTML = `
+        <svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+        </svg>
+        Following...
+    `;
+    
+    fetch(url, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': csrfToken
+        },
+        body: JSON.stringify({})
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Update button to show success state
+            button.innerHTML = 'Following';
+            button.classList.remove('bg-indigo-600', 'hover:bg-indigo-700');
+            button.classList.add('bg-green-100', 'text-green-800', 'dark:bg-green-900', 'dark:text-green-200', 'cursor-default');
+            button.outerHTML = `
+                <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
+                    Following
+                </span>
+            `;
+        } else {
+            // Show error state
+            button.disabled = false;
+            button.innerHTML = 'Try Again';
+            console.error('Error following user:', data.message);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        button.disabled = false;
+        button.innerHTML = originalText;
+    });
+}
 </script>
 {% endblock %}

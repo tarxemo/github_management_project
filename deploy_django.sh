@@ -387,50 +387,21 @@ else
     exit 1
 fi
 
-# Setup SSL with Let's Encrypt
-if [ "$SETUP_SSL" = "y" ] || [ "$SETUP_SSL" = "Y" ]; then
-    print_step "STEP 8: Setting Up SSL Certificate (Let's Encrypt)"
-    
-    # Install Certbot
-    apt-get install -y certbot python3-certbot-nginx
-    
-    # Prepare the certbot command with all domains
-    CERTBOT_CMD="certbot --nginx -d $DOMAIN_NAME -d www.$DOMAIN_NAME"
-    for sub in "${SUBDOMAINS[@]}"; do
-        if [ -n "$sub" ]; then
-            CERTBOT_CMD+=" -d $sub.$DOMAIN_NAME"
-        fi
-    done
-    
-    print_message "Obtaining SSL certificate for: $DOMAINS"
-    $CERTBOT_CMD --non-interactive --agree-tos --email $SSL_EMAIL --redirect
-    
-    if [ $? -eq 0 ]; then
-        print_message "SSL certificate installed successfully!"
-        
-        # Setup auto-renewal
-        systemctl enable certbot.timer
-        systemctl start certbot.timer
-        print_message "SSL auto-renewal configured"
-        
-        # Update Django's ALLOWED_HOSTS
-        print_message "Updating Django ALLOWED_HOSTS..."
-        SETTINGS_FILE="$PROJECT_PATH/$PROJECT_NAME/settings.py"
-        if [ -f "$SETTINGS_FILE" ]; then
-            # Remove any existing ALLOWED_HOSTS line
-            sed -i '/^ALLOWED_HOSTS/d' "$SETTINGS_FILE"
-            # Add the new ALLOWED_HOSTS
-            echo "ALLOWED_HOSTS = [$ALLOWED_HOSTS]" >> "$SETTINGS_FILE"
-            print_message "Updated ALLOWED_HOSTS in Django settings"
-        fi
-    else
-        print_warning "SSL certificate installation failed. You can run it manually later with:"
-        echo "$CERTBOT_CMD"
-    fi
-else
-    print_warning "Skipping SSL setup. Your site will use HTTP only."
-fi
+# SSL Setup Instructions
+print_step "STEP 8: SSL Certificate Setup (Manual Step Required)"
 
+echo -e "${YELLOW}IMPORTANT: To complete SSL setup, please follow these steps:${NC}"
+echo "1. First, make sure your domain ($DOMAIN_NAME) is pointing to this server's IP address"
+echo "2. Wait for DNS propagation (this can take up to 48 hours, but usually a few minutes)"
+echo "3. Run the following command to set up SSL:"
+echo -e "\n${GREEN}sudo certbot --nginx -d $DOMAIN_NAME -d www.$DOMAIN_NAME \\
+    --non-interactive \\
+    --agree-tos \\
+    --email $SSL_EMAIL \\
+    --redirect${NC}"
+
+# Install Certbot but don't run it yet
+if ! command -v certbot &> /dev/null; then
 # Configure firewall
 print_step "STEP 9: Configuring Firewall"
 if command -v ufw &> /dev/null; then

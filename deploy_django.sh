@@ -229,77 +229,164 @@ fi
 
 # Configure Celery service
 print_step "Configuring Celery Service"
-CELERY_SERVICE="/etc/systemd/system/celery.service"
-CELERY_BEAT_SERVICE="/etc/systemd/system/celery-beat.service"
-CELERY_WORKER_SERVICE="/etc/systemd/system/celery-worker.service"
+
+# Create directories for Celery
+CELERY_LOG_DIR="/var/log/celery"
+CELERY_RUN_DIR="/var/run/celery"
+CELERY_CONF_DIR="/etc/conf.d"
+mkdir -p $CELERY_LOG_DIR $CELERY_RUN_DIR $CELERY_CONF_DIR
+chown -R $APP_USER:www-data $CELERY_LOG_DIR $CELERY_RUN_DIR
+chmod -R 755 $CELERY_LOG_DIR $CELERY_RUN_DIR
+
+# Create Celery configuration
+cat > $CELERY_CONF_DIR/celery << EOF
+# Name of nodes to start
+CELERYD_NODES="worker1"
+
+# Absolute or relative path to the 'celery' command
+CELERY_BIN="$VENV_PATH/bin/celery"
+
+# App instance to use
+CELERY_APP="$PROJECT_NAME"
+
+# How to call manage.py
+CELERYD_MULTI="multi"
+
+# Extra command-line arguments to worker
+CELERYD_OPTS="--time-limit=300 --concurrency=8"
+
+# Log and PID files
+CELERYD_PID_FILE="$CELERY_RUN_DIR/%n.pid"
+CELERYD_LOG_FILE="$CELERY_LOG_DIR/%n%I.log"
+CELERYD_LOG_LEVEL="INFO"
+
+# Set the working directory
+C_FORCE_ROOT="true"
+
+# Add the virtualenv
+ENV_PYTHON="$VENV_PATH/bin/python"
+PATH="$VENV_PATH/bin:$PATH"
+
+# Load environment variables from .env file
+if [ -f "$PROJECT_PATH/.env" ]; then
+    set -o allexport
+    source "$PROJECT_PATH/.env"
+    set +o allexport
+fi
+EOF
 
 # Create Celery service file
-cat > $CELERY_SERVICE << EOF
+cat > /etc/systemd/system/celery.service << EOF
 [Unit]
 Description=Celery Service
-After=network.target
+After=network.target postgresql.service redis-server.service
+Requires=postgresql.service redis-server.service
 
 [Service]
 Type=forking
 User=$APP_USER
 Group=www-data
-EnvironmentFile=$PROJECT_PATH/.env
+EnvironmentFile=$CELERY_CONF_DIR/celery
 WorkingDirectory=$PROJECT_PATH
-ExecStart=$VENV_PATH/bin/celery -A $PROJECT_NAME worker --loglevel=info --logfile=$PROJECT_PATH/logs/celery_worker.log --pidfile=/tmp/celery_worker.pid --detach
-ExecStop=/bin/pkill -f "celery worker"
-Restart=on-failure
+RuntimeDirectory=celery
+RuntimeDirectoryMode=0775
+
+ExecStart=/bin/sh -c '\
+  ${CELERY_BIN} multi start \
+    \${CELERYD_NODES} \
+    -A \${CELERY_APP} \
+    --pidfile=\${CELERYD_PID_FILE} \
+    --logfile=\${CELERYD_LOG_FILE} \
+    --loglevel=\${CELERYD_LOG_LEVEL} \
+    \${CELERYD_OPTS} \
+    --autoscale=10,3 \
+    --without-gossip \
+    --without-mingle \
+    --without-heartbeat \
+    --max-tasks-per-child=100 \
+    --max-memory-per-child=1200000'
+
+ExecStop=/bin/sh -c '\
+  ${CELERY_BIN} multi stopwait \
+    \${CELERYD_NODES} \
+    --pidfile=\${CELERYD_PID_FILE} \
+    --logfile=\${CELERYD_LOG_FILE} \
+    --loglevel=\${CELERYD_LOG_LEVEL}'
+
+ExecReload=/bin/sh -c '\
+  ${CELERY_BIN} multi restart \
+    \${CELERYD_NODES} \
+    --pidfile=\${CELERYD_PID_FILE} \
+    --logfile=\${CELERYD_LOG_FILE} \
+    --loglevel=\${CELERYD_LOG_LEVEL} \
+    \${CELERYD_OPTS} \
+    --autoscale=10,3'
+
+Restart=always
 RestartSec=10s
+StartLimitInterval=0
 
 [Install]
 WantedBy=multi-user.target
 EOF
 
 # Create Celery Beat service file
-cat > $CELERY_BEAT_SERVICE << EOF
+cat > /etc/systemd/system/celery-beat.service << EOF
 [Unit]
 Description=Celery Beat Service
-After=network.target
+After=network.target postgresql.service redis-server.service
+Requires=postgresql.service redis-server.service
 
 [Service]
 Type=simple
 User=$APP_USER
 Group=www-data
-EnvironmentFile=$PROJECT_PATH/.env
+EnvironmentFile=$CELERY_CONF_DIR/celery
 WorkingDirectory=$PROJECT_PATH
-ExecStart=$VENV_PATH/bin/celery -A $PROJECT_NAME beat --loglevel=info --logfile=$PROJECT_PATH/logs/celery_beat.log --pidfile=/tmp/celery_beat.pid --scheduler django_celery_beat.schedulers:DatabaseScheduler
-Restart=on-failure
+RuntimeDirectory=celery
+RuntimeDirectoryMode=0775
+
+ExecStart=/bin/sh -c '\
+  ${CELERY_BIN} -A \${CELERY_APP} beat \
+    --scheduler django_celery_beat.schedulers:DatabaseScheduler \
+    --loglevel=\${CELERYD_LOG_LEVEL} \
+    --pidfile=$CELERY_RUN_DIR/beat.pid \
+    --logfile=$CELERY_LOG_DIR/beat.log \
+    --detach'
+
+Restart=always
 RestartSec=10s
+StartLimitInterval=0
 
 [Install]
 WantedBy=multi-user.target
 EOF
 
-# Create Celery Worker service file
-cat > $CELERY_WORKER_SERVICE << EOF
-[Unit]
-Description=Celery Worker Service
-After=network.target
-
-[Service]
-Type=simple
-User=$APP_USER
-Group=www-data
-EnvironmentFile=$PROJECT_PATH/.env
-WorkingDirectory=$PROJECT_PATH
-ExecStart=$VENV_PATH/bin/celery -A $PROJECT_NAME worker --loglevel=info --logfile=$PROJECT_PATH/logs/celery_worker.log
-Restart=on-failure
-RestartSec=10s
-
-[Install]
-WantedBy=multi-user.target
-EOF
-
-# Set permissions and enable services
-chmod 644 $CELERY_SERVICE $CELERY_BEAT_SERVICE $CELERY_WORKER_SERVICE
+# Set permissions and reload systemd
+chmod 644 /etc/systemd/system/celery.service /etc/systemd/system/celery-beat.service
 systemctl daemon-reload
 
-# Start and enable Celery services
-for service in celery celery-beat celery-worker; do
+# Create logrotate configuration for Celery
+cat > /etc/logrotate.d/celery << EOF
+$CELERY_LOG_DIR/*.log {
+    daily
+    missingok
+    rotate 7
+    compress
+    delaycompress
+    notifempty
+    copytruncate
+    create 640 $APP_USER www-data
+    sharedscripts
+    postrotate
+        systemctl restart celery.service >/dev/null 2>&1 || true
+        systemctl restart celery-beat.service >/dev/null 2>&1 || true
+    endscript
+}
+EOF
+
+# Enable and start services
+for service in celery celery-beat; do
     if systemctl is-enabled $service >/dev/null 2>&1; then
         systemctl restart $service
     else
@@ -309,43 +396,128 @@ for service in celery celery-beat celery-worker; do
     if systemctl is-active --quiet $service; then
         print_message "$service is running successfully!"
     else
-        print_error "Failed to start $service. Check logs with: journalctl -u $service"
+        print_error "Failed to start $service. Check logs with: journalctl -u $service -n 50"
     fi
 done
 
 # Configure Nginx
 print_step "STEP 7: Configuring Nginx"
 NGINX_CONF="/etc/nginx/sites-available/$DOMAIN_NAME"
+
 # Create Nginx configuration with all domains
 cat > $NGINX_CONF << EOF
+# HTTP server - redirect to HTTPS
 server {
     listen 80;
+    listen [::]:80;
     server_name $DOMAINS;
-
-    location = /favicon.ico { access_log off; log_not_found off; }
     
+    # Security headers
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header X-Frame-Options "SAMEORIGIN" always;
+    add_header X-XSS-Protection "1; mode=block" always;
+    
+    # Redirect all HTTP requests to HTTPS
+    return 301 https://\$host\$request_uri;
+}
+
+# HTTPS server configuration will be added by Certbot
+# This is a template that will be updated by Certbot
+server {
+    listen 443 ssl http2;
+    listen [::]:443 ssl http2;
+    server_name $DOMAINS;
+    
+    # SSL configuration will be managed by Certbot
+    # ssl_certificate /etc/letsencrypt/live/\$host/fullchain.pem;
+    # ssl_certificate_key /etc/letsencrypt/live/\$host/privkey.pem;
+    
+    # Security headers
+    add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header X-Frame-Options "SAMEORIGIN" always;
+    add_header X-XSS-Protection "1; mode=block" always;
+    
+    # Logging
+    access_log /var/log/nginx/\$host-access.log;
+    error_log /var/log/nginx/\$host-error.log warn;
+    
+    # Max upload size
+    client_max_body_size 100M;
+    
+    # Gzip settings
+    gzip on;
+    gzip_vary on;
+    gzip_proxied any;
+    gzip_comp_level 6;
+    gzip_types text/plain text/css text/xml application/json application/javascript application/xml application/xml+rss text/javascript;
+    
+    # Static files
     location /static/ {
-        root $PROJECT_PATH;
+        alias $PROJECT_PATH/static/;
+        expires 30d;
+        access_log off;
+        add_header Cache-Control "public, max-age=2592000";
     }
-
+    
+    # Media files
     location /media/ {
-        root $PROJECT_PATH;
+        alias $PROJECT_PATH/media/;
+        expires 30d;
+        access_log off;
+        add_header Cache-Control "public, max-age=2592000";
     }
-
+    
+    # Security headers for static files
+    location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot)$ {
+        expires 30d;
+        add_header Cache-Control "public, max-age=2592000";
+        access_log off;
+    }
+    
+    # Proxy configuration for Django
     location / {
-        include proxy_params;
         proxy_pass http://unix:$PROJECT_PATH/gunicorn.sock;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade \$http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
         proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto \$scheme;
-        proxy_set_header Host \$host;
+        proxy_read_timeout 300s;
+        proxy_connect_timeout 300s;
+        
+        # WebSocket support
         proxy_redirect off;
+        proxy_buffering off;
+    }
+    
+    # Deny access to hidden files
+    location ~ /\. {
+        deny all;
+        access_log off;
+        log_not_found off;
+    }
+    
+    # Deny access to sensitive files
+    location ~* \.(py|pyc|sh|sql|env|git|gitignore|gitattributes|htaccess|htpasswd|ini|conf|cfg|inc)$ {
+        deny all;
+        access_log off;
+        log_not_found off;
+    }
+    
+    # Error pages
+    error_page 500 502 503 504 /50x.html;
+    location = /50x.html {
+        root /usr/share/nginx/html;
     }
 }
 
-# SSL configuration will be added by certbot
-# when you run: sudo certbot --nginx -d $DOMAIN_NAME -d www.$DOMAIN_NAME \
-#     --non-interactive --agree-tos --email $SSL_EMAIL --redirect
-EOF
+# Include Let's Encrypt challenge directory for certificate renewal
+include /etc/letsencrypt/options-ssl-nginx.conf;
+include /etc/letsencrypt/options-ssl-nginx-*.conf;
+
 
 # Enable Nginx site
 ln -sf $NGINX_CONF /etc/nginx/sites-enabled/

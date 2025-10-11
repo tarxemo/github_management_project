@@ -149,9 +149,9 @@ fi
 
 # Update system
 print_step "STEP 2: Updating System Packages"
-apt-get update -y
-apt-get install -y redis-server
-apt-get upgrade -y
+# apt-get update -y
+# apt-get install -y redis-server
+# apt-get upgrade -y
 
 print_step "STEP 3: Installing Required Packages"
 apt-get install -y nginx postgresql postgresql-contrib libpq-dev \

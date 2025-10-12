@@ -483,7 +483,7 @@ fi
 NGINX_CONF="/etc/nginx/sites-available/${PRIMARY_DOMAIN}"
 
 # Create Nginx configuration with all domains
-cat > $NGINX_CONF << NGINX_EOF
+cat > $NGINX_CONF << 'NGINX_EOF'
 # HTTP server - redirect to HTTPS (will be updated after SSL setup)
 server {
     listen 80;
@@ -534,17 +534,17 @@ server {
     
     # Proxy configuration for Django
     location / {
-        proxy_pass http://127.0.0.1:APP_PORT_PLACEHOLDER;
+        proxy_pass http://127.0.0.1:8006;
         proxy_http_version 1.1;
         
-        # Standard headers
-        proxy_set_header Host               $host;
-        proxy_set_header X-Real-IP          $remote_addr;
-        proxy_set_header X-Forwarded-For    $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto  $scheme;
+        # Standard headers with proper variable expansion
+        proxy_set_header Host               \$host;
+        proxy_set_header X-Real-IP          \$remote_addr;
+        proxy_set_header X-Forwarded-For    \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto  \$scheme;
         
         # WebSocket support
-        proxy_set_header Upgrade            $http_upgrade;
+        proxy_set_header Upgrade            \$http_upgrade;
         proxy_set_header Connection         "upgrade";
         
         # Timeouts
@@ -578,11 +578,8 @@ server {
 }
 NGINX_EOF
 
-# Replace placeholders
-sed -i "s|DOMAINS_PLACEHOLDER|$DOMAINS|g" $NGINX_CONF
-sed -i "s|DOMAIN_PLACEHOLDER|$DOMAIN_NAME|g" $NGINX_CONF
+# Replace only the necessary placeholders
 sed -i "s|PROJECT_PATH_PLACEHOLDER|$PROJECT_PATH|g" $NGINX_CONF
-sed -i "s|APP_PORT_PLACEHOLDER|$APP_PORT|g" $NGINX_CONF
 
 print_message "Nginx configuration created"
 
@@ -629,12 +626,15 @@ fi
 SSL_SETUP_SCRIPT="/usr/local/bin/setup_ssl_${PRIMARY_DOMAIN//./_}.sh"
 cat > $SSL_SETUP_SCRIPT << 'SSL_SCRIPT_EOF'
 #!/bin/bash
-echo "Setting up SSL for $PRIMARY_DOMAIN"
+echo "Setting up SSL for $PRIMARY_DOMAIN on port 8006..."
 if [ "$EUID" -ne 0 ]; then
     echo "Please run as root (use sudo)"
     exit 1
 fi
 
+# Update Nginx configuration to ensure proper proxy header formatting and port 8006 usage
+sed -i "s|proxy_pass http://127.0.0.1:8006;|proxy_pass http://127.0.0.1:8006/;|" /etc/nginx/sites-available/${PRIMARY_DOMAIN}
+sed -i "s|proxy_set_header X-Forwarded-Proto \$scheme;|proxy_set_header X-Forwarded-Proto \$http_x_forwarded_proto;|" /etc/nginx/sites-available/${PRIMARY_DOMAIN}
 {{ ... }}
 # Build the certbot command with all domains
 CERTBOT_CMD="certbot --nginx"

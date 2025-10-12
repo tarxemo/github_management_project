@@ -536,18 +536,24 @@ server {
     location / {
         proxy_pass http://127.0.0.1:APP_PORT_PLACEHOLDER;
         proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection "upgrade";
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-        proxy_read_timeout 300s;
-        proxy_connect_timeout 300s;
+        
+        # Standard headers
+        proxy_set_header Host               $host;
+        proxy_set_header X-Real-IP          $remote_addr;
+        proxy_set_header X-Forwarded-For    $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto  $scheme;
         
         # WebSocket support
-        proxy_redirect off;
-        proxy_buffering off;
+        proxy_set_header Upgrade            $http_upgrade;
+        proxy_set_header Connection         "upgrade";
+        
+        # Timeouts
+        proxy_read_timeout                  300s;
+        proxy_connect_timeout               300s;
+        
+        # Other settings
+        proxy_redirect                      off;
+        proxy_buffering                     off;
     }
     
     # Deny access to hidden files

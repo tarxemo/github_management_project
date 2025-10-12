@@ -146,8 +146,8 @@ SOCIALACCOUNT_PROVIDERS = {
             'read:org',
         ],
         'APP': {
-            'client_id': os.getenv('GITHUB_OAUTH2_CLIENT_ID'),  # GitHub Client ID
-            'secret': os.getenv('GITHUB_OAUTH2_SECRET'),  # GitHub Client Secret
+            'client_id': "Ov23li1B8VnzcXarGNwY",  # GitHub Client ID
+            'secret': "c0239f913ceaae636da5fc56993a164db20e03e3",  # GitHub Client Secret
             'key': ''
         }
     },

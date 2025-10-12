@@ -268,27 +268,18 @@ EOF
 
 print_message "Gunicorn service file created"
 
-# Create Gunicorn socket
-GUNICORN_SOCKET="/etc/systemd/system/gunicorn.socket"
+# We're not using a socket file anymore as it was causing issues
+# Gunicorn will be started directly on port 8006
+print_message "Using direct port binding for Gunicorn (port $APP_PORT)"
 
-cat > $GUNICORN_SOCKET << EOF
-[Unit]
-Description=Gunicorn socket
+# Start Gunicorn - First disable and remove any existing socket
+print_message "Configuring Gunicorn service..."
+systemctl disable --now gunicorn.socket 2>/dev/null || true
+rm -f /etc/systemd/system/gunicorn.socket 2>/dev/null || true
+rm -f /etc/systemd/system/sockets.target.wants/gunicorn.socket 2>/dev/null || true
 
-[Socket]
-ListenStream=$PROJECT_PATH/gunicorn.sock
-
-[Install]
-WantedBy=sockets.target
-EOF
-
-print_message "Gunicorn socket file created"
-
-# Start Gunicorn
-print_message "Starting Gunicorn service..."
+# Reload systemd and start Gunicorn directly
 systemctl daemon-reload
-systemctl start gunicorn.socket
-systemctl enable gunicorn.socket
 systemctl stop gunicorn 2>/dev/null || true
 systemctl start gunicorn
 systemctl enable gunicorn
@@ -791,8 +782,14 @@ print_step "STEP 13: Final Verification"
 echo "Checking services..."
 SERVICES_OK=true
 
+# Check if Gunicorn is running and listening on the port
 if systemctl is-active --quiet gunicorn; then
-    echo -e "${GREEN}✓${NC} Gunicorn is running"
+    if lsof -i :$APP_PORT > /dev/null 2>&1; then
+        echo -e "${GREEN}✓${NC} Gunicorn is running and listening on port $APP_PORT"
+    else
+        echo -e "${YELLOW}⚠${NC} Gunicorn is running but not listening on port $APP_PORT"
+        SERVICES_OK=false
+    fi
 else
     echo -e "${RED}✗${NC} Gunicorn is not running"
     SERVICES_OK=false
@@ -802,7 +799,7 @@ if systemctl is-active --quiet celery; then
     echo -e "${GREEN}✓${NC} Celery is running"
 else
     echo -e "${RED}✗${NC} Celery is not running"
-    SERVICES_OK=false
+{{ ... }}
 fi
 
 if systemctl is-active --quiet celery-beat; then

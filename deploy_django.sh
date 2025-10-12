@@ -628,7 +628,7 @@ fi
 # Update Nginx configuration to ensure proper proxy header formatting and port 8006 usage
 sed -i "s|proxy_pass http://127.0.0.1:8006;|proxy_pass http://127.0.0.1:8006/;|" /etc/nginx/sites-available/${PRIMARY_DOMAIN}
 sed -i "s|proxy_set_header X-Forwarded-Proto \$scheme;|proxy_set_header X-Forwarded-Proto \$http_x_forwarded_proto;|" /etc/nginx/sites-available/${PRIMARY_DOMAIN}
-{{ ... }}
+
 # Build the certbot command with all domains
 CERTBOT_CMD="certbot --nginx"
 CERTBOT_CMD+=" -d SSL_DOMAIN_PLACEHOLDER"
@@ -643,6 +643,26 @@ for sub in "${SSL_SUBDOMAINS_ARRAY[@]}"; do
 done
 
 # Add email and options
+CERTBOT_CMD+=" --email $SSL_EMAIL --agree-tos --no-eff-email --redirect --hsts --staple-ocsp"
+CERTBOT_CMD+=" --keep-until-expiring"
+CERTBOT_CMD+=" --rsa-key-size 2048"
+CERTBOT_CMD+=" --preferred-challenges http"
+CERTBOT_CMD+=" --non-interactive"
+
+# Execute the certbot command
+echo "Running: $CERTBOT_CMD"
+eval $CERTBOT_CMD
+
+# Test the Nginx configuration
+nginx -t && systemctl reload nginx
+
+echo "SSL setup complete for $PRIMARY_DOMAIN"
+echo "You can test automatic renewal with: certbot renew --dry-run"
+SSL_SCRIPT_EOF
+
+# Make the script executable
+chmod +x $SSL_SETUP_SCRIPT
+print_message "SSL setup script created at $SSL_SETUP_SCRIPT"
 if [ -n "SSL_EMAIL_PLACEHOLDER" ]; then
     CERTBOT_CMD+=" --email SSL_EMAIL_PLACEHOLDER --agree-tos"
 else

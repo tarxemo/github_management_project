@@ -819,7 +819,6 @@ if systemctl is-active --quiet celery; then
     echo -e "${GREEN}✓${NC} Celery is running"
 else
     echo -e "${RED}✗${NC} Celery is not running"
-{{ ... }}
 fi
 
 if systemctl is-active --quiet celery-beat; then

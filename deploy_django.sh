@@ -623,12 +623,21 @@ cat > $SSL_SETUP_SCRIPT << 'SSL_SCRIPT_EOF'
 #!/bin/bash
 
 # Set variables from command line arguments
-DOMAIN="$1"
+FULL_DOMAIN="$1"  # This should be the full domain (e.g., github.tarxemo.com)
 EMAIL="$2"
-shift 2
-SUBDOMAINS=("$@")
 
-echo "Setting up SSL for domain: $DOMAIN"
+# Extract domain and subdomain
+if [[ $FULL_DOMAIN == *.*.* ]]; then
+    # Has subdomain (e.g., github.tarxemo.com)
+    SUBDOMAIN=$(echo "$FULL_DOMAIN" | cut -d. -f1)
+    DOMAIN=$(echo "$FULL_DOMAIN" | cut -d. -f2-)
+else
+    # No subdomain, use as is
+    DOMAIN="$FULL_DOMAIN"
+    SUBDOMAIN=""
+fi
+
+echo "Setting up SSL for domain: $FULL_DOMAIN"
 
 if [ "$EUID" -ne 0 ]; then
     echo "Please run as root (use sudo)"
@@ -640,7 +649,7 @@ if ! systemctl is-active --quiet nginx; then
     systemctl start nginx
 fi
 
-# Build the certbot command with the main domain
+# Build the certbot command with only the specified domain
 CERTBOT_CMD="certbot --nginx --non-interactive --agree-tos"
 CERTBOT_CMD+=" --email $EMAIL"
 CERTBOT_CMD+=" --redirect"
@@ -650,20 +659,10 @@ CERTBOT_CMD+=" --keep-until-expiring"
 CERTBOT_CMD+=" --rsa-key-size 2048"
 CERTBOT_CMD+=" --preferred-challenges http"
 
-# Add main domain
-CERTBOT_CMD+=" -d $DOMAIN"
+# Only add the specific domain we want
+CERTBOT_CMD+=" -d $FULL_DOMAIN"
 
-# Add subdomains if any
-for sub in "${SUBDOMAINS[@]}"; do
-    if [ -n "$sub" ] && [ "$sub" != "www" ]; then
-        CERTBOT_CMD+=" -d $sub.$DOMAIN"
-    fi
-done
-
-# Add www subdomain if not already included
-if [[ ! " ${SUBDOMAINS[@]} " =~ " www " ]]; then
-    CERTBOT_CMD+=" -d www.$DOMAIN"
-fi
+# Don't add any other domains automatically
 
 # Execute the certbot command
 echo "Running: $CERTBOT_CMD"

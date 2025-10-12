@@ -616,7 +616,8 @@ if ! command -v certbot &> /dev/null; then
 fi
 
 # Create a script for easy SSL setup
-SSL_SETUP_SCRIPT="/usr/local/bin/setup_ssl_${DOMAIN_NAME//./_}.sh"
+FULL_DOMAIN="${SUBDOMAINS[0]}.$DOMAIN_NAME"
+SSL_SETUP_SCRIPT="/usr/local/bin/setup_ssl_${FULL_DOMAIN//./_}.sh"
 
 # Create the SSL setup script
 cat > $SSL_SETUP_SCRIPT << 'SSL_SCRIPT_EOF'
@@ -626,16 +627,12 @@ cat > $SSL_SETUP_SCRIPT << 'SSL_SCRIPT_EOF'
 FULL_DOMAIN="$1"  # This should be the full domain (e.g., github.tarxemo.com)
 EMAIL="$2"
 
-# Extract domain and subdomain
-if [[ $FULL_DOMAIN == *.*.* ]]; then
-    # Has subdomain (e.g., github.tarxemo.com)
-    SUBDOMAIN=$(echo "$FULL_DOMAIN" | cut -d. -f1)
-    DOMAIN=$(echo "$FULL_DOMAIN" | cut -d. -f2-)
-else
-    # No subdomain, use as is
-    DOMAIN="$FULL_DOMAIN"
-    SUBDOMAIN=""
-fi
+# Extract just the domain part without subdomains
+DOMAIN=$(echo "$FULL_DOMAIN" | awk -F. '{
+    if (NF == 2) {print $0}
+    else if (NF > 2) {print $(NF-1)"."$NF}
+    else {print $0}
+}')
 
 echo "Setting up SSL for domain: $FULL_DOMAIN"
 
@@ -649,38 +646,60 @@ if ! systemctl is-active --quiet nginx; then
     systemctl start nginx
 fi
 
-# Build the certbot command with only the specified domain
-CERTBOT_CMD="certbot --nginx --non-interactive --agree-tos"
-CERTBOT_CMD+=" --email $EMAIL"
-CERTBOT_CMD+=" --redirect"
-CERTBOT_CMD+=" --hsts"
-CERTBOT_CMD+=" --staple-ocsp"
-CERTBOT_CMD+=" --keep-until-expiring"
-CERTBOT_CMD+=" --rsa-key-size 2048"
-CERTBOT_CMD+=" --preferred-challenges http"
+# Stop Nginx to free up port 80
+systemctl stop nginx
 
-# Only add the specific domain we want
+# Build the certbot command with only the specified domain
+CERTBOT_CMD="certbot certonly --standalone --non-interactive --agree-tos"
+CERTBOT_CMD+=" --email $EMAIL"
+CERTBOT_CMD+=" --preferred-challenges http"
+CERTBOT_CMD+=" --http-01-port 80"
+CERTBOT_CMD+=" --cert-name $FULL_DOMAIN"
 CERTBOT_CMD+=" -d $FULL_DOMAIN"
 
-# Don't add any other domains automatically
+# Create required directories
+mkdir -p /var/www/certbot
+chown -R $APP_USER:$APP_USER /var/www/certbot
 
 # Execute the certbot command
 echo "Running: $CERTBOT_CMD"
+eval $CERTBOT_CMD
+CERTBOT_EXIT_CODE=$?
 
-# Create a temporary Nginx config for HTTP challenge
-TEMP_NGINX_CONF="/etc/nginx/conf.d/letsencrypt.conf"
-cat > $TEMP_NGINX_CONF << NGINX_EOF
-server {
-    listen 80;
-    server_name $DOMAIN www.$DOMAIN;
-    location /.well-known/acme-challenge/ {
-        root /var/www/certbot;
-    }
-    location / {
-        return 301 https://\$host\$request_uri;
-    }
-}
-NGINX_EOF
+# Start Nginx again
+systemctl start nginx
+
+if [ $CERTBOT_EXIT_CODE -eq 0 ]; then
+    echo -e "\n✅ SSL certificate obtained successfully!"
+    
+    # Update Nginx configuration to use the certificate
+    NGINX_CONF="/etc/nginx/sites-available/$FULL_DOMAIN"
+    if [ -f "$NGINX_CONF" ]; then
+        # Update the server block to use SSL
+        sed -i "s/listen 80;/listen 443 ssl;\n    ssl_certificate /etc/letsencrypt/live/$FULL_DOMAIN/fullchain.pem;\n    ssl_certificate_key /etc/letsencrypt/live/$FULL_DOMAIN/privkey.pem;\n    ssl_trusted_certificate /etc/letsencrypt/live/$FULL_DOMAIN/chain.pem;/" "$NGINX_CONF"
+        
+        # Add HTTP to HTTPS redirect
+        if ! grep -q "return 301 https" "$NGINX_CONF"; then
+            sed -i '/listen 80;/a\    return 301 https://$host$request_uri;' "$NGINX_CONF"
+        fi
+        
+        nginx -t && systemctl reload nginx
+        echo -e "\n🔒 Nginx configured with SSL for $FULL_DOMAIN"
+    else
+        echo -e "\n⚠ Could not find Nginx configuration at $NGINX_CONF"
+        echo "Please manually configure Nginx to use the certificate at:"
+        echo "  /etc/letsencrypt/live/$FULL_DOMAIN/"
+    fi
+    
+    echo -e "\nYou can test automatic renewal with: certbot renew --dry-run"
+else
+    echo -e "\n❌ Failed to obtain SSL certificate."
+    echo "Common issues:"
+    echo "1. Port 80 is in use (check with: sudo lsof -i :80)"
+    echo "2. DNS not properly configured (check with: dig +short $FULL_DOMAIN)"
+    echo -e "\nCheck the full error logs with: journalctl -u nginx -n 50"
+    exit 1
+fi
 
 # Test and reload Nginx
 nginx -t && systemctl reload nginx
@@ -714,9 +733,9 @@ SSL_SCRIPT_EOF
 chmod +x $SSL_SETUP_SCRIPT
 print_message "SSL setup script created at $SSL_SETUP_SCRIPT"
 
-# Run the SSL setup script
-print_message "Setting up SSL certificates..."
-$SSL_SETUP_SCRIPT "$DOMAIN_NAME" "$SSL_EMAIL" "${SUBDOMAINS[@]}"
+# Run the SSL setup script with the full domain (e.g., github.tarxemo.com)
+print_message "Setting up SSL certificates for $FULL_DOMAIN..."
+$SSL_SETUP_SCRIPT "$FULL_DOMAIN" "$SSL_EMAIL"
 
 if [ $? -ne 0 ]; then
     print_warning "SSL setup encountered an error. Please check the output above for details."

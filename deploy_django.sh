@@ -483,7 +483,7 @@ fi
 NGINX_CONF="/etc/nginx/sites-available/${PRIMARY_DOMAIN}"
 
 # Create Nginx configuration with all domains
-cat > $NGINX_CONF << NGINX_EOF
+cat > $NGINX_CONF << 'NGINX_EOF'
 # HTTP server - redirect to HTTPS (will be updated after SSL setup)
 server {
     listen 80;
@@ -496,8 +496,8 @@ server {
     add_header X-XSS-Protection "1; mode=block" always;
     
     # Logging
-    access_log /var/log/nginx/$PRIMARY_DOMAIN-access.log;
-    error_log /var/log/nginx/$PRIMARY_DOMAIN-error.log warn;
+    access_log /var/log/nginx/PRIMARY_DOMAIN_PLACEHOLDER-access.log;
+    error_log /var/log/nginx/PRIMARY_DOMAIN_PLACEHOLDER-error.log warn;
     
     # Max upload size
     client_max_body_size 100M;
@@ -511,7 +511,7 @@ server {
     
     # Static files
     location /static/ {
-        alias $PROJECT_PATH/static/;
+        alias PROJECT_PATH_PLACEHOLDER/static/;
         expires 30d;
         access_log off;
         add_header Cache-Control "public, max-age=2592000";
@@ -519,7 +519,7 @@ server {
     
     # Media files
     location /media/ {
-        alias $PROJECT_PATH/media/;
+        alias PROJECT_PATH_PLACEHOLDER/media/;
         expires 30d;
         access_log off;
         add_header Cache-Control "public, max-age=2592000";
@@ -537,14 +537,14 @@ server {
         proxy_pass http://127.0.0.1:8006;
         proxy_http_version 1.1;
         
-        # Standard headers with proper variable expansion
-        proxy_set_header Host               \$host;
-        proxy_set_header X-Real-IP          \$remote_addr;
-        proxy_set_header X-Forwarded-For    \$proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto  \$scheme;
+        # Standard headers
+        proxy_set_header Host               $host;
+        proxy_set_header X-Real-IP          $remote_addr;
+        proxy_set_header X-Forwarded-For    $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto  $scheme;
         
         # WebSocket support
-        proxy_set_header Upgrade            \$http_upgrade;
+        proxy_set_header Upgrade            $http_upgrade;
         proxy_set_header Connection         "upgrade";
         
         # Timeouts
@@ -578,7 +578,10 @@ server {
 }
 NGINX_EOF
 
-# No need for sed replacement as we're using direct variable expansion
+# Replace placeholders in Nginx config
+sed -i "s|PROJECT_PATH_PLACEHOLDER|$PROJECT_PATH|g" $NGINX_CONF
+sed -i "s|DOMAINS_PLACEHOLDER|$DOMAINS|g" $NGINX_CONF
+sed -i "s|PRIMARY_DOMAIN_PLACEHOLDER|$PRIMARY_DOMAIN|g" $NGINX_CONF
 
 print_message "Nginx configuration created"
 

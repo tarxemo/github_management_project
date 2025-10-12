@@ -108,6 +108,13 @@ if [[ ! " ${SUBDOMAINS[@]} " =~ " www " ]]; then
     DOMAINS+=" www.$DOMAIN_NAME"
 fi
 
+# Set primary domain (first subdomain if available, otherwise main domain)
+if [ -n "${SUBDOMAINS[0]}" ]; then
+    PRIMARY_DOMAIN="${SUBDOMAINS[0]}.$DOMAIN_NAME"
+else
+    PRIMARY_DOMAIN="$DOMAIN_NAME"
+fi
+
 # Create a comma-separated list for Django ALLOWED_HOSTS
 ALLOWED_HOSTS="'$DOMAIN_NAME', 'www.$DOMAIN_NAME'"
 for sub in "${SUBDOMAINS[@]}"; do
@@ -466,15 +473,22 @@ done
 
 # Configure Nginx
 print_step "STEP 9: Configuring Nginx"
-NGINX_CONF="/etc/nginx/sites-available/$DOMAIN_NAME"
+# Determine primary domain (use first subdomain if available, otherwise use main domain)
+if [ -n "${SUBDOMAINS[0]}" ]; then
+    PRIMARY_DOMAIN="${SUBDOMAINS[0]}.$DOMAIN_NAME"
+else
+    PRIMARY_DOMAIN="$DOMAIN_NAME"
+fi
+
+NGINX_CONF="/etc/nginx/sites-available/${PRIMARY_DOMAIN}"
 
 # Create Nginx configuration with all domains
-cat > $NGINX_CONF << 'NGINX_EOF'
+cat > $NGINX_CONF << NGINX_EOF
 # HTTP server - redirect to HTTPS (will be updated after SSL setup)
 server {
     listen 80;
     listen [::]:80;
-    server_name DOMAINS_PLACEHOLDER;
+    server_name $DOMAINS;
     
     # Security headers
     add_header X-Content-Type-Options "nosniff" always;
@@ -482,8 +496,8 @@ server {
     add_header X-XSS-Protection "1; mode=block" always;
     
     # Logging
-    access_log /var/log/nginx/DOMAIN_PLACEHOLDER-access.log;
-    error_log /var/log/nginx/DOMAIN_PLACEHOLDER-error.log warn;
+    access_log /var/log/nginx/${PRIMARY_DOMAIN}-access.log;
+    error_log /var/log/nginx/${PRIMARY_DOMAIN}-error.log warn;
     
     # Max upload size
     client_max_body_size 100M;
@@ -606,15 +620,16 @@ if ! command -v certbot &> /dev/null; then
 fi
 
 # Create a script for easy SSL setup
-SSL_SETUP_SCRIPT="/usr/local/bin/setup_ssl_${DOMAIN_NAME//./_}.sh"
+SSL_SETUP_SCRIPT="/usr/local/bin/setup_ssl_${PRIMARY_DOMAIN//./_}.sh"
 cat > $SSL_SETUP_SCRIPT << 'SSL_SCRIPT_EOF'
 #!/bin/bash
-echo "Setting up SSL for SSL_DOMAIN_PLACEHOLDER..."
+echo "Setting up SSL for $PRIMARY_DOMAIN"
 if [ "$EUID" -ne 0 ]; then
     echo "Please run as root (use sudo)"
     exit 1
 fi
 
+{{ ... }}
 # Build the certbot command with all domains
 CERTBOT_CMD="certbot --nginx"
 CERTBOT_CMD+=" -d SSL_DOMAIN_PLACEHOLDER"

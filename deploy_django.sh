@@ -475,47 +475,20 @@ NGINX_CONF="/etc/nginx/sites-available/${PRIMARY_DOMAIN}"
 
 # Create Nginx configuration with all domains
 cat > $NGINX_CONF << 'NGINX_EOF'
-# HTTP server - redirect to HTTPS
+# HTTP server - will be updated by Certbot for HTTPS
 server {
     listen 80;
     listen [::]:80;
     server_name $DOMAINS;
     
-    # Redirect all HTTP requests to HTTPS with a 301 Moved Permanently response
-    return 301 https://$host$request_uri;
-}
-
-# HTTPS server
-server {
-    listen 443 ssl http2;
-    listen [::]:443 ssl http2;
-    server_name $DOMAINS;
-    
-    # SSL configuration - will be updated by certbot
-    ssl_certificate /etc/letsencrypt/live/${PRIMARY_DOMAIN}/fullchain.pem;
-    ssl_certificate_key /etc/letsencrypt/live/${PRIMARY_DOMAIN}/privkey.pem;
-    ssl_trusted_certificate /etc/letsencrypt/live/${PRIMARY_DOMAIN}/chain.pem;
-    
-    # SSL settings
-    ssl_protocols TLSv1.2 TLSv1.3;
-    ssl_prefer_server_ciphers on;
-    ssl_ciphers 'ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305:DHE-RSA-AES128-GCM-SHA256:DHE-RSA-AES256-GCM-SHA384';
-    ssl_session_timeout 1d;
-    ssl_session_cache shared:SSL:50m;
-    ssl_session_tickets off;
-    ssl_stapling on;
-    ssl_stapling_verify on;
-    
     # Security headers
-    add_header Strict-Transport-Security "max-age=63072000; includeSubDomains; preload";
     add_header X-Content-Type-Options "nosniff" always;
     add_header X-Frame-Options "SAMEORIGIN" always;
     add_header X-XSS-Protection "1; mode=block" always;
-    add_header Referrer-Policy "strict-origin-when-cross-origin";
     
     # Logging
-    access_log /var/log/nginx/PRIMARY_DOMAIN_PLACEHOLDER-access.log;
-    error_log /var/log/nginx/PRIMARY_DOMAIN_PLACEHOLDER-error.log warn;
+    access_log /var/log/nginx/${PRIMARY_DOMAIN}-access.log;
+    error_log /var/log/nginx/${PRIMARY_DOMAIN}-error.log warn;
     
     # Max upload size
     client_max_body_size 100M;
@@ -556,12 +529,10 @@ server {
         proxy_http_version 1.1;
         
         # Standard headers
-        proxy_set_header Host               $http_host;
+        proxy_set_header Host               $host;
         proxy_set_header X-Real-IP          $remote_addr;
         proxy_set_header X-Forwarded-For    $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto  https;
-        proxy_set_header X-Forwarded-Host   $host;
-        proxy_set_header X-Forwarded-Port   $server_port;
+        proxy_set_header X-Forwarded-Proto  $scheme;
         
         # WebSocket support
         proxy_set_header Upgrade            $http_upgrade;
@@ -675,28 +646,23 @@ if ! systemctl is-active --quiet nginx; then
     systemctl start nginx
 fi
 
-# Stop Nginx to free up port 80
-systemctl stop nginx
+# Create webroot directory for HTTP challenge
+WEBROOT_PATH="/var/www/certbot"
+mkdir -p "$WEBROOT_PATH/.well-known/acme-challenge"
+chown -R www-data:www-data "$WEBROOT_PATH"
+chmod -R 755 "$WEBROOT_PATH"
 
-# Build the certbot command with only the specified domain
-CERTBOT_CMD="certbot certonly --standalone --non-interactive --agree-tos"
+# Build the certbot command using webroot plugin
+CERTBOT_CMD="certbot certonly --webroot --non-interactive --agree-tos"
 CERTBOT_CMD+=" --email $EMAIL"
-CERTBOT_CMD+=" --preferred-challenges http"
-CERTBOT_CMD+=" --http-01-port 80"
+CERTBOT_CMD+=" --webroot-path=$WEBROOT_PATH"
 CERTBOT_CMD+=" --cert-name $FULL_DOMAIN"
 CERTBOT_CMD+=" -d $FULL_DOMAIN"
-
-# Create required directories
-mkdir -p /var/www/certbot
-chown -R $APP_USER:$APP_USER /var/www/certbot
 
 # Execute the certbot command
 echo "Running: $CERTBOT_CMD"
 eval $CERTBOT_CMD
 CERTBOT_EXIT_CODE=$?
-
-# Start Nginx again
-systemctl start nginx
 
 if [ $CERTBOT_EXIT_CODE -eq 0 ]; then
     echo -e "\n✅ SSL certificate obtained successfully!"

@@ -475,7 +475,7 @@ NGINX_CONF="/etc/nginx/sites-available/${PRIMARY_DOMAIN}"
 
 # Create Nginx configuration with all domains
 cat > $NGINX_CONF << 'NGINX_EOF'
-# HTTP server - will be updated by Certbot for HTTPS
+# HTTP server - redirect to HTTPS (will be updated after SSL setup)
 server {
     listen 80;
     listen [::]:80;
@@ -487,8 +487,8 @@ server {
     add_header X-XSS-Protection "1; mode=block" always;
     
     # Logging
-    access_log /var/log/nginx/${PRIMARY_DOMAIN}-access.log;
-    error_log /var/log/nginx/${PRIMARY_DOMAIN}-error.log warn;
+    access_log /var/log/nginx/PRIMARY_DOMAIN_PLACEHOLDER-access.log;
+    error_log /var/log/nginx/PRIMARY_DOMAIN_PLACEHOLDER-error.log warn;
     
     # Max upload size
     client_max_body_size 100M;
@@ -646,23 +646,28 @@ if ! systemctl is-active --quiet nginx; then
     systemctl start nginx
 fi
 
-# Create webroot directory for HTTP challenge
-WEBROOT_PATH="/var/www/certbot"
-mkdir -p "$WEBROOT_PATH/.well-known/acme-challenge"
-chown -R www-data:www-data "$WEBROOT_PATH"
-chmod -R 755 "$WEBROOT_PATH"
+# Stop Nginx to free up port 80
+systemctl stop nginx
 
-# Build the certbot command using webroot plugin
-CERTBOT_CMD="certbot certonly --webroot --non-interactive --agree-tos"
+# Build the certbot command with only the specified domain
+CERTBOT_CMD="certbot certonly --standalone --non-interactive --agree-tos"
 CERTBOT_CMD+=" --email $EMAIL"
-CERTBOT_CMD+=" --webroot-path=$WEBROOT_PATH"
+CERTBOT_CMD+=" --preferred-challenges http"
+CERTBOT_CMD+=" --http-01-port 80"
 CERTBOT_CMD+=" --cert-name $FULL_DOMAIN"
 CERTBOT_CMD+=" -d $FULL_DOMAIN"
+
+# Create required directories
+mkdir -p /var/www/certbot
+chown -R $APP_USER:$APP_USER /var/www/certbot
 
 # Execute the certbot command
 echo "Running: $CERTBOT_CMD"
 eval $CERTBOT_CMD
 CERTBOT_EXIT_CODE=$?
+
+# Start Nginx again
+systemctl start nginx
 
 if [ $CERTBOT_EXIT_CODE -eq 0 ]; then
     echo -e "\n✅ SSL certificate obtained successfully!"

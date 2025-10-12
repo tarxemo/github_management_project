@@ -616,83 +616,113 @@ if ! command -v certbot &> /dev/null; then
 fi
 
 # Create a script for easy SSL setup
-SSL_SETUP_SCRIPT="/usr/local/bin/setup_ssl_${PRIMARY_DOMAIN//./_}.sh"
+SSL_SETUP_SCRIPT="/usr/local/bin/setup_ssl_${DOMAIN_NAME//./_}.sh"
+
+# Create the SSL setup script
 cat > $SSL_SETUP_SCRIPT << 'SSL_SCRIPT_EOF'
 #!/bin/bash
-echo "Setting up SSL for $PRIMARY_DOMAIN on port 8006..."
+
+# Set variables from command line arguments
+DOMAIN="$1"
+EMAIL="$2"
+shift 2
+SUBDOMAINS=("$@")
+
+echo "Setting up SSL for domain: $DOMAIN"
+
 if [ "$EUID" -ne 0 ]; then
     echo "Please run as root (use sudo)"
     exit 1
 fi
 
-# Update Nginx configuration to ensure proper proxy header formatting and port 8006 usage
-sed -i "s|proxy_pass http://127.0.0.1:8006;|proxy_pass http://127.0.0.1:8006/;|" /etc/nginx/sites-available/${PRIMARY_DOMAIN}
-sed -i "s|proxy_set_header X-Forwarded-Proto \$scheme;|proxy_set_header X-Forwarded-Proto \$http_x_forwarded_proto;|" /etc/nginx/sites-available/${PRIMARY_DOMAIN}
+# Ensure Nginx is running
+if ! systemctl is-active --quiet nginx; then
+    systemctl start nginx
+fi
 
-# Build the certbot command with all domains
-CERTBOT_CMD="certbot --nginx"
-CERTBOT_CMD+=" -d SSL_DOMAIN_PLACEHOLDER"
-CERTBOT_CMD+=" -d www.SSL_DOMAIN_PLACEHOLDER"
-
-# Add subdomains
-SSL_SUBDOMAINS_ARRAY=(SSL_SUBDOMAINS_PLACEHOLDER)
-for sub in "${SSL_SUBDOMAINS_ARRAY[@]}"; do
-    if [ -n "$sub" ]; then
-        CERTBOT_CMD+=" -d $sub.SSL_DOMAIN_PLACEHOLDER"
-    fi
-done
-
-# Add email and options
-CERTBOT_CMD+=" --email $SSL_EMAIL --agree-tos --no-eff-email --redirect --hsts --staple-ocsp"
+# Build the certbot command with the main domain
+CERTBOT_CMD="certbot --nginx --non-interactive --agree-tos"
+CERTBOT_CMD+=" --email $EMAIL"
+CERTBOT_CMD+=" --redirect"
+CERTBOT_CMD+=" --hsts"
+CERTBOT_CMD+=" --staple-ocsp"
 CERTBOT_CMD+=" --keep-until-expiring"
 CERTBOT_CMD+=" --rsa-key-size 2048"
 CERTBOT_CMD+=" --preferred-challenges http"
-CERTBOT_CMD+=" --non-interactive"
+
+# Add main domain
+CERTBOT_CMD+=" -d $DOMAIN"
+
+# Add subdomains if any
+for sub in "${SUBDOMAINS[@]}"; do
+    if [ -n "$sub" ] && [ "$sub" != "www" ]; then
+        CERTBOT_CMD+=" -d $sub.$DOMAIN"
+    fi
+done
+
+# Add www subdomain if not already included
+if [[ ! " ${SUBDOMAINS[@]} " =~ " www " ]]; then
+    CERTBOT_CMD+=" -d www.$DOMAIN"
+fi
 
 # Execute the certbot command
 echo "Running: $CERTBOT_CMD"
-eval $CERTBOT_CMD
 
-# Test the Nginx configuration
+# Create a temporary Nginx config for HTTP challenge
+TEMP_NGINX_CONF="/etc/nginx/conf.d/letsencrypt.conf"
+cat > $TEMP_NGINX_CONF << NGINX_EOF
+server {
+    listen 80;
+    server_name $DOMAIN www.$DOMAIN;
+    location /.well-known/acme-challenge/ {
+        root /var/www/certbot;
+    }
+    location / {
+        return 301 https://\$host\$request_uri;
+    }
+}
+NGINX_EOF
+
+# Test and reload Nginx
 nginx -t && systemctl reload nginx
 
-echo "SSL setup complete for $PRIMARY_DOMAIN"
-echo "You can test automatic renewal with: certbot renew --dry-run"
+# Run certbot
+eval $CERTBOT_CMD
+CERTBOT_EXIT_CODE=$?
+
+# Clean up temporary Nginx config
+rm -f $TEMP_NGINX_CONF
+nginx -t && systemctl reload nginx
+
+if [ $CERTBOT_EXIT_CODE -eq 0 ]; then
+    echo -e "\n✅ SSL certificate installed successfully!"
+    echo "Testing Nginx configuration..."
+    nginx -t && systemctl restart nginx
+    echo -e "\n🔒 SSL setup complete! Your site is now secured with HTTPS."
+    echo -e "\nYou can test automatic renewal with: certbot renew --dry-run"
+else
+    echo -e "\n❌ Failed to install SSL certificate."
+    echo "Common issues:"
+    echo "1. DNS not properly configured (check with: dig +short $DOMAIN)"
+    echo "2. Port 80/443 is blocked (check with: sudo ufw status)"
+    echo "3. Nginx is not running (check with: systemctl status nginx)"
+    echo -e "\nCheck the full error logs with: journalctl -u nginx -n 50"
+    exit 1
+fi
 SSL_SCRIPT_EOF
 
 # Make the script executable
 chmod +x $SSL_SETUP_SCRIPT
 print_message "SSL setup script created at $SSL_SETUP_SCRIPT"
-if [ -n "SSL_EMAIL_PLACEHOLDER" ]; then
-    CERTBOT_CMD+=" --email SSL_EMAIL_PLACEHOLDER --agree-tos"
-else
-    CERTBOT_CMD+=" --register-unsafely-without-email"
+
+# Run the SSL setup script
+print_message "Setting up SSL certificates..."
+$SSL_SETUP_SCRIPT "$DOMAIN_NAME" "$SSL_EMAIL" "${SUBDOMAINS[@]}"
+
+if [ $? -ne 0 ]; then
+    print_warning "SSL setup encountered an error. Please check the output above for details."
+    print_warning "You can try running the setup manually with: sudo $SSL_SETUP_SCRIPT $DOMAIN_NAME $SSL_EMAIL ${SUBDOMAINS[@]}"
 fi
-
-CERTBOT_CMD+=" --non-interactive --redirect"
-
-echo "Running: $CERTBOT_CMD"
-eval "$CERTBOT_CMD"
-
-if [ $? -eq 0 ]; then
-    echo -e "\nSSL certificate installed successfully!"
-    echo "Testing Nginx configuration..."
-    nginx -t && systemctl restart nginx
-    echo -e "\nSSL setup complete! Your site is now secured with HTTPS."
-else
-    echo -e "\nFailed to install SSL certificate."
-    echo "Common issues:"
-    echo "1. DNS not properly configured (check with: dig +short SSL_DOMAIN_PLACEHOLDER)"
-    echo "2. Port 80/443 is blocked (check with: sudo ufw status)"
-    echo "3. Nginx is not running (check with: systemctl status nginx)"
-    exit 1
-fi
-SSL_SCRIPT_EOF
-
-# Replace placeholders in SSL script
-sed -i "s|SSL_DOMAIN_PLACEHOLDER|$DOMAIN_NAME|g" $SSL_SETUP_SCRIPT
-sed -i "s|SSL_EMAIL_PLACEHOLDER|$SSL_EMAIL|g" $SSL_SETUP_SCRIPT
-sed -i "s|SSL_SUBDOMAINS_PLACEHOLDER|${SUBDOMAINS[@]}|g" $SSL_SETUP_SCRIPT
 
 chmod +x "$SSL_SETUP_SCRIPT"
 

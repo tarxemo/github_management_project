@@ -483,7 +483,7 @@ fi
 NGINX_CONF="/etc/nginx/sites-available/${PRIMARY_DOMAIN}"
 
 # Create Nginx configuration with all domains
-cat > $NGINX_CONF << 'NGINX_EOF'
+cat > $NGINX_CONF << NGINX_EOF
 # HTTP server - redirect to HTTPS (will be updated after SSL setup)
 server {
     listen 80;
@@ -496,8 +496,8 @@ server {
     add_header X-XSS-Protection "1; mode=block" always;
     
     # Logging
-    access_log /var/log/nginx/${PRIMARY_DOMAIN}-access.log;
-    error_log /var/log/nginx/${PRIMARY_DOMAIN}-error.log warn;
+    access_log /var/log/nginx/$PRIMARY_DOMAIN-access.log;
+    error_log /var/log/nginx/$PRIMARY_DOMAIN-error.log warn;
     
     # Max upload size
     client_max_body_size 100M;
@@ -511,7 +511,7 @@ server {
     
     # Static files
     location /static/ {
-        alias PROJECT_PATH_PLACEHOLDER/static/;
+        alias $PROJECT_PATH/static/;
         expires 30d;
         access_log off;
         add_header Cache-Control "public, max-age=2592000";
@@ -519,7 +519,7 @@ server {
     
     # Media files
     location /media/ {
-        alias PROJECT_PATH_PLACEHOLDER/media/;
+        alias $PROJECT_PATH/media/;
         expires 30d;
         access_log off;
         add_header Cache-Control "public, max-age=2592000";
@@ -578,8 +578,7 @@ server {
 }
 NGINX_EOF
 
-# Replace only the necessary placeholders
-sed -i "s|PROJECT_PATH_PLACEHOLDER|$PROJECT_PATH|g" $NGINX_CONF
+# No need for sed replacement as we're using direct variable expansion
 
 print_message "Nginx configuration created"
 

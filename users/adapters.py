@@ -73,11 +73,22 @@ class CustomSocialAccountAdapter(DefaultSocialAccountAdapter):
         """
         Handle the completion of a social authentication process.
         """
-        # For Google One Tap, we need to handle the id_token specially
-        if socialapp.provider == 'google' and 'id_token' in kwargs.get('response', {}):
-            # Store the id_token in the token's token_secret field
-            token.token_secret = kwargs['response']['id_token']
-        
-        # Get the provider and complete the login
+        # Get the provider first
         provider = providers.registry.by_id(socialapp.provider, request)
+        
+        # For Google One Tap, we need to handle the id_token specially
+        if socialapp.provider == 'google':
+            response = kwargs.get('response', {})
+            if 'id_token' in response:
+                # Store the id_token in the token's token_secret field
+                token.token_secret = response['id_token']
+                # If the response is from One Tap, it might need special handling
+                if 'credential' in response:
+                    # This is a One Tap response, use the credential as the token
+                    token.token = response['credential']
+            
+            # Complete the login with the provider
+            return provider.sociallogin_from_response(request, response)
+        
+        # For other providers, use the default behavior
         return provider.sociallogin_from_response(request, kwargs.get('response', {}))

@@ -177,9 +177,19 @@ SOCIALACCOUNT_PROVIDERS = {
         },
     },
     'google': {
-        'SCOPE': ['profile', 'email'],
-        'AUTH_PARAMS': {'access_type': 'online'},
+        'SCOPE': [
+            'profile',
+            'email',
+            'openid',
+            'https://www.googleapis.com/auth/userinfo.email',
+            'https://www.googleapis.com/auth/userinfo.profile',
+        ],
+        'AUTH_PARAMS': {
+            'access_type': 'online',
+            'prompt': 'select_account',
+        },
         'OAUTH_PKCE_ENABLED': True,
+        'FETCH_USERINFO': True,
         'APP': {
             'client_id': GOOGLE_OAUTH2_CLIENT_ID,
             'secret': GOOGLE_OAUTH2_SECRET,
@@ -187,6 +197,13 @@ SOCIALACCOUNT_PROVIDERS = {
         }
     }
 }
+
+# Ensure we're using HTTPS for OAuth callbacks
+ACCOUNT_DEFAULT_HTTP_PROTOCOL = 'https'
+SOCIALACCOUNT_EMAIL_VERIFICATION = 'none'
+SOCIALACCOUNT_EMAIL_REQUIRED = False
+SOCIALACCOUNT_QUERY_EMAIL = True
+SOCIALACCOUNT_STORE_TOKENS = True
 
 
 # -----------------------------

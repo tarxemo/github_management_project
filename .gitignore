@@ -14,3 +14,20 @@ __pycache__/
 venv/
 .env/
 **__pycache__
+
+# Logs
+logs/
+*.log
+
+# Local development
+*.sqlite3
+*.dump
+*.pdf
+*.jpg
+*.jpeg
+*.png
+*.odt
+
+# Scripts
+backup_and_commit.sh
+script.html

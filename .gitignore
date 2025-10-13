@@ -4,10 +4,6 @@ venv
 .env
 **.env
 *.env
-.env.example
-*.env.example
-.env.example
-.env.example
 # Ignore Python cache and compiled files
 __pycache__/
 *.pyc
@@ -18,4 +14,24 @@ __pycache__/
 venv/
 .env/
 **__pycache__
+<<<<<<< HEAD
 logs
+=======
+
+# Logs
+logs/
+*.log
+
+# Local development
+*.sqlite3
+*.dump
+*.pdf
+*.jpg
+*.jpeg
+*.png
+*.odt
+
+# Scripts
+backup_and_commit.sh
+script.html
+>>>>>>> 0776bf72f50d512d25e2f5b26bf6d51b533abf4c

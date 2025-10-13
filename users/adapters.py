@@ -69,26 +69,43 @@ class CustomSocialAccountAdapter(DefaultSocialAccountAdapter):
             return None
         return email.lower()
 
+    def get_app(self, request, provider, client_id=None):
+        """Override to handle multiple social apps for the same provider."""
+        from allauth.socialaccount.models import SocialApp
+        from django.core.exceptions import MultipleObjectsReturned
+        
+        try:
+            return super().get_app(request, provider, client_id)
+        except MultipleObjectsReturned:
+            # If multiple apps found, get the first one
+            app = SocialApp.objects.filter(provider=provider).first()
+            if app:
+                return app
+            raise
+
     def complete_login(self, request, socialapp, token, **kwargs):
-        """
-        Handle the completion of a social authentication process.
-        """
+        """Handle the completion of a social authentication process."""
         # Get the provider first
         provider = providers.registry.by_id(socialapp.provider, request)
         
-        # For Google One Tap, we need to handle the id_token specially
+        # For Google provider
         if socialapp.provider == 'google':
             response = kwargs.get('response', {})
-            if 'id_token' in response:
-                # Store the id_token in the token's token_secret field
-                token.token_secret = response['id_token']
-                # If the response is from One Tap, it might need special handling
-                if 'credential' in response:
-                    # This is a One Tap response, use the credential as the token
-                    token.token = response['credential']
             
-            # Complete the login with the provider
-            return provider.sociallogin_from_response(request, response)
+            # Handle One Tap response
+            if 'credential' in response:
+                # This is a One Tap response
+                token.token = response['credential']
+                token.token_secret = response.get('id_token', '')
+            # Handle regular OAuth2 response
+            elif 'id_token' in response:
+                token.token_secret = response['id_token']
+            
+            try:
+                return provider.sociallogin_from_response(request, response)
+            except Exception as e:
+                print(f"Error in complete_login: {str(e)}")
+                raise
         
-        # For other providers, use the default behavior
+        # For other providers
         return provider.sociallogin_from_response(request, kwargs.get('response', {}))

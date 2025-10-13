@@ -44,20 +44,20 @@ import json
 import requests
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
+from django.contrib.auth import login
 from allauth.socialaccount.models import SocialAccount, SocialApp, SocialToken
-from allauth.socialaccount.helpers import complete_social_login
 from allauth.socialaccount.models import SocialLogin
 from django.contrib.auth import get_user_model
 
 User = get_user_model()
 
-@csrf_exempt  # remove if you already handle CSRF properly
+@csrf_exempt
 def google_one_tap_auth(request):
     try:
         if request.method != "POST":
             return JsonResponse({"error": "Only POST method allowed"}, status=405)
 
-        # ✅ Try to decode JSON, otherwise fallback to POST form data
+        # Handle both JSON and form requests
         try:
             if request.body:
                 body = json.loads(request.body.decode("utf-8"))
@@ -85,11 +85,13 @@ def google_one_tap_auth(request):
         if not email:
             return JsonResponse({"error": "Email not provided by Google"}, status=400)
 
+        # Create or get user
         user, created = User.objects.get_or_create(
             email=email,
             defaults={"username": name}
         )
 
+        # Create or update social account
         social_account, _ = SocialAccount.objects.get_or_create(
             user=user,
             provider='google',
@@ -97,18 +99,23 @@ def google_one_tap_auth(request):
             defaults={"extra_data": token_info},
         )
 
-        social_token, _ = SocialToken.objects.get_or_create(
+        # Store or refresh token
+        social_token, _ = SocialToken.objects.update_or_create(
             app=google_app,
             account=social_account,
-            token=credential
+            defaults={"token": credential}
         )
 
-        social_login = SocialLogin(user=user, account=social_account, token=social_token)
-        response = complete_social_login(request, social_login)
+        # ✅ Log in the user directly (no allauth flow)
+        login(request, user)
 
         return JsonResponse({
             "success": True,
-            "user": {"email": user.email, "username": user.username, "created": created}
+            "user": {
+                "email": user.email,
+                "username": user.username,
+                "created": created
+            }
         })
 
     except Exception as e:

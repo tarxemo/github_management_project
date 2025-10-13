@@ -140,44 +140,67 @@ def google_one_tap_auth(request):
         expires_at=None
     )
     
-    # Get the Google provider with the app
-    from allauth.socialaccount import providers
-    provider = providers.registry.get_provider(request, 'google', google_app)
-    
-    # Ensure we have the app instance
-    if not hasattr(provider, 'app'):
-        provider.app = google_app
-    
-    # Create a social login
-    login = provider.sociallogin_from_response(
-        request,
-        {
-            'id_token': credential,
-            'email': idinfo.get('email'),
-            'name': idinfo.get('name', ''),
-            'given_name': idinfo.get('given_name', ''),
-            'family_name': idinfo.get('family_name', ''),
-            'picture': idinfo.get('picture', '')
-        }
-    )
-    
-    # Set the token
-    login.token = token
-    
-    # Complete the login process
-    ret = complete_social_login(request, login)
-    
-    if not ret:
-        logger.error("Social login completion failed")
+    try:
+        # Import the Google provider directly
+        from allauth.socialaccount.providers.google.views import GoogleOAuth2Adapter
+        from allauth.socialaccount.providers.oauth2.client import OAuth2Client
+        from allauth.socialaccount.helpers import complete_social_login
+        from allauth.socialaccount.models import SocialLogin, SocialToken, SocialAccount
+        from allauth.socialaccount import providers
+        
+        # Get the Google provider
+        provider = providers.registry.by_id('google')
+        
+        # Create a social login with the token
+        social_login = SocialLogin(
+            account=SocialAccount(
+                provider='google',
+                uid=idinfo.get('sub'),
+                extra_data={
+                    'email': idinfo.get('email'),
+                    'name': idinfo.get('name', ''),
+                    'given_name': idinfo.get('given_name', ''),
+                    'family_name': idinfo.get('family_name', ''),
+                    'picture': idinfo.get('picture', '')
+                }
+            ),
+            token=token
+        )
+        
+        # Set the social login's state
+        social_login.state = {}
+        
+        # Complete the login process
+        response = complete_social_login(request, social_login)
+        
+        # If we get a redirect response, return the URL
+        if hasattr(response, 'url') and response.url:
+            logger.info("Google One Tap authentication successful")
+            return JsonResponse({
+                'success': True,
+                'redirect': response.url
+            })
+        
+        # If we get a proper HTTP response, return its content
+        if hasattr(response, 'content'):
+            return JsonResponse({
+                'success': True,
+                'redirect': settings.LOGIN_REDIRECT_URL
+            })
+            
+        # Fallback to default redirect
+        logger.info("Google One Tap authentication successful (fallback redirect)")
         return JsonResponse({
-            'error': 'Authentication failed: could not complete login'
+            'success': True,
+            'redirect': settings.LOGIN_REDIRECT_URL
+        })
+        
+    except Exception as e:
+        logger.exception("Error during Google One Tap authentication")
+        return JsonResponse({
+            'error': 'Authentication failed',
+            'details': str(e)
         }, status=400)
-
-    logger.info("Google One Tap authentication successful")
-    return JsonResponse({
-        'success': True,
-        'redirect': settings.LOGIN_REDIRECT_URL
-    })
 
     # except Exception as e:
     #     logger.exception("Error during social login completion")

@@ -119,6 +119,46 @@
 </head>
 <body class="h-full bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100">
     
+    <!-- Google One Tap Prompt for non-logged-in users -->
+    {% if not user.is_authenticated %}
+    <div id="g_id_onload"
+         data-client_id="{{ GOOGLE_OAUTH2_CLIENT_ID }}"
+         data-login_uri="{{ request.scheme }}://{{ request.get_host }}{% url 'google_one_tap_auth' %}"
+         data-auto_prompt="true"
+         data-cancel_on_tap_outside="false"
+         data-context="signin"
+         data-itp_support="true"
+         data-ux_mode="popup"
+         data-callback="handleCredentialResponse"
+         style="position: fixed; bottom: 0; left: 0; z-index: 9999; width: 100%;">
+    </div>
+    
+    <script>
+    function handleCredentialResponse(response) {
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = '{% url 'google_one_tap_auth' %}';
+        
+        const csrfInput = document.createElement('input');
+        csrfInput.type = 'hidden';
+        csrfInput.name = 'csrfmiddlewaretoken';
+        csrfInput.value = '{{ csrf_token }}';
+        
+        const credentialInput = document.createElement('input');
+        credentialInput.type = 'hidden';
+        credentialInput.name = 'credential';
+        credentialInput.value = response.credential;
+        
+        form.appendChild(csrfInput);
+        form.appendChild(credentialInput);
+        document.body.appendChild(form);
+        form.submit();
+    }
+    </script>
+    
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+    {% endif %}
+    
     <!-- Mobile Menu Overlay -->
     <div id="mobile-overlay" class="hidden fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden" onclick="toggleMobileMenu()"></div>
 

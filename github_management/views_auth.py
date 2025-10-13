@@ -40,104 +40,86 @@ class ProfileView(TemplateView):
         return context
 
 
-# -------------------- GOOGLE ONE TAP AUTH --------------------
-@csrf_exempt
-@require_http_methods(["POST"])
+import json
+import requests
+from django.http import JsonResponse
+from allauth.socialaccount.models import SocialAccount, SocialApp, SocialToken
+from allauth.socialaccount.helpers import complete_social_login
+from allauth.socialaccount.providers.google.provider import GoogleProvider
+from allauth.socialaccount import app_settings
+from allauth.socialaccount.models import SocialLogin
+from django.contrib.auth import get_user_model
+
+User = get_user_model()
+
+
 def google_one_tap_auth(request):
-    """
-    Handle Google One Tap authentication.
-    """
-    from google.oauth2 import id_token
-    from google.auth.transport import requests as google_requests
-    from allauth.socialaccount import providers
-
     try:
-        logger.debug(f"Incoming POST data: {request.POST}")
+        body = json.loads(request.body.decode("utf-8"))
+        credential = body.get("credential")
 
-        credential = request.POST.get('credential')
         if not credential:
-            logger.error("Missing 'credential' in request.")
-            return JsonResponse({'error': 'No credential provided'}, status=400)
+            return JsonResponse({"error": "Missing credential"}, status=400)
 
-        # Retrieve Google OAuth client ID
-        try:
-            google_app = SocialApp.objects.filter(provider='google').first()
-            if google_app:
-                client_id = google_app.client_id
-                logger.debug(f"Using Google app: {google_app.name} ({client_id[:8]}...)")
-            else:
-                client_id = getattr(settings, 'GOOGLE_OAUTH2_CLIENT_ID', None)
-                if not client_id:
-                    logger.error("No Google OAuth client ID found.")
-                    return JsonResponse({
-                        'error': 'Google OAuth is not configured properly',
-                        'details': 'Missing SocialApp or GOOGLE_OAUTH2_CLIENT_ID in settings'
-                    }, status=500)
-        except Exception as e:
-            logger.error(f"Error retrieving Google OAuth app: {str(e)}\n{traceback.format_exc()}")
-            return JsonResponse({'error': 'Failed to get Google OAuth configuration', 'details': str(e)}, status=500)
+        # Verify the Google ID token
+        google_app = SocialApp.objects.get(provider='google')
+        token_info = requests.get(
+            f"https://oauth2.googleapis.com/tokeninfo?id_token={credential}"
+        ).json()
 
-        # Verify the Google token
-        try:
-            idinfo = id_token.verify_oauth2_token(
-                credential, google_requests.Request(), client_id
-            )
-            logger.debug(f"Token verified. Google user: {idinfo.get('email', 'N/A')}")
-        except ValueError as e:
-            logger.error(f"Invalid Google ID token: {str(e)}")
-            return JsonResponse({'error': 'Invalid Google ID token', 'details': str(e)}, status=400)
+        if "error_description" in token_info:
+            return JsonResponse({"error": "Invalid token", "details": token_info}, status=400)
 
-        # Create or get SocialApp entry
-        google_app, _ = SocialApp.objects.get_or_create(
-            provider='google',
-            defaults={
-                'name': 'Google',
-                'client_id': client_id,
-                'secret': getattr(settings, 'GOOGLE_OAUTH2_SECRET', '')
-            }
+        email = token_info.get("email")
+        name = token_info.get("name", email.split("@")[0])
+
+        if not email:
+            return JsonResponse({"error": "Email not provided by Google"}, status=400)
+
+        # Check if user already exists
+        user, created = User.objects.get_or_create(
+            email=email,
+            defaults={"username": name}
         )
 
-        # Associate app with current site if needed
-        if not google_app.sites.exists():
-            current_site = Site.objects.get_current()
-            google_app.sites.add(current_site)
-            logger.debug(f"Associated Google app with site: {current_site.domain}")
-
-        # Create the SocialAccount instance
-        social_account = SocialAccount(
+        # Prepare the SocialAccount and SocialToken
+        social_account, _ = SocialAccount.objects.get_or_create(
+            user=user,
             provider='google',
-            uid=idinfo.get('sub'),
-            extra_data={
-                'email': idinfo.get('email'),
-                'name': idinfo.get('name', ''),
-                'given_name': idinfo.get('given_name', ''),
-                'family_name': idinfo.get('family_name', ''),
-                'picture': idinfo.get('picture', ''),
-            },
+            uid=token_info.get("sub"),
+            defaults={"extra_data": token_info},
         )
 
-        # Create the token and link it to the account
-        token = SocialToken(app=google_app, token=credential, account=social_account)
+        social_token, _ = SocialToken.objects.get_or_create(
+            app=google_app,
+            account=social_account,
+            token=credential
+        )
 
-        # Build the SocialLogin object
-        social_login = SocialLogin(account=social_account, token=token)
+        # ✅ Create SocialLogin and attach the user
+        social_login = SocialLogin(
+            user=user,
+            account=social_account,
+            token=social_token
+        )
 
-
-        # Complete social login
+        # Complete the login process
         response = complete_social_login(request, social_login)
 
-        # Determine redirect
-        redirect_url = getattr(settings, 'LOGIN_REDIRECT_URL', '/')
-        if hasattr(response, 'url') and response.url:
-            redirect_url = response.url
-
-        logger.info(f"✅ Google One Tap authentication successful for {idinfo.get('email')}")
-        return JsonResponse({'success': True, 'redirect': redirect_url})
+        # If all good, return response
+        return JsonResponse({
+            "success": True,
+            "user": {
+                "email": user.email,
+                "username": user.username,
+                "created": created
+            }
+        })
 
     except Exception as e:
-        logger.exception("Unhandled error during Google One Tap authentication")
+        import traceback
         return JsonResponse({
-            'error': 'Authentication failed',
-            'details': str(e),
-            'traceback': traceback.format_exc() if settings.DEBUG else None
+            "error": "Authentication failed",
+            "details": str(e),
+            "traceback": traceback.format_exc()
         }, status=500)

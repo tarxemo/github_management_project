@@ -43,25 +43,34 @@ class ProfileView(TemplateView):
 import json
 import requests
 from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_exempt
 from allauth.socialaccount.models import SocialAccount, SocialApp, SocialToken
 from allauth.socialaccount.helpers import complete_social_login
-from allauth.socialaccount.providers.google.provider import GoogleProvider
-from allauth.socialaccount import app_settings
 from allauth.socialaccount.models import SocialLogin
 from django.contrib.auth import get_user_model
 
 User = get_user_model()
 
-
+@csrf_exempt  # remove if you already handle CSRF properly
 def google_one_tap_auth(request):
     try:
-        body = json.loads(request.body.decode("utf-8"))
-        credential = body.get("credential")
+        if request.method != "POST":
+            return JsonResponse({"error": "Only POST method allowed"}, status=405)
+
+        # ✅ Try to decode JSON, otherwise fallback to POST form data
+        try:
+            if request.body:
+                body = json.loads(request.body.decode("utf-8"))
+                credential = body.get("credential")
+            else:
+                credential = request.POST.get("credential")
+        except json.JSONDecodeError:
+            credential = request.POST.get("credential")
 
         if not credential:
             return JsonResponse({"error": "Missing credential"}, status=400)
 
-        # Verify the Google ID token
+        # Verify token with Google
         google_app = SocialApp.objects.get(provider='google')
         token_info = requests.get(
             f"https://oauth2.googleapis.com/tokeninfo?id_token={credential}"
@@ -76,13 +85,11 @@ def google_one_tap_auth(request):
         if not email:
             return JsonResponse({"error": "Email not provided by Google"}, status=400)
 
-        # Check if user already exists
         user, created = User.objects.get_or_create(
             email=email,
             defaults={"username": name}
         )
 
-        # Prepare the SocialAccount and SocialToken
         social_account, _ = SocialAccount.objects.get_or_create(
             user=user,
             provider='google',
@@ -96,24 +103,12 @@ def google_one_tap_auth(request):
             token=credential
         )
 
-        # ✅ Create SocialLogin and attach the user
-        social_login = SocialLogin(
-            user=user,
-            account=social_account,
-            token=social_token
-        )
-
-        # Complete the login process
+        social_login = SocialLogin(user=user, account=social_account, token=social_token)
         response = complete_social_login(request, social_login)
 
-        # If all good, return response
         return JsonResponse({
             "success": True,
-            "user": {
-                "email": user.email,
-                "username": user.username,
-                "created": created
-            }
+            "user": {"email": user.email, "username": user.username, "created": created}
         })
 
     except Exception as e:

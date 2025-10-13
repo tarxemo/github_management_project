@@ -41,8 +41,8 @@ if 'providing_args' not in Signal.__init__.__code__.co_varnames:
 # Security & Debug Settings
 # -----------------------------
 SECRET_KEY = os.getenv("DJANGO_SECRET_KEY")
-DEBUG = os.getenv("DJANGO_DEBUG", "False").lower() == "true"
-# DEBUG = True
+# DEBUG = os.getenv("DJANGO_DEBUG", "False").lower() == "true"
+DEBUG = True
 
 ALLOWED_HOSTS = os.getenv(
     "DJANGO_ALLOWED_HOSTS",

@@ -137,6 +137,9 @@ AUTHENTICATION_BACKENDS = (
     'allauth.account.auth_backends.AuthenticationBackend',
 )
 
+GITHUB_OAUTH2_CLIENT_ID = os.getenv('GITHUB_OAUTH2_CLIENT_ID')
+GITHUB_OAUTH2_SECRET = os.getenv('GITHUB_OAUTH2_SECRET')
+
 # Social Account Providers Configuration
 SOCIALACCOUNT_PROVIDERS = {
     'github': {
@@ -146,8 +149,8 @@ SOCIALACCOUNT_PROVIDERS = {
             'read:org',
         ],
         'APP': {
-            'client_id': "Ov23li1B8VnzcXarGNwY",  # GitHub Client ID
-            'secret': "c0239f913ceaae636da5fc56993a164db20e03e3",  # GitHub Client Secret
+            'client_id': GITHUB_OAUTH2_CLIENT_ID,  # GitHub Client ID
+            'secret': GITHUB_OAUTH2_SECRET,  # GitHub Client Secret
             'key': ''
         }
     },

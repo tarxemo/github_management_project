@@ -52,9 +52,9 @@ echo -e "${NC}"
 print_step "STEP 1: Gathering Configuration Information"
 
 # Set default values
-DEFAULT_DOMAIN="tarxemo.com"
+DEFAULT_DOMAIN="example.com"
 DEFAULT_SUBDOMAINS="github"
-DEFAULT_EMAIL="tarxemo@gmail.com"
+DEFAULT_EMAIL="example@gmail.com"
 DEFAULT_PROJECT_PATH="/home/ubuntu/github_management_project/RB"
 DEFAULT_PROJECT_NAME="github_management_project"
 DEFAULT_APP_USER="ubuntu"
@@ -624,7 +624,7 @@ cat > $SSL_SETUP_SCRIPT << 'SSL_SCRIPT_EOF'
 #!/bin/bash
 
 # Set variables from command line arguments
-FULL_DOMAIN="$1"  # This should be the full domain (e.g., github.tarxemo.com)
+FULL_DOMAIN="$1"  # This should be the full domain (e.g., github.example.com)
 EMAIL="$2"
 
 # Extract just the domain part without subdomains
@@ -733,7 +733,7 @@ SSL_SCRIPT_EOF
 chmod +x $SSL_SETUP_SCRIPT
 print_message "SSL setup script created at $SSL_SETUP_SCRIPT"
 
-# Run the SSL setup script with the full domain (e.g., github.tarxemo.com)
+# Run the SSL setup script with the full domain (e.g., github.example.com)
 print_message "Setting up SSL certificates for $FULL_DOMAIN..."
 $SSL_SETUP_SCRIPT "$FULL_DOMAIN" "$SSL_EMAIL"
 

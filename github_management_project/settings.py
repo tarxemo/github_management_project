@@ -48,10 +48,10 @@ ALLOWED_HOSTS = os.getenv(
     "localhost,127.0.0.1"
 ).split(",")
 
-CSRF_TRUSTED_ORIGINS = os.getenv(
-    "DJANGO_CSRF_TRUSTED_ORIGINS",
-    "https://example.com"
-).split(",")
+# CSRF_TRUSTED_ORIGINS = os.getenv(
+#     "DJANGO_CSRF_TRUSTED_ORIGINS",
+#     "https://example.com"
+# ).split(",")
 
 CORS_ALLOWED_ORIGINS = os.getenv(
     "DJANGO_CORS_ALLOWED_ORIGINS",

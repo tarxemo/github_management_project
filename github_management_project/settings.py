@@ -41,7 +41,8 @@ if 'providing_args' not in Signal.__init__.__code__.co_varnames:
 # Security & Debug Settings
 # -----------------------------
 SECRET_KEY = os.getenv("DJANGO_SECRET_KEY")
-DEBUG = os.getenv("DJANGO_DEBUG", "False").lower() == "true"
+# DEBUG = os.getenv("DJANGO_DEBUG", "False").lower() == "true"
+DEBUG = True
 
 ALLOWED_HOSTS = os.getenv(
     "DJANGO_ALLOWED_HOSTS",
@@ -130,6 +131,7 @@ GRAPHQL_JWT = {
 # Allauth Configuration
 # -----------------------------
 SITE_ID = int(os.getenv("DJANGO_SITE_ID", 1))
+SITE_URL = os.getenv("SITE_URL", "http://localhost:8000")
 
 ACCOUNT_ADAPTER = 'users.adapters.CustomAccountAdapter'
 SOCIALACCOUNT_ADAPTER = 'users.adapters.CustomSocialAccountAdapter'

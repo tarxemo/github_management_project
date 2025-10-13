@@ -1,0 +1,154 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% load account socialaccount %}
+{% load google_auth_tags %}
+
+{% block title %}Sign In | GitHub Manager{% endblock %}
+
+{% block content %}
+<div class="min-h-screen flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
+    <div class="max-w-md w-full space-y-8">
+        <div>
+            <h2 class="mt-6 text-center text-3xl font-extrabold text-gray-900 dark:text-white">
+                Sign in to your account
+            </h2>
+            <p class="mt-2 text-center text-sm text-gray-600 dark:text-gray-400">
+                Or
+                <a href="{% url 'account_signup' %}" class="font-medium text-indigo-600 hover:text-indigo-500 dark:text-indigo-400 dark:hover:text-indigo-300">
+                    create a new account
+                </a>
+            </p>
+        </div>
+        
+        <!-- Google One Tap Sign In -->
+        <div class="mt-8">
+            {% google_one_tap %}
+        </div>
+        
+        <!-- Divider -->
+        <div class="relative mt-8">
+            <div class="absolute inset-0 flex items-center">
+                <div class="w-full border-t border-gray-300 dark:border-gray-600"></div>
+            </div>
+            <div class="relative flex justify-center text-sm">
+                <span class="px-2 bg-white dark:bg-gray-900 text-gray-500 dark:text-gray-400">
+                    Or continue with
+                </span>
+            </div>
+        </div>
+
+        <!-- Email/Password Form -->
+        <form class="mt-8 space-y-6" method="POST" action="{% url 'account_login' %}">
+            {% csrf_token %}
+            <input type="hidden" name="remember" value="true">
+            
+            <div class="rounded-md shadow-sm space-y-4">
+                {% if form.errors %}
+                    <div class="bg-red-50 dark:bg-red-900 dark:bg-opacity-20 border-l-4 border-red-500 p-4 mb-4">
+                        <div class="flex">
+                            <div class="flex-shrink-0">
+                                <svg class="h-5 w-5 text-red-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" />
+                                </svg>
+                            </div>
+                            <div class="ml-3">
+                                <p class="text-sm text-red-700 dark:text-red-200">
+                                    The username and/or password you specified are not correct.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                {% endif %}
+                
+                <div>
+                    <label for="id_login" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        Email address
+                    </label>
+                    <input id="id_login" name="login" type="email" autocomplete="email" required
+                           class="appearance-none relative block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 placeholder-gray-500 dark:placeholder-gray-400 text-gray-900 dark:text-white rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm dark:bg-gray-700"
+                           placeholder="Email address">
+                </div>
+                <div>
+                    <label for="id_password" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        Password
+                    </label>
+                    <input id="id_password" name="password" type="password" autocomplete="current-password" required
+                           class="appearance-none relative block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 placeholder-gray-500 dark:placeholder-gray-400 text-gray-900 dark:text-white rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm dark:bg-gray-700"
+                           placeholder="Password">
+                </div>
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center">
+                        <input id="id_remember" name="remember" type="checkbox"
+                               class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 dark:border-gray-600 rounded dark:bg-gray-700">
+                        <label for="id_remember" class="ml-2 block text-sm text-gray-700 dark:text-gray-300">
+                            Remember me
+                        </label>
+                    </div>
+                    <div class="text-sm">
+                        <a href="{% url 'account_reset_password' %}" class="font-medium text-indigo-600 hover:text-indigo-500 dark:text-indigo-400 dark:hover:text-indigo-300">
+                            Forgot your password?
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <div>
+                <button type="submit"
+                        class="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                    <span class="absolute left-0 inset-y-0 flex items-center pl-3">
+                        <svg class="h-5 w-5 text-indigo-500 group-hover:text-indigo-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                            <path fill-rule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clip-rule="evenodd" />
+                        </svg>
+                    </span>
+                    Sign in
+                </button>
+            </div>
+            
+            <!-- Social Account Login -->
+            {% get_providers as socialaccount_providers %}
+            {% if socialaccount_providers %}
+            <div class="mt-6">
+                <div class="relative">
+                    <div class="absolute inset-0 flex items-center">
+                        <div class="w-full border-t border-gray-300 dark:border-gray-600"></div>
+                    </div>
+                    <div class="relative flex justify-center text-sm">
+                        <span class="px-2 bg-white dark:bg-gray-900 text-gray-500 dark:text-gray-400">
+                            Or sign in with
+                        </span>
+                    </div>
+                </div>
+
+                <div class="mt-6 grid grid-cols-2 gap-3">
+                    {% for provider in socialaccount_providers %}
+                        {% if provider.id == "github" %}
+                            <a href="{% provider_login_url provider.id process='login' %}" 
+                               class="w-full inline-flex justify-center py-2 px-4 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm bg-white dark:bg-gray-800 text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700">
+                                <i class="fab fa-github h-5 w-5"></i>
+                                <span class="ml-2">GitHub</span>
+                            </a>
+                        {% elif provider.id == "google" %}
+                            <a href="{% provider_login_url provider.id process='login' %}" 
+                               class="w-full inline-flex justify-center py-2 px-4 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm bg-white dark:bg-gray-800 text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700">
+                                <i class="fab fa-google h-5 w-5"></i>
+                                <span class="ml-2">Google</span>
+                            </a>
+                        {% endif %}
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Auto-focus the email field on page load
+    document.addEventListener('DOMContentLoaded', function() {
+        const emailField = document.getElementById('id_login');
+        if (emailField) emailField.focus();
+    });
+</script>
+{% endblock %}

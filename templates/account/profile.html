@@ -1,0 +1,330 @@
+{% extends "base.html" %}
+{% load socialaccount %}
+
+{% block title %}My Profile | GitHub Manager{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div class="lg:grid lg:grid-cols-12 lg:gap-8">
+        <!-- Left sidebar -->
+        <div class="hidden lg:block lg:col-span-3">
+            <nav class="space-y-1">
+                <a href="#profile" class="group flex items-center px-3 py-2 text-sm font-medium rounded-md text-indigo-700 bg-indigo-50 dark:bg-indigo-900/30 dark:text-indigo-200" aria-current="page">
+                    <i class="fas fa-user-circle mr-3 text-indigo-500 group-hover:text-indigo-500 flex-shrink-0 -ml-1"></i>
+                    <span class="truncate">Profile</span>
+                </a>
+                <a href="#account" class="group flex items-center px-3 py-2 text-sm font-medium rounded-md text-gray-700 hover:text-gray-900 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-800 dark:hover:text-white">
+                    <i class="fas fa-cog mr-3 text-gray-400 group-hover:text-gray-500 dark:group-hover:text-gray-300 flex-shrink-0 -ml-1"></i>
+                    <span class="truncate">Account Settings</span>
+                </a>
+                <a href="#security" class="group flex items-center px-3 py-2 text-sm font-medium rounded-md text-gray-700 hover:text-gray-900 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-800 dark:hover:text-white">
+                    <i class="fas fa-shield-alt mr-3 text-gray-400 group-hover:text-gray-500 dark:group-hover:text-gray-300 flex-shrink-0 -ml-1"></i>
+                    <span class="truncate">Security</span>
+                </a>
+                <a href="#notifications" class="group flex items-center px-3 py-2 text-sm font-medium rounded-md text-gray-700 hover:text-gray-900 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-800 dark:hover:text-white">
+                    <i class="fas fa-bell mr-3 text-gray-400 group-hover:text-gray-500 dark:group-hover:text-gray-300 flex-shrink-0 -ml-1"></i>
+                    <span class="truncate">Notifications</span>
+                </a>
+                <a href="{% url 'github_management:country_list' %}" class="group flex items-center px-3 py-2 text-sm font-medium rounded-md text-gray-700 hover:text-gray-900 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-800 dark:hover:text-white">
+                    <i class="fas fa-globe-africa mr-3 text-gray-400 group-hover:text-gray-500 dark:group-hover:text-gray-300 flex-shrink-0 -ml-1"></i>
+                    <span class="truncate">Countries</span>
+                </a>
+                <a href="{% url 'github_management:follow_random' %}" class="group flex items-center px-3 py-2 text-sm font-medium rounded-md text-gray-700 hover:text-gray-900 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-800 dark:hover:text-white">
+                    <i class="fas fa-user-plus mr-3 text-gray-400 group-hover:text-gray-500 dark:group-hover:text-gray-300 flex-shrink-0 -ml-1"></i>
+                    <span class="truncate">Follow Users</span>
+                </a>
+            </nav>
+            
+            <!-- GitHub Stats Card -->
+            <div class="mt-6 bg-white dark:bg-gray-800 shadow rounded-lg p-4">
+                <h3 class="text-sm font-medium text-gray-500 dark:text-gray-400">GitHub Stats</h3>
+                <div class="mt-2 space-y-3">
+                    <div>
+                        <div class="flex justify-between text-sm">
+                            <span class="text-gray-600 dark:text-gray-300">Repositories</span>
+                            <span class="font-medium text-gray-900 dark:text-white">{{ user.github_repos_count|default:'0' }}</span>
+                        </div>
+                        <div class="mt-1 w-full bg-gray-200 rounded-full h-2">
+                            <div class="bg-indigo-600 h-2 rounded-full" style="width: 75%"></div>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="flex justify-between text-sm">
+                            <span class="text-gray-600 dark:text-gray-300">Followers</span>
+                            <span class="font-medium text-gray-900 dark:text-white">{{ user.followers_count|default:'0' }}</span>
+                        </div>
+                        <div class="mt-1 w-full bg-gray-200 rounded-full h-2">
+                            <div class="bg-green-500 h-2 rounded-full" style="width: 60%"></div>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="flex justify-between text-sm">
+                            <span class="text-gray-600 dark:text-gray-300">Following</span>
+                            <span class="font-medium text-gray-900 dark:text-white">{{ user.following_count|default:'0' }}</span>
+                        </div>
+                        <div class="mt-1 w-full bg-gray-200 rounded-full h-2">
+                            <div class="bg-blue-500 h-2 rounded-full" style="width: 45%"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main content -->
+        <div class="lg:col-span-9">
+            <!-- Profile section -->
+            <div id="profile" class="bg-white dark:bg-gray-800 shadow rounded-lg">
+                <div class="px-4 py-5 sm:px-6 border-b border-gray-200 dark:border-gray-700">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <h3 class="text-lg leading-6 font-medium text-gray-900 dark:text-white">Profile</h3>
+                            <p class="mt-1 max-w-2xl text-sm text-gray-500 dark:text-gray-400">
+                                Your personal information and account details.
+                            </p>
+                        </div>
+                        <button type="button" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                            <i class="fas fa-edit mr-2"></i> Edit Profile
+                        </button>
+                    </div>
+                </div>
+                <div class="px-4 py-5 sm:p-6">
+                    <div class="md:flex md:items-center md:justify-between">
+                        <div class="flex items-center">
+                            <div class="flex-shrink-0">
+                                {% if user.socialaccount_set.all.0.get_avatar_url %}
+                                    <img class="h-16 w-16 rounded-full" src="{{ user.socialaccount_set.all.0.get_avatar_url }}" alt="">
+                                {% else %}
+                                    <div class="h-16 w-16 rounded-full bg-indigo-100 dark:bg-indigo-900 flex items-center justify-center text-indigo-600 dark:text-indigo-300 text-2xl font-medium">
+                                        {{ user.username|first|upper }}
+                                    </div>
+                                {% endif %}
+                            </div>
+                            <div class="ml-4">
+                                <h2 class="text-xl font-bold text-gray-900 dark:text-white">
+                                    {{ user.get_full_name|default:user.username }}
+                                </h2>
+                                <p class="text-sm text-gray-500 dark:text-gray-400">
+                                    @{{ user.username }}
+                                </p>
+                            </div>
+                        </div>
+                        <div class="mt-4 flex md:mt-0 md:ml-4">
+                            <button type="button" class="inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm text-sm font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                                <i class="fas fa-envelope mr-2"></i> Message
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="mt-6 border-t border-gray-200 dark:border-gray-700 pt-6">
+                        <dl class="grid grid-cols-1 gap-x-4 gap-y-6 sm:grid-cols-2">
+                            <div class="sm:col-span-1">
+                                <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Email address</dt>
+                                <dd class="mt-1 text-sm text-gray-900 dark:text-white">{{ user.email|default:"Not provided" }}</dd>
+                            </div>
+                            <div class="sm:col-span-1">
+                                <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Joined</dt>
+                                <dd class="mt-1 text-sm text-gray-900 dark:text-white">{{ user.date_joined|date:"F j, Y" }}</dd>
+                            </div>
+                            <div class="sm:col-span-1">
+                                <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Last Login</dt>
+                                <dd class="mt-1 text-sm text-gray-900 dark:text-white">{{ user.last_login|timesince }} ago</dd>
+                            </div>
+                            <div class="sm:col-span-1">
+                                <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Account Status</dt>
+                                <dd class="mt-1">
+                                    <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
+                                        Active
+                                    </span>
+                                </dd>
+                            </div>
+                            {% if user.bio %}
+                            <div class="sm:col-span-2">
+                                <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">About</dt>
+                                <dd class="mt-1 text-sm text-gray-900 dark:text-white">{{ user.bio }}</dd>
+                            </div>
+                            {% endif %}
+                        </dl>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Connected Accounts -->
+            <div class="mt-6 bg-white dark:bg-gray-800 shadow rounded-lg overflow-hidden">
+                <div class="px-4 py-5 sm:px-6 border-b border-gray-200 dark:border-gray-700">
+                    <h3 class="text-lg leading-6 font-medium text-gray-900 dark:text-white">Connected Accounts</h3>
+                    <p class="mt-1 max-w-2xl text-sm text-gray-500 dark:text-gray-400">
+                        Manage your connected social accounts.
+                    </p>
+                </div>
+                <div class="px-4 py-5 sm:p-6">
+                    <ul class="divide-y divide-gray-200 dark:divide-gray-700">
+                        <li class="py-4">
+                            <div class="flex items-center justify-between">
+                                <div class="flex items-center">
+                                    <div class="flex-shrink-0 h-10 w-10 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center">
+                                        <i class="fab fa-github text-gray-700 dark:text-gray-300 text-xl"></i>
+                                    </div>
+                                    <div class="ml-4">
+                                        <div class="text-sm font-medium text-gray-900 dark:text-white">GitHub</div>
+                                        <div class="text-sm text-gray-500 dark:text-gray-400">
+                                            {% if user.socialaccount_set.all.0.extra_data.login %}
+                                                Connected as {{ user.socialaccount_set.all.0.extra_data.login }}
+                                            {% else %}
+                                                Not connected
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </div>
+                                <div>
+                                    {% if user.socialaccount_set.all.0.extra_data.login %}
+                                        <button type="button" class="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-full shadow-sm text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500">
+                                            Disconnect
+                                        </button>
+                                    {% else %}
+                                        <a href="{% provider_login_url 'github' %}" class="inline-flex items-center px-3 py-1.5 border border-gray-300 shadow-sm text-xs font-medium rounded-full text-gray-700 bg-white hover:bg-gray-50 dark:bg-gray-700 dark:text-white dark:border-gray-600 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                                            Connect
+                                        </a>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </li>
+                        <li class="py-4">
+                            <div class="flex items-center justify-between">
+                                <div class="flex items-center">
+                                    <div class="flex-shrink-0 h-10 w-10 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center">
+                                        <i class="fab fa-google text-blue-700 dark:text-blue-300 text-xl"></i>
+                                    </div>
+                                    <div class="ml-4">
+                                        <div class="text-sm font-medium text-gray-900 dark:text-white">Google</div>
+                                        <div class="text-sm text-gray-500 dark:text-gray-400">
+                                            {% if user.socialaccount_set.all.1.extra_data.email %}
+                                                Connected as {{ user.socialaccount_set.all.1.extra_data.email }}
+                                            {% else %}
+                                                Not connected
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </div>
+                                <div>
+                                    {% if user.socialaccount_set.all.1.extra_data.email %}
+                                        <button type="button" class="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-full shadow-sm text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500">
+                                            Disconnect
+                                        </button>
+                                    {% else %}
+                                        <a href="{% provider_login_url 'google' %}" class="inline-flex items-center px-3 py-1.5 border border-gray-300 shadow-sm text-xs font-medium rounded-full text-gray-700 bg-white hover:bg-gray-50 dark:bg-gray-700 dark:text-white dark:border-gray-600 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                                            Connect
+                                        </a>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Recent Activity -->
+            <div class="mt-6 bg-white dark:bg-gray-800 shadow rounded-lg overflow-hidden">
+                <div class="px-4 py-5 sm:px-6 border-b border-gray-200 dark:border-gray-700">
+                    <h3 class="text-lg leading-6 font-medium text-gray-900 dark:text-white">Recent Activity</h3>
+                    <p class="mt-1 max-w-2xl text-sm text-gray-500 dark:text-gray-400">
+                        Your recent actions and updates.
+                    </p>
+                </div>
+                <div class="px-4 py-5 sm:p-6">
+                    <div class="flow-root">
+                        <ul class="-mb-8">
+                            <li>
+                                <div class="relative pb-8">
+                                    <span class="absolute top-4 left-4 -ml-px h-full w-0.5 bg-gray-200 dark:bg-gray-700" aria-hidden="true"></span>
+                                    <div class="relative flex space-x-3">
+                                        <div>
+                                            <span class="h-8 w-8 rounded-full bg-green-500 flex items-center justify-center ring-8 ring-white dark:ring-gray-800">
+                                                <i class="fas fa-check text-white text-xs"></i>
+                                            </span>
+                                        </div>
+                                        <div class="min-w-0 flex-1 pt-1.5 flex justify-between space-x-4">
+                                            <div>
+                                                <p class="text-sm text-gray-500 dark:text-gray-400">
+                                                    Successfully connected to <span class="font-medium text-gray-900 dark:text-white">GitHub</span>
+                                                </p>
+                                            </div>
+                                            <div class="text-right text-sm whitespace-nowrap text-gray-500 dark:text-gray-400">
+                                                <time datetime="2020-09-20">Just now</time>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </li>
+                            <li>
+                                <div class="relative pb-8">
+                                    <span class="absolute top-4 left-4 -ml-px h-full w-0.5 bg-gray-200 dark:bg-gray-700" aria-hidden="true"></span>
+                                    <div class="relative flex space-x-3">
+                                        <div>
+                                            <span class="h-8 w-8 rounded-full bg-blue-500 flex items-center justify-center ring-8 ring-white dark:ring-gray-800">
+                                                <i class="fas fa-user-plus text-white text-xs"></i>
+                                            </span>
+                                        </div>
+                                        <div class="min-w-0 flex-1 pt-1.5 flex justify-between space-x-4">
+                                            <div>
+                                                <p class="text-sm text-gray-500 dark:text-gray-400">
+                                                    Started following <span class="font-medium text-gray-900 dark:text-white">5 new users</span>
+                                                </p>
+                                            </div>
+                                            <div class="text-right text-sm whitespace-nowrap text-gray-500 dark:text-gray-400">
+                                                <time datetime="2020-09-22">2 hours ago</time>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </li>
+                            <li>
+                                <div class="relative pb-8">
+                                    <div class="relative flex space-x-3">
+                                        <div>
+                                            <span class="h-8 w-8 rounded-full bg-yellow-500 flex items-center justify-center ring-8 ring-white dark:ring-gray-800">
+                                                <i class="fas fa-exclamation text-white text-xs"></i>
+                                            </span>
+                                        </div>
+                                        <div class="min-w-0 flex-1 pt-1.5 flex justify-between space-x-4">
+                                            <div>
+                                                <p class="text-sm text-gray-500 dark:text-gray-400">
+                                                    <span class="font-medium text-gray-900 dark:text-white">Daily limit reached</span> for following users
+                                                </p>
+                                            </div>
+                                            <div class="text-right text-sm whitespace-nowrap text-gray-500 dark:text-gray-400">
+                                                <time datetime="2020-09-28">1 day ago</time>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </li>
+                        </ul>
+                    </div>
+                    <div class="mt-6">
+                        <a href="#" class="w-full flex justify-center items-center px-4 py-2 border border-gray-300 dark:border-gray-600 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white dark:bg-gray-700 dark:text-white hover:bg-gray-50 dark:hover:bg-gray-600">
+                            View all activity
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Smooth scrolling for anchor links
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+        anchor.addEventListener('click', function (e) {
+            e.preventDefault();
+            const target = document.querySelector(this.getAttribute('href'));
+            if (target) {
+                target.scrollIntoView({
+                    behavior: 'smooth'
+                });
+            }
+        });
+    });
+</script>
+{% endblock %}

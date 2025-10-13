@@ -1,0 +1,416 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Relationship Management | GitHub Manager{% endblock %}
+
+{% block extra_head %}
+<link href="https://cdn.jsdelivr.net/npm/chart.js@3.7.0/dist/chart.min.css" rel="stylesheet">
+{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-gray-50 dark:bg-gray-900">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <!-- Page Header -->
+        <div class="mb-8">
+            <h1 class="text-3xl font-extrabold text-gray-900 dark:text-white sm:text-4xl">
+                Relationship Management
+            </h1>
+            <p class="mt-3 text-lg text-gray-500 dark:text-gray-400">
+                Manage your GitHub following and followers
+            </p>
+        </div>
+
+        <!-- Stats Overview -->
+        <div class="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4 mb-8">
+            <!-- Total Relationships Card -->
+            <div class="bg-white dark:bg-gray-800 overflow-hidden shadow rounded-lg">
+                <div class="px-4 py-5 sm:p-6">
+                    <div class="flex items-center">
+                        <div class="flex-shrink-0 bg-indigo-500 rounded-md p-3">
+                            <svg class="h-6 w-6 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                            </svg>
+                        </div>
+                        <div class="ml-5 w-0 flex-1">
+                            <dl>
+                                <dt class="text-sm font-medium text-gray-500 dark:text-gray-400 truncate">Total Relationships</dt>
+                                <dd class="flex items-baseline">
+                                    <div class="text-2xl font-semibold text-gray-900 dark:text-white">{{ stats.total }}</div>
+                                </dd>
+                            </dl>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Following Card -->
+            <div class="bg-white dark:bg-gray-800 overflow-hidden shadow rounded-lg">
+                <div class="px-4 py-5 sm:p-6">
+                    <div class="flex items-center">
+                        <div class="flex-shrink-0 bg-blue-500 rounded-md p-3">
+                            <svg class="h-6 w-6 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+                            </svg>
+                        </div>
+                        <div class="ml-5 w-0 flex-1">
+                            <dl>
+                                <dt class="text-sm font-medium text-gray-500 dark:text-gray-400 truncate">Following</dt>
+                                <dd class="flex items-baseline">
+                                    <div class="text-2xl font-semibold text-gray-900 dark:text-white">{{ stats.following }}</div>
+                                </dd>
+                            </dl>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Followers Card -->
+            <div class="bg-white dark:bg-gray-800 overflow-hidden shadow rounded-lg">
+                <div class="px-4 py-5 sm:p-6">
+                    <div class="flex items-center">
+                        <div class="flex-shrink-0 bg-green-500 rounded-md p-3">
+                            <svg class="h-6 w-6 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+                            </svg>
+                        </div>
+                        <div class="ml-5 w-0 flex-1">
+                            <dl>
+                                <dt class="text-sm font-medium text-gray-500 dark:text-gray-400 truncate">Followers</dt>
+                                <dd class="flex items-baseline">
+                                    <div class="text-2xl font-semibold text-gray-900 dark:text-white">{{ stats.followers }}</div>
+                                </dd>
+                            </dl>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Mutual Connections Card -->
+            <div class="bg-white dark:bg-gray-800 overflow-hidden shadow rounded-lg">
+                <div class="px-4 py-5 sm:p-6">
+                    <div class="flex items-center">
+                        <div class="flex-shrink-0 bg-yellow-500 rounded-md p-3">
+                            <svg class="h-6 w-6 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                            </svg>
+                        </div>
+                        <div class="ml-5 w-0 flex-1">
+                            <dl>
+                                <dt class="text-sm font-medium text-gray-500 dark:text-gray-400 truncate">Mutual</dt>
+                                <dd class="flex items-baseline">
+                                    <div class="text-2xl font-semibold text-gray-900 dark:text-white">{{ stats.mutual }}</div>
+                                </dd>
+                            </dl>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Relationship Chart -->
+        <div class="bg-white dark:bg-gray-800 shadow overflow-hidden rounded-lg mb-8">
+            <div class="px-4 py-5 sm:p-6">
+                <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-4">Relationship Overview</h3>
+                <div class="h-64">
+                    <canvas id="relationshipChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Filters and Search -->
+        <div class="bg-white dark:bg-gray-800 shadow overflow-hidden rounded-lg mb-8">
+            <div class="px-4 py-5 sm:p-6">
+                <form method="get" class="space-y-4">
+                    <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                        <div>
+                            <label for="relationship" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Relationship Type</label>
+                            <select id="relationship" name="relationship" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md">
+                                <option value="" {% if not request.GET.relationship %}selected{% endif %}>All Relationships</option>
+                                <option value="following" {% if request.GET.relationship == 'following' %}selected{% endif %}>Following</option>
+                                <option value="followers" {% if request.GET.relationship == 'followers' %}selected{% endif %}>Followers</option>
+                                <option value="mutual" {% if request.GET.relationship == 'mutual' %}selected{% endif %}>Mutual</option>
+                                <option value="non_followers" {% if request.GET.relationship == 'non_followers' %}selected{% endif %}>Not Following Back</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label for="sort" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Sort By</label>
+                            <select id="sort" name="sort" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md">
+                                <option value="-created_at" {% if request.GET.sort == '-created_at' or not request.GET.sort %}selected{% endif %}>Recently Added</option>
+                                <option value="username" {% if request.GET.sort == 'username' %}selected{% endif %}>Username (A-Z)</option>
+                                <option value="-follower_count" {% if request.GET.sort == '-follower_count' %}selected{% endif %}>Most Followers</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label for="search" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Search</label>
+                            <div class="mt-1 relative rounded-md shadow-sm">
+                                <input type="text" name="q" id="search" value="{{ request.GET.q }}" class="focus:ring-indigo-500 focus:border-indigo-500 block w-full pl-4 pr-12 sm:text-sm border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-md" placeholder="Search by username or name">
+                                <div class="absolute inset-y-0 right-0 flex items-center">
+                                    <button type="submit" class="h-full py-0 px-4 rounded-r-md border border-l-0 border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-gray-500 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600 focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500">
+                                        <svg class="h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                                        </svg>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Users Grid -->
+        {% if users %}
+            <div class="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                {% for user_obj in users %}
+                <div class="bg-white dark:bg-gray-800 shadow overflow-hidden rounded-lg hover:shadow-lg transition-shadow duration-200">
+                    <div class="px-4 py-5 sm:p-6">
+                        <div class="flex items-center">
+                            <div class="flex-shrink-0">
+                                <img class="h-16 w-16 rounded-full" src="{{ user_obj.github_avatar_url|default:'https://via.placeholder.com/150' }}" alt="{{ user_obj.username }}">
+                            </div>
+                            <div class="ml-4
+                            <div class="ml-4">
+                                <h3 class="text-lg font-medium text-gray-900 dark:text-white">
+                                    <a href="https://github.com/{{ user_obj.github_username }}" target="_blank" class="hover:text-indigo-600 dark:hover:text-indigo-400">
+                                        {{ user_obj.name|default:user_obj.github_username }}
+                                    </a>
+                                </h3>
+                                <p class="text-sm text-gray-500 dark:text-gray-400">@{{ user_obj.github_username }}</p>
+                                
+                                <div class="mt-2 flex space-x-2">
+                                    {% if user_obj.is_following %}
+                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
+                                        Following
+                                    </span>
+                                    {% endif %}
+                                    
+                                    {% if user_obj.is_follower %}
+                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
+                                        Follows You
+                                    </span>
+                                    {% endif %}
+                                </div>
+                                
+                                {% if user_obj.bio %}
+                                <p class="mt-2 text-sm text-gray-600 dark:text-gray-300 line-clamp-2">
+                                    {{ user_obj.bio }}
+                                </p>
+                                {% endif %}
+                                
+                                <div class="mt-3 flex items-center text-sm text-gray-500 dark:text-gray-400">
+                                    <div class="flex items-center">
+                                        <svg class="h-4 w-4 mr-1" fill="currentColor" viewBox="0 0 24 24">
+                                            <path d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2zm0 18c-4.418 0-8-3.582-8-8s3.582-8 8-8 8 3.582 8 8-3.582 8-8 8z"/>
+                                            <path d="M13 7h-2v6h6v-2h-4z"/>
+                                        </svg>
+                                        <span>{{ user_obj.follower_count|default:0 }} followers</span>
+                                    </div>
+                                    <div class="ml-4 flex items-center">
+                                        <svg class="h-4 w-4 mr-1" fill="currentColor" viewBox="0 0 24 24">
+                                            <path d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2zm0 18c-4.418 0-8-3.582-8-8s3.582-8 8-8 8 3.582 8 8-3.582 8-8 8z"/>
+                                            <path d="M12 6v6l4 2-4 2v-8z"/>
+                                        </svg>
+                                        <span>{{ user_obj.following_count|default:0 }} following</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="mt-4 flex justify-between items-center">
+                            <a href="https://github.com/{{ user_obj.github_username }}" target="_blank" class="inline-flex items-center text-sm text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-300">
+                                View Profile
+                                <svg class="ml-1 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                                </svg>
+                            </a>
+                            
+                            <div class="flex space-x-2">
+                                {% if user_obj.is_following %}
+                                    <form method="post" action="{% url 'unfollow_user' user_obj.github_username %}" class="inline">
+                                        {% csrf_token %}
+                                        <button type="submit" class="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md text-red-700 bg-red-100 hover:bg-red-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 dark:bg-red-900/30 dark:text-red-300 dark:hover:bg-red-900/50">
+                                            Unfollow
+                                        </button>
+                                    </form>
+                                {% else %}
+                                    <form method="post" action="{% url 'follow_user' user_obj.github_username %}" class="inline">
+                                        {% csrf_token %}
+                                        <button type="submit" class="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                                            Follow
+                                        </button>
+                                    </form>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            
+            <!-- Pagination -->
+            {% if users.has_other_pages %}
+            <div class="bg-white dark:bg-gray-800 px-4 py-3 flex items-center justify-between border-t border-gray-200 dark:border-gray-700 sm:px-6 mt-8 rounded-lg shadow">
+                <div class="flex-1 flex justify-between sm:hidden">
+                    {% if users.has_previous %}
+                        <a href="?page={{ users.previous_page_number }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}" class="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 dark:bg-gray-700 dark:text-gray-200 dark:border-gray-600 dark:hover:bg-gray-600">
+                            Previous
+                        </a>
+                    {% else %}
+                        <span class="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-300 bg-white cursor-not-allowed dark:bg-gray-700 dark:border-gray-600">
+                            Previous
+                        </span>
+                    {% endif %}
+                    
+                    {% if users.has_next %}
+                        <a href="?page={{ users.next_page_number }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}" class="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 dark:bg-gray-700 dark:text-gray-200 dark:border-gray-600 dark:hover:bg-gray-600">
+                            Next
+                        </a>
+                    {% else %}
+                        <span class="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-300 bg-white cursor-not-allowed dark:bg-gray-700 dark:border-gray-600">
+                            Next
+                        </span>
+                    {% endif %}
+                </div>
+                <div class="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+                    <div>
+                        <p class="text-sm text-gray-700 dark:text-gray-300">
+                            Showing <span class="font-medium">{{ users.start_index }}</span> to <span class="font-medium">{{ users.end_index }}</span> of <span class="font-medium">{{ users.paginator.count }}</span> results
+                        </p>
+                    </div>
+                    <div>
+                        <nav class="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
+                            {% if users.has_previous %}
+                                <a href="?page=1{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}" class="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-600">
+                                    <span class="sr-only">First</span>
+                                    <svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                                        <path fill-rule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clip-rule="evenodd" />
+                                    </svg>
+                                </a>
+                                <a href="?page={{ users.previous_page_number }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}" class="bg-white border-gray-300 text-gray-500 hover:bg-gray-50 relative inline-flex items-center px-4 py-2 border text-sm font-medium dark:bg-gray-700 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-600">
+                                    Previous
+                                </a>
+                            {% endif %}
+                            
+                            {% for num in users.paginator.page_range %}
+                                {% if users.number == num %}
+                                    <span class="z-10 bg-indigo-50 border-indigo-500 text-indigo-600 relative inline-flex items-center px-4 py-2 border text-sm font-medium dark:bg-indigo-900/30 dark:text-indigo-200 dark:border-indigo-700">
+                                        {{ num }}
+                                    </span>
+                                {% elif num > users.number|add:'-3' and num < users.number|add:'3' %}
+                                    <a href="?page={{ num }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}" class="bg-white border-gray-300 text-gray-500 hover:bg-gray-50 relative inline-flex items-center px-4 py-2 border text-sm font-medium dark:bg-gray-700 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-600">
+                                        {{ num }}
+                                    </a>
+                                {% endif %}
+                            {% endfor %}
+                            
+                            {% if users.has_next %}
+                                <a href="?page={{ users.next_page_number }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}" class="bg-white border-gray-300 text-gray-500 hover:bg-gray-50 relative inline-flex items-center px-4 py-2 border text-sm font-medium dark:bg-gray-700 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-600">
+                                    Next
+                                </a>
+                                <a href="?page={{ users.paginator.num_pages }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}" class="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-600">
+                                    <span class="sr-only">Last</span>
+                                    <svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                                        <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd" />
+                                    </svg>
+                                </a>
+                            {% endif %}
+                        </nav>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+        {% else %}
+            <div class="text-center py-12">
+                <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <h3 class="mt-2 text-sm font-medium text-gray-900 dark:text-white">No users found</h3>
+                <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                    No users match your current filters. Try adjusting your search or filter criteria.
+                </p>
+                <div class="mt-6">
+                    <a href="?" class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                        <svg class="-ml-1 mr-2 h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 110 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clip-rule="evenodd" />
+                        </svg>
+                        Reset Filters
+                    </a>
+                </div>
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@3.7.0/dist/chart.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize the chart
+    const ctx = document.getElementById('relationshipChart').getContext('2d');
+    const chart = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels: ['Following', 'Followers', 'Mutual'],
+            datasets: [{
+                data: [
+                    {{ stats.following|default:0 }}, 
+                    {{ stats.followers|default:0 }}, 
+                    {{ stats.mutual|default:0 }}
+                ],
+                backgroundColor: [
+                    'rgba(59, 130, 246, 0.7)',  // blue
+                    'rgba(16, 185, 129, 0.7)',  // green
+                    'rgba(245, 158, 11, 0.7)'   // yellow
+                ],
+                borderColor: [
+                    'rgba(59, 130, 246, 1)',
+                    'rgba(16, 185, 129, 1)',
+                    'rgba(245, 158, 11, 1)'
+                ],
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'right',
+                    labels: {
+                        color: window.matchMedia('(prefers-color-scheme: dark)').matches ? '#E5E7EB' : '#374151',
+                        font: {
+                            size: 14
+                        }
+                    }
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            const label = context.label || '';
+                            const value = context.raw || 0;
+                            const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                            const percentage = Math.round((value / total) * 100) || 0;
+                            return `${label}: ${value} (${percentage}%)`;
+                        }
+                    }
+                }
+            },
+            cutout: '70%',
+            animation: {
+                animateScale: true,
+                animateRotate: true
+            }
+        }
+    });
+
+    // Update chart colors when dark mode changes
+    const darkModeMediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+    darkModeMediaQuery.addListener((e) => {
+        const isDarkMode = e.matches;
+        chart.options.plugins.legend.labels.color = isDarkMode ? '#E5E7EB' : '#374151';
+        chart.update();
+    });
+});
+</script>
+{% endblock %}

@@ -1,0 +1,156 @@
+{% extends "account/base_auth.html" %}
+
+{% load i18n %}
+{% load account socialaccount %}
+
+{% block head_title %}{% trans "Sign Up" %}{% endblock %}
+
+{% block page_title %}{% trans "Create your account" %}{% endblock %}
+
+{% block page_subtitle %}{% trans "Join our community of developers" %}{% endblock %}
+
+{% block content %}
+{% get_providers as socialaccount_providers %}
+
+{% if socialaccount_providers %}
+    <div class="space-y-4">
+        {% for provider in socialaccount_providers %}
+            {% if provider.id == "github" %}
+                <a href="{% provider_login_url provider.id process='signup' %}" 
+                   class="social-login-btn btn-github">
+                    <i class="fab fa-github"></i>
+                    {% trans "Sign up with GitHub" %}
+                </a>
+            {% elif provider.id == "google" %}
+                <a href="{% provider_login_url provider.id process='signup' %}" 
+                   class="social-login-btn btn-google">
+                    <i class="fab fa-google"></i>
+                    {% trans "Sign up with Google" %}
+                </a>
+            {% else %}
+                <a href="{% provider_login_url provider.id process='signup' %}" 
+                   class="social-login-btn bg-gray-100 hover:bg-gray-200 text-gray-800 dark:bg-gray-700 dark:hover:bg-gray-600 dark:text-white">
+                    <i class="fas fa-sign-in-alt"></i>
+                    {% blocktrans with provider.name as provider %}
+                        Sign up with {{ provider }}
+                    {% endblocktrans %}
+                </a>
+            {% endif %}
+        {% endfor %}
+    </div>
+
+    <div class="divider">
+        {% trans 'or' %}
+    </div>
+{% endif %}
+
+        <!-- Email/Password Form -->
+        <form class="mt-6 space-y-6" method="POST" action="{% url 'account_signup' %}">
+            {% csrf_token %}
+            
+            <div class="rounded-md shadow-sm space-y-4">
+                {% if form.errors %}
+                    <div class="bg-red-50 dark:bg-red-900 dark:bg-opacity-20 border-l-4 border-red-500 p-4 mb-4">
+                        <div class="flex">
+                            <div class="flex-shrink-0">
+                                <svg class="h-5 w-5 text-red-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" />
+                                </svg>
+                            </div>
+                            <div class="ml-3">
+                                {% for field in form %}
+                                    {% for error in field.errors %}
+                                        <p class="text-sm text-red-700 dark:text-red-200">{{ error|escape }}</p>
+                                    {% endfor %}
+                                {% endfor %}
+                                {% for error in form.non_field_errors %}
+                                    <p class="text-sm text-red-700 dark:text-red-200">{{ error|escape }}</p>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+                {% endif %}
+                
+                <div>
+                    <label for="id_username" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        Username
+                    </label>
+                    <input id="id_username" name="username" type="text" autocomplete="username" required
+                           class="appearance-none relative block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 placeholder-gray-500 dark:placeholder-gray-400 text-gray-900 dark:text-white rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm dark:bg-gray-700"
+                           placeholder="Username">
+                </div>
+                
+                <div>
+                    <label for="id_email" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        Email address
+                    </label>
+                    <input id="id_email" name="email" type="email" autocomplete="email" required
+                           class="appearance-none relative block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 placeholder-gray-500 dark:placeholder-gray-400 text-gray-900 dark:text-white rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm dark:bg-gray-700"
+                           placeholder="Email address">
+                </div>
+                
+                <div>
+                    <label for="id_password1" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        Password
+                    </label>
+                    <input id="id_password1" name="password1" type="password" autocomplete="new-password" required
+                           class="appearance-none relative block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 placeholder-gray-500 dark:placeholder-gray-400 text-gray-900 dark:text-white rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm dark:bg-gray-700"
+                           placeholder="Password">
+                </div>
+                
+                <div>
+                    <label for="id_password2" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        Password (again)
+                    </label>
+                    <input id="id_password2" name="password2" type="password" autocomplete="new-password" required
+                           class="appearance-none relative block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 placeholder-gray-500 dark:placeholder-gray-400 text-gray-900 dark:text-white rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm dark:bg-gray-700"
+                           placeholder="Confirm password">
+                </div>
+                
+                {% if redirect_field_value %}
+                    <input type="hidden" name="{{ redirect_field_name }}" value="{{ redirect_field_value }}" />
+                {% endif %}
+                
+                <div class="flex items-center">
+                    <input id="terms" name="terms" type="checkbox" required
+                           class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 dark:border-gray-600 rounded dark:bg-gray-700">
+                    <label for="terms" class="ml-2 block text-sm text-gray-700 dark:text-gray-300">
+                        I agree to the <a href="#" class="text-indigo-600 hover:text-indigo-500 dark:text-indigo-400 dark:hover:text-indigo-300">Terms</a> and <a href="#" class="text-indigo-600 hover:text-indigo-500 dark:text-indigo-400 dark:hover:text-indigo-300">Privacy Policy</a>
+                    </label>
+                </div>
+            </div>
+
+            <div>
+                <button type="submit"
+                        class="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                    <span class="absolute left-0 inset-y-0 flex items-center pl-3">
+                        <svg class="h-5 w-5 text-indigo-500 group-hover:text-indigo-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                            <path fill-rule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clip-rule="evenodd" />
+                        </svg>
+                    </span>
+                    Create Account
+                </button>
+            </div>
+        </form>
+        
+        <div class="text-center text-sm">
+            <p class="text-gray-500 dark:text-gray-400">
+                Already have an account?
+                <a href="{% url 'account_login' %}" class="font-medium text-indigo-600 hover:text-indigo-500 dark:text-indigo-400 dark:hover:text-indigo-300">
+                    Sign in
+                </a>
+            </p>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Auto-focus the username field on page load
+    document.addEventListener('DOMContentLoaded', function() {
+        const usernameField = document.getElementById('id_username');
+        if (usernameField) usernameField.focus();
+    });
+</script>
+{% endblock %}

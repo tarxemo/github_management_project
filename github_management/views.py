@@ -146,7 +146,7 @@ class FollowRandomUsersView(LoginRequiredMixin, View):
         followed = 0
         for user in users_to_follow:
             try:
-                GitHubFollowAction.follow_github_user(request.user, user.id)
+                GitHubFollowAction.follow_github_user(request.user, user)
                 followed += 1
             except Exception as e:
                 logger.error(f"Error following user {user.username}: {e}")

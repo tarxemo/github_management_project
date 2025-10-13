@@ -70,42 +70,133 @@ class CustomSocialAccountAdapter(DefaultSocialAccountAdapter):
         return email.lower()
 
     def get_app(self, request, provider, client_id=None):
-        """Override to handle multiple social apps for the same provider."""
+        """Override to handle social app retrieval with better error handling."""
         from allauth.socialaccount.models import SocialApp
-        from django.core.exceptions import MultipleObjectsReturned
+        from django.core.exceptions import MultipleObjectsReturned, ObjectDoesNotExist
+        from django.conf import settings
         
         try:
-            return super().get_app(request, provider, client_id)
-        except MultipleObjectsReturned:
-            # If multiple apps found, get the first one
-            app = SocialApp.objects.filter(provider=provider).first()
-            if app:
+            # First try to get the app using the parent's method
+            try:
+                app = super().get_app(request, provider, client_id)
                 return app
-            raise
+            except MultipleObjectsReturned:
+                # If multiple apps found, try to find the one matching our client_id
+                if client_id:
+                    app = SocialApp.objects.filter(
+                        provider=provider,
+                        client_id=client_id
+                    ).first()
+                    if app:
+                        return app
+                
+                # Otherwise get the first one
+                app = SocialApp.objects.filter(provider=provider).first()
+                if app:
+                    return app
+                raise ObjectDoesNotExist("No social app found for provider")
+                
+        except (ObjectDoesNotExist, MultipleObjectsReturned) as e:
+            # If no app found, try to create it from settings
+            client_id = getattr(settings, f'{provider.upper()}_OAUTH2_CLIENT_ID', None)
+            secret = getattr(settings, f'{provider.upper()}_OAUTH2_SECRET', None)
+            
+            if client_id and secret:
+                app = SocialApp.objects.create(
+                    provider=provider,
+                    name=provider.capitalize(),
+                    client_id=client_id,
+                    secret=secret
+                )
+                # Add current site
+                from django.contrib.sites.models import Site
+                site = Site.objects.get_current()
+                app.sites.add(site)
+                app.save()
+                return app
+                
+            # If we can't create the app, raise a more helpful error
+            available_providers = list(SocialApp.objects.values_list('provider', flat=True))
+            raise Exception(
+                f"No {provider} social app found and could not create one. "
+                f"Available providers: {available_providers}. "
+                f"Please ensure you have configured {provider.upper()}_OAUTH2_CLIENT_ID and {provider.upper()}_OAUTH2_SECRET in your settings."
+            )
 
     def complete_login(self, request, socialapp, token, **kwargs):
         """Handle the completion of a social authentication process."""
-        # Get the provider first
-        provider = providers.registry.by_id(socialapp.provider, request)
+        from allauth.socialaccount import app_settings
+        from allauth.socialaccount.helpers import complete_social_login
+        from allauth.socialaccount.models import SocialLogin
+        from allauth.account.utils import get_next_redirect_url
+        from django.core.exceptions import ValidationError
+        from django.contrib import messages
+        import logging
         
-        # For Google provider
-        if socialapp.provider == 'google':
-            response = kwargs.get('response', {})
-            
-            # Handle One Tap response
-            if 'credential' in response:
-                # This is a One Tap response
-                token.token = response['credential']
-                token.token_secret = response.get('id_token', '')
-            # Handle regular OAuth2 response
-            elif 'id_token' in response:
-                token.token_secret = response['id_token']
-            
-            try:
-                return provider.sociallogin_from_response(request, response)
-            except Exception as e:
-                print(f"Error in complete_login: {str(e)}")
-                raise
+        logger = logging.getLogger(__name__)
         
-        # For other providers
-        return provider.sociallogin_from_response(request, kwargs.get('response', {}))
+        try:
+            # Get the provider
+            provider = providers.registry.by_id(socialapp.provider, request)
+            
+            # For Google provider
+            if socialapp.provider == 'google':
+                response = kwargs.get('response', {})
+                
+                # Handle One Tap response
+                if 'credential' in request.POST:
+                    # This is a One Tap response
+                    credential = request.POST.get('credential')
+                    token.token = credential
+                    
+                    # Verify the token
+                    try:
+                        from google.oauth2 import id_token
+                        from google.auth.transport import requests as google_requests
+                        
+                        idinfo = id_token.verify_oauth2_token(
+                            credential,
+                            google_requests.Request(),
+                            socialapp.client_id
+                        )
+                        
+                        # Update response with user info
+                        response.update({
+                            'id': idinfo.get('sub'),
+                            'email': idinfo.get('email'),
+                            'name': idinfo.get('name'),
+                            'given_name': idinfo.get('given_name'),
+                            'family_name': idinfo.get('family_name'),
+                            'picture': idinfo.get('picture'),
+                            'locale': idinfo.get('locale'),
+                        })
+                        
+                    except Exception as e:
+                        logger.error(f"Error verifying Google token: {str(e)}")
+                        raise ValidationError("Invalid Google token")
+                
+                # Handle regular OAuth2 response
+                elif 'id_token' in response:
+                    token.token_secret = response['id_token']
+                
+                # Update the token with the response data
+                token.token_data = response
+                token.save()
+                
+                # Create social login
+                login = provider.sociallogin_from_response(request, response)
+                login.token = token
+                
+                # Ensure the social account is connected to the current site
+                if not login.account.pk:
+                    login.save(request)
+                    
+                return login
+                
+            # For other providers
+            return provider.sociallogin_from_response(request, kwargs.get('response', {}))
+            
+        except Exception as e:
+            logger.error(f"Error in complete_login: {str(e)}", exc_info=True)
+            messages.error(request, f"Authentication failed: {str(e)}")
+            raise

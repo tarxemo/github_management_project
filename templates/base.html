@@ -121,23 +121,61 @@
     
     <!-- Google One Tap Prompt for non-logged-in users -->
     {% if not user.is_authenticated %}
-    <div id="g_id_onload"
-         data-client_id="{{ GOOGLE_OAUTH2_CLIENT_ID }}"
-         data-login_uri="{{ request.scheme }}://{{ request.get_host }}{% url 'google_one_tap_auth' %}"
-         data-auto_prompt="true"
-         data-cancel_on_tap_outside="false"
-         data-context="signin"
-         data-itp_support="true"
-         data-ux_mode="popup"
-         data-callback="handleCredentialResponse"
-         style="position: fixed; bottom: 0; left: 0; z-index: 9999; width: 100%;">
-    </div>
+<div id="g_id_onload"
+     data-client_id="{{ GOOGLE_OAUTH2_CLIENT_ID }}"
+     data-login_uri="{{ request.scheme }}://{{ request.get_host }}{% url 'google_one_tap_auth' %}"
+     data-auto_prompt="true"
+     data-cancel_on_tap_outside="false"
+     data-context="signin"
+     data-itp_support="true"
+     data-ux_mode="popup"
+     data-prompt_parent_id="g_id_onload"
+     data-error_callback="handleOneTapError"
+     data-callback="handleCredentialResponse"
+     style="position: fixed; bottom: 0; left: 0; z-index: 9999; width: 100%;">
+</div>
+
+<script>
+// Error handling for Google One Tap
+function handleOneTapError(error) {
+    console.error('Google One Tap error:', error);
     
-    <script>
-    function handleCredentialResponse(response) {
+    // Show a fallback sign-in button on error
+    const fallbackDiv = document.createElement('div');
+    fallbackDiv.id = 'g_id_fallback';
+    fallbackDiv.style.position = 'fixed';
+    fallbackDiv.style.bottom = '20px';
+    fallbackDiv.style.left = '50%';
+    fallbackDiv.style.transform = 'translateX(-50%)';
+    fallbackDiv.style.zIndex = '10000';
+    fallbackDiv.innerHTML = `
+        <div class="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-lg flex items-center space-x-4">
+            <span>Sign in with Google to continue</span>
+            <div id="g_id_signin" 
+                 class="g_id_signin"
+                 data-type="standard"
+                 data-size="large"
+                 data-theme="outline"
+                 data-text="sign_in_with"
+                 data-shape="pill"
+                 data-logo_alignment="left">
+            </div>
+        </div>
+    `;
+    document.body.appendChild(fallbackDiv);
+}
+
+// Modified handleCredentialResponse with better error handling
+function handleCredentialResponse(response) {
+    try {
+        if (!response || !response.credential) {
+            throw new Error('Invalid response from Google');
+        }
+        
         const form = document.createElement('form');
         form.method = 'POST';
         form.action = '{% url 'google_one_tap_auth' %}';
+        form.style.display = 'none';
         
         const csrfInput = document.createElement('input');
         csrfInput.type = 'hidden';
@@ -153,10 +191,39 @@
         form.appendChild(credentialInput);
         document.body.appendChild(form);
         form.submit();
+    } catch (error) {
+        console.error('Error handling credential response:', error);
+        handleOneTapError(error);
     }
-    </script>
+}
+
+// Load Google Identity Services with error handling
+function loadGoogleIdentityServices() {
+    const script = document.createElement('script');
+    script.src = 'https://accounts.google.com/gsi/client';
+    script.async = true;
+    script.defer = true;
+    script.onerror = () => {
+        console.error('Failed to load Google Identity Services');
+        handleOneTapError(new Error('Failed to load Google sign-in services'));
+    };
+    document.head.appendChild(script);
+}
+
+// Initialize after the page loads
+document.addEventListener('DOMContentLoaded', () => {
+    // Try to load Google Identity Services
+    loadGoogleIdentityServices();
     
-    <script src="https://accounts.google.com/gsi/client" async defer></script>
+    // Fallback in case the auto-prompt doesn't work
+    setTimeout(() => {
+        if (typeof google === 'undefined' || !google.accounts) {
+            handleOneTapError(new Error('Google Identity Services not loaded'));
+        }
+    }, 2000);
+});
+</script>
+    
     {% endif %}
     
     <!-- Mobile Menu Overlay -->

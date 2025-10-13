@@ -8,3 +8,13 @@ venv
 *.env.example
 .env.example
 .env.example
+# Ignore Python cache and compiled files
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Ignore virtual environments
+venv/
+.env/
+**__pycache__

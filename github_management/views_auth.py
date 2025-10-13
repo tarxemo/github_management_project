@@ -111,24 +111,52 @@ def google_one_tap_auth(request):
             }, status=400)
 
         logger.debug("Creating social login...")
-        # Create a social login
-        from allauth.socialaccount.models import SocialLogin
-        from allauth.socialaccount.models import SocialToken
-        from allauth.socialaccount.adapter import get_adapter
+        from allauth.socialaccount.models import SocialAccount, SocialToken, SocialApp
+        from allauth.socialaccount.helpers import complete_social_login
+        from allauth.socialaccount import providers
         
         try:
-            login = get_adapter().complete_login(
-                request,
-                None,  # socialapp
-                None,  # token
-                response={'id_token': credential}
-            )
-            login.token = SocialToken(
-                app=google_app,
-                token=credential,
-                token_secret=''
+            # Get or create the social app
+            google_app, created = SocialApp.objects.get_or_create(
+                provider='google',
+                defaults={
+                    'name': 'Google',
+                    'client_id': client_id,
+                    'secret': getattr(settings, 'GOOGLE_OAUTH2_SECRET', '')
+                }
             )
             
+            # Ensure the app is associated with the current site
+            if not google_app.sites.exists():
+                from django.contrib.sites.models import Site
+                current_site = Site.objects.get_current()
+                google_app.sites.add(current_site)
+            
+            # Create a social token
+            token = SocialToken(
+                app=google_app,
+                token=credential,
+                token_secret='',
+                expires_at=None
+            )
+            
+            # Create a social login
+            login = providers.registry.by_id('google').sociallogin_from_response(
+                request,
+                {
+                    'id_token': credential,
+                    'email': idinfo.get('email'),
+                    'name': idinfo.get('name', ''),
+                    'given_name': idinfo.get('given_name', ''),
+                    'family_name': idinfo.get('family_name', ''),
+                    'picture': idinfo.get('picture', '')
+                }
+            )
+            
+            # Set the token
+            login.token = token
+            
+            # Complete the login process
             ret = complete_social_login(request, login)
             
             if not ret:
@@ -146,7 +174,8 @@ def google_one_tap_auth(request):
         except Exception as e:
             logger.exception("Error during social login completion")
             return JsonResponse({
-                'error': f'Authentication failed: {str(e)}'
+                'error': f'Authentication failed: {str(e)}',
+                'details': str(e)
             }, status=500)
 
     except Exception as e:

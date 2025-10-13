@@ -14,7 +14,7 @@
 
 {% if socialaccount_providers %}
     <div class="space-y-4">
-        {% for provider in socialaccount_providers %}
+        {% for provider in socialaccount_providers|dictsort:"id"|unique %}
             {% if provider.id == "github" %}
                 <a href="{% provider_login_url provider.id process='signup' %}" 
                    class="social-login-btn btn-github">

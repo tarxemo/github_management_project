@@ -12,6 +12,11 @@ A comprehensive Django-based application for managing GitHub repositories, users
 - **REST API**: Traditional REST endpoints for compatibility
 - **Deployment Ready**: Includes deployment scripts for production environments
 
+  ---
+  # Example of the screenshoot
+  
+<img width="2562" height="1662" alt="image" src="https://github.com/user-attachments/assets/cfa10b06-9bdb-4a84-bfb0-4528a077e514" />
+
 ## 🛠️ Tech Stack
 
 - **Backend**: Django 5.1.6

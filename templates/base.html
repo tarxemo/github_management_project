@@ -1,10 +1,6 @@
 <!DOCTYPE html>
 <html lang="en" class="h-full">
 <head>
-
-    {% load i18n %}
-    {% load account socialaccount %}
-    {% load google_auth_tags %}
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}GitHub Manager{% endblock %}</title>
@@ -123,12 +119,6 @@
 </head>
 <body class="h-full bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100">
     
-
-        <!-- Google One Tap Sign In -->
-        <div class="mt-8">
-            {% google_one_tap %}
-        </div>
-
     <!-- Mobile Menu Overlay -->
     <div id="mobile-overlay" class="hidden fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden" onclick="toggleMobileMenu()"></div>
 
@@ -434,7 +424,6 @@
         </div>
     </footer>
 
-    
     {% block extra_js %}{% endblock %}
 </body>
 </html>

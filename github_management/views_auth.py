@@ -55,7 +55,7 @@ def google_one_tap_auth(request):
         if request.method != "POST":
             return JsonResponse({"error": "Only POST method allowed"}, status=405)
 
-        # Parse request body or form
+        # Parse credential
         try:
             if request.body:
                 body = json.loads(request.body.decode("utf-8"))
@@ -68,7 +68,7 @@ def google_one_tap_auth(request):
         if not credential:
             return JsonResponse({"error": "Missing credential"}, status=400)
 
-        # Verify token via Google endpoint
+        # Verify token via Google
         google_app = SocialApp.objects.get(provider='google')
         token_info = requests.get(
             f"https://oauth2.googleapis.com/tokeninfo?id_token={credential}"
@@ -86,7 +86,7 @@ def google_one_tap_auth(request):
         if not email:
             return JsonResponse({"error": "Email not provided by Google"}, status=400)
 
-        # ✅ Safely build defaults for your custom user model
+        # Build defaults safely for custom user model
         defaults = {}
         if hasattr(User, "username"):
             defaults["username"] = name
@@ -95,12 +95,9 @@ def google_one_tap_auth(request):
         if hasattr(User, "last_name"):
             defaults["last_name"] = token_info.get("family_name", "")
 
-        user, created = User.objects.get_or_create(
-            email=email,
-            defaults=defaults
-        )
+        user, created = User.objects.get_or_create(email=email, defaults=defaults)
 
-        # Link social account
+        # Create or link social account
         social_account, _ = SocialAccount.objects.get_or_create(
             user=user,
             provider='google',
@@ -115,8 +112,8 @@ def google_one_tap_auth(request):
             defaults={"token": credential}
         )
 
-        # Log in user
-        login(request, user)
+        # ✅ Log in user with explicit backend
+        login(request, user, backend="allauth.account.auth_backends.AuthenticationBackend")
 
         return JsonResponse({
             "success": True,

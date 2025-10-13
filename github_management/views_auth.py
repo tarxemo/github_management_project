@@ -44,10 +44,8 @@ import json
 import requests
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
-from django.contrib.auth import login
+from django.contrib.auth import login, get_user_model
 from allauth.socialaccount.models import SocialAccount, SocialApp, SocialToken
-from allauth.socialaccount.models import SocialLogin
-from django.contrib.auth import get_user_model
 
 User = get_user_model()
 
@@ -57,7 +55,7 @@ def google_one_tap_auth(request):
         if request.method != "POST":
             return JsonResponse({"error": "Only POST method allowed"}, status=405)
 
-        # Handle both JSON and form requests
+        # Parse request body or form
         try:
             if request.body:
                 body = json.loads(request.body.decode("utf-8"))
@@ -70,14 +68,17 @@ def google_one_tap_auth(request):
         if not credential:
             return JsonResponse({"error": "Missing credential"}, status=400)
 
-        # Verify token with Google
+        # Verify token via Google endpoint
         google_app = SocialApp.objects.get(provider='google')
         token_info = requests.get(
             f"https://oauth2.googleapis.com/tokeninfo?id_token={credential}"
         ).json()
 
         if "error_description" in token_info:
-            return JsonResponse({"error": "Invalid token", "details": token_info}, status=400)
+            return JsonResponse({
+                "error": "Invalid token",
+                "details": token_info
+            }, status=400)
 
         email = token_info.get("email")
         name = token_info.get("name", email.split("@")[0])
@@ -85,13 +86,21 @@ def google_one_tap_auth(request):
         if not email:
             return JsonResponse({"error": "Email not provided by Google"}, status=400)
 
-        # Create or get user
+        # ✅ Safely build defaults for your custom user model
+        defaults = {}
+        if hasattr(User, "username"):
+            defaults["username"] = name
+        if hasattr(User, "first_name"):
+            defaults["first_name"] = token_info.get("given_name", "")
+        if hasattr(User, "last_name"):
+            defaults["last_name"] = token_info.get("family_name", "")
+
         user, created = User.objects.get_or_create(
             email=email,
-            defaults={"username": name}
+            defaults=defaults
         )
 
-        # Create or update social account
+        # Link social account
         social_account, _ = SocialAccount.objects.get_or_create(
             user=user,
             provider='google',
@@ -99,22 +108,22 @@ def google_one_tap_auth(request):
             defaults={"extra_data": token_info},
         )
 
-        # Store or refresh token
-        social_token, _ = SocialToken.objects.update_or_create(
+        # Save token
+        SocialToken.objects.update_or_create(
             app=google_app,
             account=social_account,
             defaults={"token": credential}
         )
 
-        # ✅ Log in the user directly (no allauth flow)
+        # Log in user
         login(request, user)
 
         return JsonResponse({
             "success": True,
             "user": {
                 "email": user.email,
-                "username": user.username,
-                "created": created
+                "created": created,
+                "name": getattr(user, "first_name", name)
             }
         })
 

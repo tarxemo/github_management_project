@@ -1,19 +1,13 @@
-{% extends "account/base_auth.html" %}
-
+{% extends "base.html" %}
 {% load i18n %}
 {% load account socialaccount %}
+{% load google_auth_tags %}
 
-{% block head_title %}{% trans "Sign Up" %}{% endblock %}
-
-{% block page_title %}{% trans "Create your account" %}{% endblock %}
-
-{% block page_subtitle %}{% trans "Join our community of developers" %}{% endblock %}
+{% block title %}Sign In | GitHub Manager{% endblock %}
 
 {% block content %}
-{% get_providers as socialaccount_providers %}
-
-{% if socialaccount_providers %}
-    <div class="space-y-4">
+<div class="min-h-screen flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
+    <div class="max-w-md w-full space-y-8">
         {% for provider in socialaccount_providers %}
             {% if provider.id == "github" %}
                 <a href="{% provider_login_url provider.id process='signup' %}" 
@@ -52,6 +46,7 @@
             </p>
         </div>
     </div>
+</div>
 </div>
 {% endblock %}
 

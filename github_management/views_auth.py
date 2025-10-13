@@ -141,8 +141,8 @@ def google_one_tap_auth(request):
     )
     
     # Get the Google provider with the app
-    from allauth.socialaccount.providers.registry import providers
-    provider = providers.by_id('google', request)
+    from allauth.socialaccount import providers
+    provider = providers.registry.by_id('google', request)
     
     # Ensure we have the app instance
     if not hasattr(provider, 'app'):

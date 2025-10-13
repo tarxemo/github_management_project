@@ -103,22 +103,25 @@ def google_one_tap_auth(request):
             google_app.sites.add(current_site)
             logger.debug(f"Associated Google app with site: {current_site.domain}")
 
-        # Create token and SocialLogin
-        token = SocialToken(app=google_app, token=credential)
-        social_login = SocialLogin(
-            account=SocialAccount(
-                provider='google',
-                uid=idinfo.get('sub'),
-                extra_data={
-                    'email': idinfo.get('email'),
-                    'name': idinfo.get('name', ''),
-                    'given_name': idinfo.get('given_name', ''),
-                    'family_name': idinfo.get('family_name', ''),
-                    'picture': idinfo.get('picture', ''),
-                },
-            ),
-            token=token,
+        # Create the SocialAccount instance
+        social_account = SocialAccount(
+            provider='google',
+            uid=idinfo.get('sub'),
+            extra_data={
+                'email': idinfo.get('email'),
+                'name': idinfo.get('name', ''),
+                'given_name': idinfo.get('given_name', ''),
+                'family_name': idinfo.get('family_name', ''),
+                'picture': idinfo.get('picture', ''),
+            },
         )
+
+        # Create the token and link it to the account
+        token = SocialToken(app=google_app, token=credential, account=social_account)
+
+        # Build the SocialLogin object
+        social_login = SocialLogin(account=social_account, token=token)
+
 
         # Complete social login
         response = complete_social_login(request, social_login)

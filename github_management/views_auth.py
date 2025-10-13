@@ -140,9 +140,13 @@ def google_one_tap_auth(request):
         expires_at=None
     )
     
-    # Get the Google provider
-    from allauth.socialaccount.providers.google.provider import GoogleProvider
-    provider = GoogleProvider(request)
+    # Get the Google provider with the app
+    from allauth.socialaccount.providers.registry import providers
+    provider = providers.by_id('google', request)
+    
+    # Ensure we have the app instance
+    if not hasattr(provider, 'app'):
+        provider.app = google_app
     
     # Create a social login
     login = provider.sociallogin_from_response(

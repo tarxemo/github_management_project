@@ -140,12 +140,8 @@ def google_one_tap_auth(request):
                 expires_at=None
             )
             
-            # Get the Google provider
-            from allauth.socialaccount.providers.google.provider import GoogleProvider
-            provider = GoogleProvider(request)
-            
             # Create a social login
-            login = provider.sociallogin_from_response(
+            login = providers.registry.by_id('google').sociallogin_from_response(
                 request,
                 {
                     'id_token': credential,

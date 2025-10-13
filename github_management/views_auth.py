@@ -88,12 +88,12 @@ def google_one_tap_auth(request):
 
         # Build defaults safely for custom user model
         defaults = {}
-        if hasattr(User, "username"):
-            defaults["username"] = name
+        if hasattr(User, "email"):
+            defaults["email"] = email
         if hasattr(User, "first_name"):
-            defaults["first_name"] = token_info.get("given_name", "")
+            defaults["first_name"] = token_info.get("given_name", "example")
         if hasattr(User, "last_name"):
-            defaults["last_name"] = token_info.get("family_name", "")
+            defaults["last_name"] = token_info.get("family_name", "example")
 
         user, created = User.objects.get_or_create(email=email, defaults=defaults)
 

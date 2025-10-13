@@ -35,16 +35,21 @@ class ProfileView(TemplateView):
 @require_http_methods(["POST"])
 def google_one_tap_auth(request):
     from google.oauth2 import id_token
-    from google.auth.transport import requests
-    from allauth.socialaccount.models import SocialApp
+    from google.auth.transport import requests as google_requests
+    from allauth.socialaccount.models import SocialApp, SocialAppManager
     from allauth.socialaccount.helpers import complete_social_login
     from django.contrib.auth import login
+    from django.conf import settings
     import logging
     import json
+    import traceback
 
     logger = logging.getLogger(__name__)
     
     try:
+        # Log the raw request data
+        logger.debug(f"Request POST data: {request.POST}")
+        
         credential = request.POST.get('credential')
         if not credential:
             logger.error("No credential provided in request")
@@ -54,29 +59,58 @@ def google_one_tap_auth(request):
 
         # Get the Google OAuth client ID
         try:
-            google_app = SocialApp.objects.get(provider='google')
-            client_id = google_app.client_id
-            logger.debug(f"Found Google app with client_id: {client_id[:5]}...")
-        except SocialApp.DoesNotExist:
-            logger.error("Google OAuth app is not configured in the admin")
+            # Try to get the first Google app
+            google_apps = SocialApp.objects.filter(provider='google')
+            logger.debug(f"Found {len(google_apps)} Google apps")
+            
+            if not google_apps.exists():
+                logger.error("No Google OAuth app is configured in the admin")
+                # Try to get client ID from environment as fallback
+                client_id = getattr(settings, 'GOOGLE_OAUTH2_CLIENT_ID', None)
+                if client_id:
+                    logger.info(f"Using client_id from settings: {client_id[:5]}...")
+                else:
+                    logger.error("GOOGLE_OAUTH2_CLIENT_ID not found in settings")
+                    return JsonResponse({
+                        'error': 'Google OAuth is not properly configured: No Google app in database and no GOOGLE_OAUTH2_CLIENT_ID in settings',
+                        'details': 'Please configure Google OAuth in the admin or set GOOGLE_OAUTH2_CLIENT_ID in settings'
+                    }, status=500)
+            else:
+                google_app = google_apps.first()
+                client_id = google_app.client_id
+                logger.debug(f"Using Google app: {google_app.name}, client_id: {client_id[:5]}...")
+                
+                # Log the sites associated with this app
+                if hasattr(google_app, 'sites'):
+                    site_ids = list(google_app.sites.values_list('id', flat=True))
+                    logger.debug(f"Google app is associated with site IDs: {site_ids}")
+                
+        except Exception as e:
+            logger.error(f"Error getting Google OAuth config: {str(e)}\n{traceback.format_exc()}")
             return JsonResponse({
-                'error': 'Google OAuth is not properly configured'
+                'error': f'Error getting Google OAuth configuration: {str(e)}',
+                'details': str(e)
             }, status=500)
 
         try:
+            logger.debug("Verifying Google ID token...")
             # Verify the ID token
             idinfo = id_token.verify_oauth2_token(
                 credential,
-                requests.Request(),
+                google_requests.Request(),
                 client_id
             )
-            logger.debug("Successfully verified Google ID token")
+            logger.debug(f"Successfully verified Google ID token. User email: {idinfo.get('email', 'No email')}")
+            logger.debug(f"Token info: {json.dumps({k: v for k, v in idinfo.items() if k in ['email', 'name', 'picture']}, indent=2)}")
+            
         except ValueError as e:
-            logger.error(f"Invalid Google ID token: {str(e)}")
+            logger.error(f"Invalid Google ID token: {str(e)}\nToken: {credential[:100]}...")
             return JsonResponse({
-                'error': 'Invalid Google authentication token'
+                'error': 'Invalid Google authentication token',
+                'details': str(e)
             }, status=400)
 
+        logger.debug("Creating social login...")
         # Create a social login
         from allauth.socialaccount.models import SocialLogin
         from allauth.socialaccount.models import SocialToken

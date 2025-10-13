@@ -146,4 +146,4 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 Your Name - [@your_twitter](https://twitter.com/your_twitter) - your.email@example.com
 
-Project Link: [https://github.com/yourusername/github-management](https://github.com/yourusername/github-management)
+Project Link: [https://github.tarxemo.com](https://github.tarxemo.com)

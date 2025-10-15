@@ -70,8 +70,6 @@ class UserFollowing(models.Model):
         if not from_user or not to_user or from_user == to_user:
             return None
             
-        from users.tasks import sync_github_followers_following
-        sync_github_followers_following.delay(self.id)
         # Use get_or_create to handle race conditions
         relationship, created = cls.objects.get_or_create(
             from_user=from_user,
@@ -92,4 +90,14 @@ class UserFollowing(models.Model):
             )
         except cls.DoesNotExist:
             return None
+    
+    @classmethod
+    def get_following(cls, user):
+        """Get all users that the given user is following."""
+        return cls.objects.filter(from_user=user)
+    
+    @classmethod
+    def get_followers(cls, user):
+        """Get all users that are following the given user."""
+        return cls.objects.filter(to_user=user)
     

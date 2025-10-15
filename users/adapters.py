@@ -35,8 +35,8 @@ class CustomSocialAccountAdapter(DefaultSocialAccountAdapter):
         if sociallogin.account.provider == 'github':
             extra_data = sociallogin.account.extra_data
             user.github_username = extra_data.get('login', '')
-            user.github_avatar_url = extra_data.get('avatar_url', '')
-            user.github_profile_url = extra_data.get('html_url', '')
+            user.avatar_url = extra_data.get('avatar_url', '')
+            user.profile_url = extra_data.get('html_url', '')
             
             if not user.email and 'email' in extra_data:
                 user.email = extra_data['email']

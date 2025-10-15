@@ -60,8 +60,7 @@ def sync_github_followers_following(self, user_id):
                 user_data = {
                     'email': email,
                     'github_username': username,
-                    'github_avatar_url': getattr(gh_user, 'avatar_url', ''),
-                    'github_profile_url': getattr(gh_user, 'html_url', ''),
+                    'avatar_url': getattr(gh_user, 'avatar_url', ''),
                     'is_active': False,  # External users are not active by default
                     'is_internal': False,  # This is an external GitHub user
                     'password': '!',  # Required field, but we'll set an unusable password

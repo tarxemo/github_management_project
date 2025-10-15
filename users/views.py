@@ -92,8 +92,8 @@ def relationship_management(request):
     except (ValueError, TypeError):
         per_page = 12
     
-    # Sync GitHub followers/following if user has a valid access token and not sync for one day
-    if user.github_access_token and user.last_synced_github_followers_following < timezone.now() - timedelta(days=1):
+    # Update this condition
+    if user.github_access_token:
         from users.tasks import sync_github_followers_following
         sync_github_followers_following.delay(user.id)
     

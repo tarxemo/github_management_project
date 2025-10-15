@@ -33,7 +33,7 @@ urlpatterns = [
     
     path('search/', SearchUsersView.as_view(), name='opensearch'),
     # Sitemap
-    path('sitemap.xml', sitemap, {'sitemaps': sitemaps}, name='sitemap'),
+    path('sitemap.xml', sitemap, {'sitemaps': sitemaps}, name='django.contrib.sitemaps.views.sitemap'),
     
     # Google One Tap authentication
     path('accounts/google/onetap/', google_one_tap_auth, name='google_one_tap_auth'),
@@ -46,3 +46,4 @@ urlpatterns = [
 # Serve media files in development
 if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+    urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)

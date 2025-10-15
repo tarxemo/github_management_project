@@ -1,16 +1,11 @@
 from django.contrib.sitemaps import Sitemap
 from django.urls import reverse
-from django.contrib.sites.models import Site
 from django.conf import settings
 from .models import Country, GitHubUser
 
 # Get the current site domain
 def get_base_url():
-    try:
-        current_site = Site.objects.get_current()
-        return f'https://{current_site.domain}'
-    except:
-        return 'https://github.tarxemo.com'  # Fallback URL
+    return 'https://github.tarxemo.com'  # Fallback URL
 
 base_url = get_base_url()
 
@@ -62,7 +57,7 @@ class UserSitemap(Sitemap):
         return GitHubUser.objects.all()
 
     def location(self, obj):
-        return reverse('github_management:user_detail', kwargs={'username': obj.username})
+        return reverse('github_management:user_detail', kwargs={'github_username': obj.github_username})
 
     def get_urls(self, **kwargs):
         return [{

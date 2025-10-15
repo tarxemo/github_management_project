@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}{{ github_user.username }} - GitHub User{% endblock %}
+{% block title %}{{ github_user.github_username }} - GitHub User{% endblock %}
 
 {% block content %}
 {% load humanize %}
@@ -9,13 +9,13 @@
         <div class="px-4 py-5 sm:px-6 flex items-center">
             <img class="h-16 w-16 rounded-full" 
                  src="{{ github_user.avatar_url|default:'https://www.gravatar.com/avatar/00000000000000000000000000000000?d=mp&f=y' }}" 
-                 alt="{{ github_user.username }}">
+                 alt="{{ github_user.github_username }}">
             <div class="ml-4">
                 <h3 class="text-lg leading-6 font-medium text-gray-900 dark:text-white">
-                    {{ github_user.get_full_name|default:github_user.username }}
+                    {{ github_user.get_full_name|default:github_user.github_username }}
                 </h3>
                 <p class="mt-1 max-w-2xl text-sm text-gray-500 dark:text-gray-400">
-                    @{{ github_user.username }}
+                    @{{ github_user.github_username }}
                 </p>
             </div>
             <div class="ml-auto">
@@ -84,16 +84,16 @@
                     <div class="flex items-center">
                         <img class="h-12 w-12 rounded-full" 
                              src="{{ user.avatar_url|default:'https://www.gravatar.com/avatar/00000000000000000000000000000000?d=mp&f=y' }}" 
-                             alt="{{ user.username }}">
+                             alt="{{ user.github_username }}">
                         <div class="ml-4">
                             <h4 class="text-lg font-medium text-gray-900 dark:text-white">
-                                <a href="{% url 'github_management:user_detail' username=user.username %}" 
+                                <a href="{% url 'github_management:user_detail' github_username=user.github_username %}" 
                                    class="hover:underline">
-                                    {{ user.get_full_name|default:user.username }}
+                                    {{ user.get_full_name|default:user.github_username }}
                                 </a>
                             </h4>
                             <p class="text-sm text-gray-500 dark:text-gray-400">
-                                @{{ user.username }}
+                                @{{ user.github_username }}
                             </p>
                             <div class="mt-1 flex items-center text-sm text-gray-500 dark:text-gray-400">
                                 <span class="mr-4">{{ user.contributions_last_year|intcomma }} contributions</span>

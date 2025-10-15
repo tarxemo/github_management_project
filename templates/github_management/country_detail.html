@@ -21,7 +21,8 @@
                     {% endif %}
                 </p>
             </div>
-            <div class="mt-4 flex md:mt-0 md:ml-4
+            <div class="mt-4 flex md:mt-0 md:ml-4">
+                {% if request.user.is_superuser %}
                 <form method="post" action="{% url 'github_management:fetch_users' slug=country.slug %}" class="inline-flex">
                     {% csrf_token %}
                     <button type="submit" 
@@ -33,6 +34,7 @@
                         {% if country.is_fetching %}Fetching...{% else %}Refresh Users{% endif %}
                     </button>
                 </form>
+                {% endif %}
             </div>
         </div>
 
@@ -63,14 +65,14 @@
                                     </div>
                                     <div class="ml-4">
                                         <div class="text-sm font-medium text-gray-900 dark:text-white">
-                                            {{ user.username|default:'-' }}
+                                            {{ user.github_username|default:'-' }}
                                         </div>
                                     </div>
                                 </div>
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap">
-                                <a href="https://github.com/{{ user.username }}" target="_blank" class="text-sm text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-300">
-                                    @{{ user.username }}
+                                <a href="https://github.com/{{ user.github_username }}" target="_blank" class="text-sm text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-300">
+                                    @{{ user.github_username }}
                                 </a>
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap">
@@ -159,6 +161,7 @@
             <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
                 No GitHub users found for {{ country.name }}. Try refreshing the user list.
             </p>
+            {% if request.user.is_superuser %}
             <div class="mt-6">
                 <form method="post" action="{% url 'github_management:fetch_users' slug=country.slug %}" class="inline-flex">
                     {% csrf_token %}
@@ -170,6 +173,7 @@
                     </button>
                 </form>
             </div>
+            {% endif %}
         </div>
         {% endif %}
     </div>

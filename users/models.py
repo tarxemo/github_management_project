@@ -6,59 +6,17 @@ from .abstract_models import BaseUser
 from django.conf import settings
 from django.utils import timezone
 from datetime import timedelta
-
-class CustomUserManager(BaseUserManager):
-    def create_user(self, email, password=None, **extra_fields):
-        if not email:
-            raise ValueError('The Email field must be set')
-        email = self.normalize_email(email)
-        user = self.model(email=email, **extra_fields)
-        user.set_password(password)
-        user.save(using=self._db)
-        return user
-
-    def create_superuser(self, email, password=None, **extra_fields):
-        extra_fields.setdefault('is_staff', True)
-        extra_fields.setdefault('is_superuser', True)
-        extra_fields.setdefault('is_active', True)
-
-        if extra_fields.get('is_staff') is not True:
-            raise ValueError('Superuser must have is_staff=True.')
-        if extra_fields.get('is_superuser') is not True:
-            raise ValueError('Superuser must have is_superuser=True.')
-
-        return self.create_user(email, password, **extra_fields)
-
-    def with_fresh_data(self, queryset=None):
-        """
-        Ensure all users in the queryset have fresh data.
-        Returns the same queryset for chaining.
-        """
-        if queryset is None:
-            queryset = self.get_queryset()
-            
-        # Identify users that need updates
-        stale_users = list(queryset.filter(
-            models.Q(fetched_at__isnull=True) | 
-            models.Q(fetched_at__lt=timezone.now() - timedelta(hours=24))
-        ).values_list('username', flat=True))
-        
-        # Trigger batch update if there are stale users
-        if stale_users:
-            from .tasks import update_users_stats_batch
-            update_users_stats_batch.delay(stale_users)
-            
-        return queryset
+from .managers import UserManager
 
 class User(AbstractUser, BaseUser):
-    username = None  # This tells Django to use email as the username
+    username = None  # We're using email as the username
     github_access_token = models.CharField(max_length=255, blank=True, null=True)
     is_internal = models.BooleanField(
         default=False,
         help_text="Designates whether this user is an internal user (registered in our system) or external (just a GitHub user)."
     )
     
-    objects = CustomUserManager()
+    objects = UserManager()
     
     USERNAME_FIELD = 'email'
     REQUIRED_FIELDS = []
@@ -67,8 +25,8 @@ class User(AbstractUser, BaseUser):
         swappable = 'AUTH_USER_MODEL'
         
     def __str__(self):
-        return f"{self.email} ({self.github_username or 'no GitHub'})"
-    
+        return self.email
+
     def get_full_name(self):
         return f"{self.first_name} {self.last_name}".strip() or self.email
 
@@ -112,6 +70,8 @@ class UserFollowing(models.Model):
         if not from_user or not to_user or from_user == to_user:
             return None
             
+        from users.tasks import sync_github_followers_following
+        sync_github_followers_following.delay(self.id)
         # Use get_or_create to handle race conditions
         relationship, created = cls.objects.get_or_create(
             from_user=from_user,

@@ -166,9 +166,9 @@
                     <div class="px-4 py-5 sm:p-6">
                         <div class="flex items-center">
                             <div class="flex-shrink-0">
-                                <img class="h-16 w-16 rounded-full" src="{{ user_obj.github_avatar_url|default:'https://via.placeholder.com/150' }}" alt="{{ user_obj.username }}">
+                                <img class="h-16 w-16 rounded-full" src="{{ user_obj.avatar_url|default:'https://www.gravatar.com/avatar/00000000000000000000000000000000?d=mp&f=y' }}" 
+                             alt="{{ user_obj.github_username }}">
                             </div>
-                            <div class="ml-4
                             <div class="ml-4">
                                 <h3 class="text-lg font-medium text-gray-900 dark:text-white">
                                     <a href="https://github.com/{{ user_obj.github_username }}" target="_blank" class="hover:text-indigo-600 dark:hover:text-indigo-400">
@@ -203,14 +203,14 @@
                                             <path d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2zm0 18c-4.418 0-8-3.582-8-8s3.582-8 8-8 8 3.582 8 8-3.582 8-8 8z"/>
                                             <path d="M13 7h-2v6h6v-2h-4z"/>
                                         </svg>
-                                        <span>{{ user_obj.follower_count|default:0 }} followers</span>
+                                        <span>{{ user_obj.followers|default:0 }} followers</span>
                                     </div>
                                     <div class="ml-4 flex items-center">
                                         <svg class="h-4 w-4 mr-1" fill="currentColor" viewBox="0 0 24 24">
                                             <path d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2zm0 18c-4.418 0-8-3.582-8-8s3.582-8 8-8 8 3.582 8 8-3.582 8-8 8z"/>
                                             <path d="M12 6v6l4 2-4 2v-8z"/>
                                         </svg>
-                                        <span>{{ user_obj.following_count|default:0 }} following</span>
+                                        <span>{{ user_obj.following|default:0 }} following</span>
                                     </div>
                                 </div>
                             </div>

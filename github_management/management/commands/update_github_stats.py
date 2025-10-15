@@ -23,13 +23,13 @@ class Command(BaseCommand):
                 self.update_user_stats(user)
                 updated += 1
             except Exception as e:
-                self.stderr.write(f"Error updating {user.username}: {str(e)}")
+                self.stderr.write(f"Error updating {user.github_username}: {str(e)}")
 
         self.stdout.write(f"Successfully updated {updated} users")
 
     def update_user_stats(self, user):
         github_api = GitHubAPI()
-        user_data = github_api.get_user(user.username)
+        user_data = github_api.get_user(user.github_username)
         
         if user_data:
             user.followers = user_data.get('followers', 0)

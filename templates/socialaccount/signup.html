@@ -50,11 +50,11 @@
     <label for="id_username" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
       {% trans "Username" %}
     </label>
-    <input type="text" name="username" id="id_username" value="{{ form.username.value|default:'' }}"
+    <input type="text" name="username" id="id_username" value="{{ form.github_username.value|default:'' }}"
            class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:text-white"
            placeholder="username" required>
-    {% if form.username.errors %}
-      <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ form.username.errors.0 }}</p>
+    {% if form.github_username.errors %}
+      <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ form.github_username.errors.0 }}</p>
     {% endif %}
   </div>
   

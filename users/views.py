@@ -8,6 +8,7 @@ from .forms import *
 from .services.github_service import GitHubService
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 from django.db.models import Q, Exists, OuterRef, Case, When, Value, CharField
+from django.contrib.auth import get_user_model
 
 @login_required
 def relationship_management(request):
@@ -27,7 +28,7 @@ def relationship_management(request):
     all_related_ids = set(following_ids) | set(follower_ids)
     
     # Start with base queryset of all related users
-    users_qs = User.objects.filter(id__in=all_related_ids).select_related()
+    users_qs = get_user_model().objects.filter(id__in=all_related_ids).select_related()
     
     # Annotate each user with their relationship status
     users_qs = users_qs.annotate(
@@ -97,6 +98,7 @@ def relationship_management(request):
         users_page = paginator.page(1)
     except EmptyPage:
         users_page = paginator.page(paginator.num_pages)
+    User.objects.with_fresh_data(users_page)
     context = {
         'users': users_page,
         'stats': stats,

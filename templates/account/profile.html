@@ -95,16 +95,16 @@
                                     <img class="h-16 w-16 rounded-full" src="{{ user.socialaccount_set.all.0.get_avatar_url }}" alt="">
                                 {% else %}
                                     <div class="h-16 w-16 rounded-full bg-indigo-100 dark:bg-indigo-900 flex items-center justify-center text-indigo-600 dark:text-indigo-300 text-2xl font-medium">
-                                        {{ user.username|first|upper }}
+                                        {{ user.github_username|first|upper }}
                                     </div>
                                 {% endif %}
                             </div>
                             <div class="ml-4">
                                 <h2 class="text-xl font-bold text-gray-900 dark:text-white">
-                                    {{ user.get_full_name|default:user.username }}
+                                    {{ user.get_full_name|default:user.github_username }}
                                 </h2>
                                 <p class="text-sm text-gray-500 dark:text-gray-400">
-                                    @{{ user.username }}
+                                    @{{ user.github_username }}
                                 </p>
                             </div>
                         </div>

@@ -34,6 +34,7 @@ class GitHubUser(BaseUser):
     """Model to store GitHub user information and their statistics."""
     country = models.ForeignKey('Country', on_delete=models.CASCADE, related_name='users')
     rank = models.PositiveIntegerField(default=0)
+    
     objects = GitHubUserManager()
     
     class Meta:
@@ -49,14 +50,14 @@ class GitHubUser(BaseUser):
    
     def get_absolute_url(self):
         """Return the canonical URL for this GitHub user."""
-        return reverse('github_management:user_detail', kwargs={'username': self.github_username})
+        return reverse('github_management:user_detail', kwargs={'github_username': self.github_username})
 
     @property
     def full_name(self):
-        """Return the full name if available, otherwise return username."""
+        """Return the full name if available, otherwise return github_username."""
         if self.first_name and self.last_name:
             return f"{self.first_name} {self.last_name}"
-        return self.username
+        return self.github_username
         
     def is_followed_by(self, user):
         """Check if this GitHub user is already followed by the given user."""

@@ -12,6 +12,9 @@ import random
 import logging
 from .models import Country, GitHubUser, GitHubFollowAction
 from users.models import UserFollowing
+from django.contrib.auth.mixins import UserPassesTestMixin
+from django.views.generic import View
+from .tasks import fetch_all_countries_users
 
 logger = logging.getLogger(__name__)
 
@@ -19,7 +22,7 @@ from django.views.generic import ListView
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.db.models import Q
 
-class CountryListView(LoginRequiredMixin, ListView):
+class CountryListView( ListView):
     """View to list all available countries with search and pagination"""
     model = Country
     template_name = 'github_management/country_list.html'
@@ -44,7 +47,21 @@ class CountryListView(LoginRequiredMixin, ListView):
         context['active_tab'] = 'countries'
         return context
 
-class CountryDetailView(LoginRequiredMixin, View):
+class FetchAllCountriesView(View):
+    """View to trigger fetching users for all countries"""
+    
+    def get(self, request, *args, **kwargs):
+        if request.user.is_superuser:
+            task = fetch_all_countries_users.delay()
+            messages.success(
+                request,
+                f"Started fetching users for all countries. Task ID: {task.id}"
+            )
+        else:
+            messages.error(request, "You do not have permission to perform this action.")
+        return redirect('github_management:country_list')
+    
+class CountryDetailView(View):
     """View to show users for a specific country"""
     def get(self, request, slug):
         country = get_object_or_404(Country, slug=slug)
@@ -99,7 +116,7 @@ class FetchStatusView(View):
             'user_count': country.user_count
         })
 
-class FollowRandomUsersView(LoginRequiredMixin, View):
+class FollowRandomUsersView(View):
     """View to follow random users from any country"""
     def get(self, request):
         # Get users not already followed by the current user, ordered randomly
@@ -121,6 +138,11 @@ class FollowRandomUsersView(LoginRequiredMixin, View):
         })
     
     def post(self, request):
+        if not request.user.is_authenticated:
+            #set message
+            messages.error(request, "You must be logged in to follow users.")
+            return redirect('github_management:follow_random')
+        
         count = int(request.POST.get('count', 10))  # Default to 10 users
         country_id = request.POST.get('country')
         
@@ -147,7 +169,7 @@ class FollowRandomUsersView(LoginRequiredMixin, View):
                 GitHubFollowAction.follow_github_user(request.user, user)
                 followed += 1
             except Exception as e:
-                logger.error(f"Error following user {user.username}: {e}")
+                logger.error(f"Error following user {user.github_username}: {e}")
         
         messages.success(
             request, 
@@ -156,29 +178,40 @@ class FollowRandomUsersView(LoginRequiredMixin, View):
         return redirect('github_management:follow_random')
     
     
-class FollowUserView(LoginRequiredMixin, View):
+class FollowUserView(View):
     """API endpoint to follow a specific GitHub user"""
     def post(self, request, user_id):
+        if not request.user.is_authenticated:
+            messages.error(request, "You must be logged in to follow users.")
+            return JsonResponse({
+                'success': False,
+                'message': 'You must be logged in to follow users.'
+            }, status=401)
+            
         github_user = get_object_or_404(GitHubUser, id=user_id)
         
         try:
             follow_action = GitHubFollowAction.follow_github_user(request.user, github_user)
             return JsonResponse({
                 'success': True,
-                'message': f'Started following {github_user.username}',
+                'message': f'Started following {github_user.github_username}',
                 'action_id': follow_action.id
             })
         except Exception as e:
-            logger.error(f"Error following user {github_user.username}: {e}")
+            logger.error(f"Error following user {github_user.github_username}: {e}")
             return JsonResponse({
                 'success': False,
                 'message': f'Failed to follow user: {str(e)}'
             }, status=400)
 
 
-class UnfollowNonFollowersView(LoginRequiredMixin, View):
+class UnfollowNonFollowersView(View):
     """View to unfollow users who haven't followed back"""
     def get(self, request):
+        if not request.user.is_authenticated:
+            messages.error(request, "You must be logged in to unfollow users.")
+            return redirect('github_management:unfollow_non_followers')
+        
         # Get pending follow actions that haven't been followed back
         pending_actions = GitHubFollowAction.objects.filter(
             user=request.user,
@@ -203,9 +236,16 @@ class UnfollowNonFollowersView(LoginRequiredMixin, View):
         return redirect('github_management:unfollow_non_followers')
 
 
-class UpdateFollowStatusView(LoginRequiredMixin, View):
+class UpdateFollowStatusView(View):
     """API endpoint to update follow status for a user"""
     def post(self, request, action_id):
+        if not request.user.is_authenticated:
+            messages.error(request, "You must be logged in to update follow status.")
+            return JsonResponse({
+                'success': False,
+                'message': 'You must be logged in to update follow status.'
+            }, status=401)
+        
         try:
             action = GitHubFollowAction.objects.get(
                 id=action_id,
@@ -231,22 +271,26 @@ class UpdateFollowStatusView(LoginRequiredMixin, View):
                 'message': str(e)
             }, status=400)
 
-class UserDetailView(LoginRequiredMixin, View):
+class UserDetailView(View):
     """View to show detailed information about a GitHub user"""
-    def get(self, request, username):
-        user = get_object_or_404(GitHubUser, username__iexact=username)
+    def get(self, request, github_username):
+        user = get_object_or_404(GitHubUser, github_username__iexact=github_username)
         
         # Check if the current user is following this GitHub user
-        is_following = GitHubFollowAction.objects.filter(
-            user=request.user,
-            github_user=user
-        ).exists()
+        # Only check if the user is authenticated
+        is_following = False
+        if request.user.is_authenticated:
+            is_following = GitHubFollowAction.objects.filter(
+                user=request.user,
+                github_user=user
+            ).exists()
         
         # Get similar users from the same country
         similar_users = GitHubUser.objects.filter(
             country=user.country
         ).exclude(id=user.id).order_by('-contributions_last_year')[:5]
         GitHubUser.objects.with_fresh_data(similar_users)
+        
         context = {
             'github_user': user,
             'is_following': is_following,
@@ -255,6 +299,7 @@ class UserDetailView(LoginRequiredMixin, View):
         }
         
         return render(request, 'github_management/user_detail.html', context)
+
     
 
 class SearchUsersView(View):
@@ -264,13 +309,13 @@ class SearchUsersView(View):
             return JsonResponse({'results': []})
 
         users = GitHubUser.objects.filter(
-            Q(username__icontains=query) |
+            Q(github_username__icontains=query) |
             Q(first_name__icontains=query) |
             Q(last_name__icontains=query)
         )[:10]  # Limit to 10 results
 
         results = [{
-            'username': user.username,
+            'github_username': user.github_username,
             'name': user.full_name,
             'avatar_url': user.avatar_url or '',
             'url': user.get_absolute_url(),

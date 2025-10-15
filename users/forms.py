@@ -19,7 +19,7 @@ class CustomSignupForm(AllAuthSignupForm):
         # Set is_internal to True for manually registered users
         user.is_internal = True
         # Use the email prefix as a username for compatibility
-        user.username = user.email.split('@')[0]
+        user.github_username = user.email.split('@')[0]
         user.save()
         return user
 

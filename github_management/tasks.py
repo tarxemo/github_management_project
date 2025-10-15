@@ -9,6 +9,16 @@ from .services.github_api import GitHubAPIClient
 
 logger = logging.getLogger(__name__)
 
+# github_management/tasks.py
+
+@shared_task(bind=True)
+def fetch_all_countries_users(self):
+    """Background task to fetch users for all countries"""
+    countries = Country.objects.all()
+    for country in countries:
+        fetch_users_for_country.delay(country.id)
+    return f"Started fetching users for {countries.count()} countries"
+
 @shared_task(bind=True)
 def fetch_users_for_country(self, country_id):
     """Background task to fetch users for a specific country"""
@@ -21,7 +31,7 @@ def fetch_users_for_country(self, country_id):
         user_objs = []
         for user_data in users:
             user_objs.append(GitHubUser(
-                username=user_data['username'],
+                github_username=user_data['username'],
                 first_name=user_data.get('first_name', ''),
                 last_name=user_data.get('last_name', ''),
                 followers=user_data.get('followers', 0),
@@ -32,10 +42,10 @@ def fetch_users_for_country(self, country_id):
                 avatar_url=user_data.get('avatar_url', f"https://github.com/{user_data['username']}.png")
             ))
         
-        existing = GitHubUser.objects.filter(username__in=[obj.username for obj in user_objs])
-        existing_usernames = {user.username for user in existing}
+        existing = GitHubUser.objects.filter(github_username__in=[obj.github_username for obj in user_objs])
+        existing_usernames = {user.github_username for user in existing}
 
-        to_create = [obj for obj in user_objs if obj.username not in existing_usernames]
+        to_create = [obj for obj in user_objs if obj.github_username not in existing_usernames]
         GitHubUser.objects.bulk_create(to_create)
         
         # Update country stats
@@ -53,22 +63,33 @@ def fetch_users_for_country(self, country_id):
         Country.objects.filter(id=country_id).update(is_fetching=False)
 
 @shared_task
-def update_users_stats_batch(user_ids):
+def update_users_stats_batch(user_ids, model_name):
     """
     Update multiple users' stats in a single task using their primary keys.
     """
     from .models import GitHubUser
+    from users.models import User
     from .services.github_api import GitHubAPI
     from django.utils import timezone
-    
+
     github_api = GitHubAPI()
-    
+
+    # Map model name string to actual model class
+    model_map = {
+        "GitHubUser": GitHubUser,
+        "User": User,
+    }
+
+    model_class = model_map.get(model_name)
+    if not model_class:
+        raise ValueError(f"Invalid model name: {model_name}")
+
     # Get all users at once to minimize database queries
-    users = GitHubUser.objects.in_bulk(user_ids)
-    
+    users = model_class.objects.in_bulk(user_ids)
+
     for user_id, user in users.items():
         try:
-            user_data = github_api.get_user(user.username)
+            user_data = github_api.get_user(user.github_username)
             
             if user_data:
                 update_fields = ['fetched_at']
@@ -100,5 +121,5 @@ def update_users_stats_batch(user_ids):
                     user.save(update_fields=update_fields)
                     
         except Exception as e:
-            logger.error(f"Error updating user {user.username}: {e}")
+            logger.error(f"Error updating user {user.github_username}: {e}")
             continue  # Continue with next user even if one fails

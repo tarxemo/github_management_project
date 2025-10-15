@@ -76,6 +76,7 @@ INSTALLED_APPS = [
     'django.contrib.sites',
 
     'django.contrib.humanize',
+    'django.contrib.sitemaps',
 
     # Third-party apps
     'graphene_django',
@@ -220,7 +221,7 @@ SOCIALACCOUNT_EMAIL_VERIFICATION = 'none'
 SOCIALACCOUNT_STORE_TOKENS = True
 ACCOUNT_DEFAULT_HTTP_PROTOCOL = 'https'
 
-# Session settings
+# # Session settings
 SESSION_COOKIE_AGE = 1209600  # 2 weeks in seconds
 SESSION_COOKIE_SECURE = True
 CSRF_COOKIE_SECURE = True

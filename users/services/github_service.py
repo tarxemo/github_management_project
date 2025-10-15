@@ -57,7 +57,13 @@ class GitHubService:
                         'is_internal': False
                     }
                 )
-                
+                if created:
+                    target_user_obj.avatar_url = target_user.avatar_url
+                    target_user_obj.first_name = target_user.name
+                    target_user_obj.last_name = target_user.name
+                    target_user_obj.is_active = True
+                    target_user_obj.is_internal = True
+                    target_user_obj.save()
                 # Create or update the following relationship
                 UserFollowing.objects.update_or_create(
                     from_user=user,

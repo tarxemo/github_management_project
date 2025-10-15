@@ -21,7 +21,7 @@ class CustomSocialAccountAdapter(DefaultSocialAccountAdapter):
 
     def populate_username(self, request, user):
         if hasattr(user, 'email') and user.email:
-            user.username = user.email
+            user.github_username = user.email
         return user
 
     def new_user(self, request, sociallogin):

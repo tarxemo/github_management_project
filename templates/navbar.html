@@ -36,10 +36,10 @@
 <!-- Navigation -->
 <nav class="sticky top-0 z-50 bg-white/80 dark:bg-gray-800/80 backdrop-blur-md border-b border-gray-200 dark:border-gray-700 shadow-sm">
     <div class="max-w-7xl mx-auto px-3 sm:px-4 lg:px-6">
-        <div class="flex justify-between h-16">
+        <div class="flex justify-between items-center h-16">
             <!-- Logo and Brand -->
-            <div class="flex items-center min-w-0">
-                <a href="{% url 'home' %}" class="flex items-center group flex-shrink-0">
+            <div class="flex items-center min-w-0 flex-shrink-0">
+                <a href="{% url 'home' %}" class="flex items-center group">
                     <div class="relative">
                         <i class="fab fa-github text-2xl sm:text-3xl text-indigo-600 dark:text-indigo-400 group-hover:scale-110 transition-transform duration-200"></i>
                         <div class="absolute -top-1 -right-1 w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
@@ -50,20 +50,22 @@
                 </a>
                 
                 <!-- Desktop Navigation -->
-                {% if user.is_authenticated %}
                 <div class="hidden lg:ml-6 xl:ml-10 lg:flex lg:space-x-1">
+                    {% if user.is_authenticated %}
                     <a href="{% url 'profile' %}" 
                        class="px-3 xl:px-4 py-2 rounded-lg text-sm font-medium text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/30 hover:bg-indigo-100 dark:hover:bg-indigo-900/50"
                        title="Dashboard">
                         <i class="fas fa-home mr-0 xl:mr-2"></i>
                         <span class="hidden xl:inline">Dashboard</span>
                     </a>
+                    {% endif %}
                     <a href="{% url 'github_management:country_list' %}" 
                        class="px-3 xl:px-4 py-2 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
                        title="Countries">
                         <i class="fas fa-globe mr-0 xl:mr-2"></i>
                         <span class="hidden xl:inline">Countries</span>
                     </a>
+                    {% if user.is_authenticated %}
                     <a href="{% url 'github_management:follow_random' %}" 
                        class="px-3 xl:px-4 py-2 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
                        title="Follow">
@@ -76,31 +78,29 @@
                         <i class="fas fa-user-minus mr-0 xl:mr-2"></i>
                         <span class="hidden xl:inline">Unfollow</span>
                     </a>
+                    {% endif %}
                 </div>
-                {% endif %}
+            </div>
+
+            <!-- Center Search Bar (Mobile and Desktop) -->
+            <div class="flex-1 flex justify-center px-2 lg:px-4 max-w-md">
+                <div class="relative w-full">
+                    <input type="text" 
+                           id="user-search" 
+                           class="w-full px-3 xl:px-4 py-2 pl-9 xl:pl-10 text-sm text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 border border-transparent rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent" 
+                           placeholder="Search users...">
+                    <div class="absolute left-2.5 xl:left-3 top-2.5 text-gray-400">
+                        <i class="fas fa-search text-sm"></i>
+                    </div>
+                    <!-- Search Results Dropdown -->
+                    <div id="search-results" class="hidden absolute z-50 w-full min-w-[280px] max-w-[380px] left-1/2 transform -translate-x-1/2 mt-1 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 max-h-96 overflow-y-auto">
+                        <!-- Results will be populated here -->
+                    </div>
+                </div>
             </div>
 
             <!-- Right Side Actions -->
-            <div class="flex items-center space-x-1 sm:space-x-2">
-                {% if user.is_authenticated %}
-                    <!-- Search Bar - Desktop Only -->
-                    <div class="relative hidden lg:block ml-2 xl:ml-4">
-                        <div class="relative">
-                            <input type="text" 
-                                   id="user-search" 
-                                   class="w-48 xl:w-64 px-3 xl:px-4 py-2 pl-9 xl:pl-10 text-sm text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 border border-transparent rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent" 
-                                   placeholder="Search users...">
-                            <div class="absolute left-2.5 xl:left-3 top-2.5 text-gray-400">
-                                <i class="fas fa-search text-sm"></i>
-                            </div>
-                        </div>
-                        <!-- Search Results Dropdown -->
-                        <div id="search-results" class="hidden absolute z-50 w-80 mt-1 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 max-h-96 overflow-y-auto">
-                            <!-- Results will be populated here -->
-                        </div>
-                    </div>
-                {% endif %}
-
+            <div class="flex items-center space-x-1 sm:space-x-2 flex-shrink-0">
                 <!-- Theme Toggle -->
                 <button onclick="toggleTheme()" 
                         class="p-2 rounded-lg text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors duration-200"
@@ -178,10 +178,10 @@
                             <span class="hidden sm:inline">Sign in</span>
                             <i class="fas fa-sign-in-alt sm:hidden"></i>
                         </a>
-                        <a href="{% url 'account_signup' %}" 
-                           class="px-3 sm:px-4 py-2 rounded-lg text-sm font-medium text-white bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 shadow-md hover:shadow-lg transition-all duration-200">
-                            <span class="hidden sm:inline">Sign up</span>
-                            <i class="fas fa-user-plus sm:hidden"></i>
+                        <a href="{% url 'github_management:country_list' %}" 
+                           class="px-3 sm:px-4 py-2 rounded-lg text-sm md:hidden font-medium text-white hover:shadow-lg transition-all duration-200">
+                            <span class="hidden md:inline">Countries</span>
+                            <i class="fas fa-globe md:hidden"></i>
                         </a>
                     </div>
                 {% endif %}
@@ -193,7 +193,7 @@
 <!-- Mobile Sidebar Menu -->
 {% if user.is_authenticated %}
 <div id="mobile-menu" 
-     class="lg:hidden fixed top-0 right-0 h-full w-80 max-w-[85vw] bg-white dark:bg-gray-800 shadow-2xl z-50 transform translate-x-full">
+     class="lg:hidden fixed top-0 right-0 h-full w-80 max-w-[85vw] bg-white dark:bg-gray-800 shadow-2xl z-50 transform translate-x-full transition-transform duration-300">
     <div class="h-full flex flex-col">
         <!-- Mobile Menu Header -->
         <div class="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
@@ -236,23 +236,6 @@
                     class="p-2 rounded-lg text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 flex-shrink-0">
                 <i class="fas fa-times text-xl"></i>
             </button>
-        </div>
-
-        <!-- Mobile Search Bar -->
-        <div class="p-4 border-b border-gray-200 dark:border-gray-700">
-            <div class="relative">
-                <input type="text" 
-                       id="mobile-user-search" 
-                       class="w-full px-4 py-2 pl-10 text-sm text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 border border-transparent rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent" 
-                       placeholder="Search users...">
-                <div class="absolute left-3 top-2.5 text-gray-400">
-                    <i class="fas fa-search"></i>
-                </div>
-            </div>
-            <!-- Mobile Search Results -->
-            <div id="mobile-search-results" class="hidden mt-2 bg-gray-50 dark:bg-gray-700/50 rounded-lg shadow-inner border border-gray-200 dark:border-gray-600 max-h-64 overflow-y-auto">
-                <!-- Results will be populated here -->
-            </div>
         </div>
 
         <!-- Mobile Menu Items -->
@@ -305,20 +288,32 @@
         </div>
     </div>
 </div>
+{% endif %}
+
+<!-- Mobile Bottom Navigation for Guest Users -->
+{% if not user.is_authenticated %}
+<div class="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 dark:bg-gray-800/95 backdrop-blur-md border-t border-gray-200 dark:border-gray-700 shadow-lg">
+    <div class="flex justify-around items-center h-16 px-4">
+        <a href="{% url 'github_management:country_list' %}" 
+           class="flex flex-col items-center justify-center flex-1 text-gray-700 dark:text-gray-300 hover:text-indigo-600 dark:hover:text-indigo-400">
+            <i class="fas fa-globe text-xl mb-1"></i>
+            <span class="text-xs">Countries</span>
+        </a>
+    </div>
+</div>
+{% endif %}
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // Desktop Search
+    // Search functionality
     const searchInput = document.getElementById('user-search');
     const searchResults = document.getElementById('search-results');
-    
-    // Mobile Search
-    const mobileSearchInput = document.getElementById('mobile-user-search');
-    const mobileSearchResults = document.getElementById('mobile-search-results');
     
     let searchTimeout;
 
     function handleSearch(inputElement, resultsElement) {
+        if (!inputElement || !resultsElement) return;
+        
         inputElement.addEventListener('input', function(e) {
             clearTimeout(searchTimeout);
             const query = e.target.value.trim();
@@ -372,7 +367,7 @@ document.addEventListener('DOMContentLoaded', function() {
         resultsElement.classList.remove('hidden');
     }
 
-    // Initialize search for both desktop and mobile
+    // Initialize search
     if (searchInput && searchResults) {
         handleSearch(searchInput, searchResults);
         
@@ -383,17 +378,31 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     }
-    
-    if (mobileSearchInput && mobileSearchResults) {
-        handleSearch(mobileSearchInput, mobileSearchResults);
-        
-        // Close mobile search results when clicking outside
-        document.addEventListener('click', function(e) {
-            if (!mobileSearchResults.contains(e.target) && e.target !== mobileSearchInput) {
-                mobileSearchResults.classList.add('hidden');
-            }
-        });
-    }
 });
+
+// Mobile menu functions
+function toggleMobileMenu() {
+    const mobileMenu = document.getElementById('mobile-menu');
+    const mobileOverlay = document.getElementById('mobile-overlay');
+    
+    if (mobileMenu.classList.contains('translate-x-full')) {
+        mobileMenu.classList.remove('translate-x-full');
+        mobileOverlay.classList.remove('hidden');
+    } else {
+        mobileMenu.classList.add('translate-x-full');
+        mobileOverlay.classList.add('hidden');
+    }
+}
+
+// Theme toggle function
+function toggleTheme() {
+    const html = document.documentElement;
+    if (html.classList.contains('dark')) {
+        html.classList.remove('dark');
+        localStorage.setItem('theme', 'light');
+    } else {
+        html.classList.add('dark');
+        localStorage.setItem('theme', 'dark');
+    }
+}
 </script>
-{% endif %}

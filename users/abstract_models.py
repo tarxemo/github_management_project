@@ -10,6 +10,7 @@ class BaseUser(models.Model):
     followers = models.PositiveIntegerField(default=0)
     following = models.PositiveIntegerField(default=0)
     avatar_url = models.URLField(max_length=255, blank=True, null=True)
+    profile_url = models.URLField(max_length=255, blank=True, null=True)
     created_at = models.DateTimeField(default=timezone.now)
     fetched_at = models.DateTimeField(auto_now=True)
     is_updating = models.BooleanField(default=False)

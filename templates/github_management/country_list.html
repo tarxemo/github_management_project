@@ -36,6 +36,16 @@
                     <span class="text-sm text-gray-500 dark:text-gray-400">
                         {{ page_obj.paginator.count }} countries
                     </span>
+                    {% if user.is_superuser %}
+                    <a href="{% url 'github_management:fetch_all_countries' %}" 
+                    onclick="return confirm('This will fetch users for all countries. Continue?')"
+                    class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                        <svg class="-ml-1 mr-2 h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                        </svg>
+                        Fetch All Countries
+                    </a>
+                    {% endif %}
                 </div>
             </div>
         </div>

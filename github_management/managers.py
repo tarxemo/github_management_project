@@ -38,6 +38,6 @@ class GitHubUserManager(models.Manager):
                 # Trigger batch update if there are stale users
                 if stale_users:
                     from .tasks import update_users_stats_batch
-                    update_users_stats_batch.delay(stale_users)
+                    update_users_stats_batch.delay(stale_users, "GithubUser")
         
         return queryset_or_page

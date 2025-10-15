@@ -75,6 +75,8 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'django.contrib.sites',
 
+    'django.contrib.humanize',
+
     # Third-party apps
     'graphene_django',
     'graphql_jwt.refresh_token.apps.RefreshTokenConfig',

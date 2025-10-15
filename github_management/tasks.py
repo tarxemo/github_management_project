@@ -52,11 +52,10 @@ def fetch_users_for_country(self, country_id):
         # Make sure to mark as not fetching even if there was an error
         Country.objects.filter(id=country_id).update(is_fetching=False)
 
-# In github_management/tasks.py (add this to your existing tasks)
 @shared_task
-def update_users_stats_batch(usernames):
+def update_users_stats_batch(user_ids):
     """
-    Update multiple users' stats in a single task.
+    Update multiple users' stats in a single task using their primary keys.
     """
     from .models import GitHubUser
     from .services.github_api import GitHubAPI
@@ -64,10 +63,12 @@ def update_users_stats_batch(usernames):
     
     github_api = GitHubAPI()
     
-    for username in usernames:
+    # Get all users at once to minimize database queries
+    users = GitHubUser.objects.in_bulk(user_ids)
+    
+    for user_id, user in users.items():
         try:
-            user = GitHubUser.objects.get(username=username)
-            user_data = github_api.get_user(username)
+            user_data = github_api.get_user(user.username)
             
             if user_data:
                 update_fields = ['fetched_at']
@@ -99,5 +100,5 @@ def update_users_stats_batch(usernames):
                     user.save(update_fields=update_fields)
                     
         except Exception as e:
-            logger.error(f"Error updating user {username}: {e}")
+            logger.error(f"Error updating user {user.username}: {e}")
             continue  # Continue with next user even if one fails

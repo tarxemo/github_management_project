@@ -7,6 +7,7 @@ from datetime import timedelta
 from users.services.github_service import GitHubService
 from django.urls import reverse
 from .managers import GitHubUserManager
+from users.abstract_models import BaseUser
 
 class Country(models.Model):
     """Model to store available countries from committers.top"""
@@ -29,38 +30,26 @@ class Country(models.Model):
     def __str__(self):
         return self.name
 
-class GitHubUser(models.Model):
+class GitHubUser(BaseUser):
     """Model to store GitHub user information and their statistics."""
-    username = models.CharField(max_length=100, unique=True)
-    first_name = models.CharField(max_length=100, blank=True, null=True)
-    last_name = models.CharField(max_length=100, blank=True, null=True)
-    followers = models.PositiveIntegerField(default=0)
-    following = models.PositiveIntegerField(default=0)
-    contributions_last_year = models.PositiveIntegerField(default=0)
     country = models.ForeignKey('Country', on_delete=models.CASCADE, related_name='users')
     rank = models.PositiveIntegerField(default=0)
-    fetched_at = models.DateTimeField(auto_now=True)
-    profile_url = models.URLField(max_length=255, blank=True, null=True)
-    avatar_url = models.URLField(max_length=255, blank=True, null=True)
-    
     objects = GitHubUserManager()
     
     class Meta:
-        ordering = ['-contributions_last_year']
         verbose_name = 'GitHub User'
         verbose_name_plural = 'GitHub Users'
         indexes = [
             models.Index(fields=['country']),
-            models.Index(fields=['contributions_last_year']),
             models.Index(fields=['rank']),
         ]
     
     def __str__(self):
-        return f"{self.username} ({self.country.name if self.country else 'No Country'}) - {self.contributions_last_year} contributions"
+        return f"{self.github_username} ({self.country.name if self.country else 'No Country'})"
    
     def get_absolute_url(self):
         """Return the canonical URL for this GitHub user."""
-        return reverse('github_management:user_detail', kwargs={'username': self.username})
+        return reverse('github_management:user_detail', kwargs={'username': self.github_username})
 
     @property
     def full_name(self):
@@ -76,7 +65,7 @@ class GitHubUser(models.Model):
             return False
         return UserFollowing.objects.filter(
             from_user=user,
-            to_user__github_username__iexact=self.username
+            to_user__github_username__iexact=self.github_username
         ).exists()
 
 
@@ -126,7 +115,7 @@ class GitHubFollowAction(models.Model):
         
         # Check if the GitHub user is now following back
         is_following_back = UserFollowing.objects.filter(
-            from_user__github_username__iexact=self.github_user.username,
+            from_user__github_username__iexact=self.github_user.github_username,
             to_user=self.user
         ).exists()
         
@@ -161,7 +150,7 @@ class GitHubFollowAction(models.Model):
             github_user=GitHubUser.objects.get(id=github_user.id),
             status=cls.FollowStatus.PENDING
         )
-        GitHubService.follow_user_on_github(user, GitHubUser.objects.get(id=github_user.id).username)
+        GitHubService.follow_user_on_github(user, GitHubUser.objects.get(id=github_user.id).github_username)
         return follow_action
     
     @classmethod
@@ -178,7 +167,7 @@ class GitHubFollowAction(models.Model):
         
         unfollowed_count = 0
         for action in pending_actions:
-            GitHubService.unfollow_user_on_github(user, action.github_user.username)
+            GitHubService.unfollow_user_on_github(user, action.github_user.github_username)
             unfollowed_count += 1
             
         return unfollowed_count

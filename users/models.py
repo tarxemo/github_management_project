@@ -2,8 +2,10 @@
 from django.contrib.auth.models import AbstractUser, BaseUserManager
 from django.db import models
 from django.utils.translation import gettext_lazy as _
-
-
+from .abstract_models import BaseUser
+from django.conf import settings
+from django.utils import timezone
+from datetime import timedelta
 
 class CustomUserManager(BaseUserManager):
     def create_user(self, email, password=None, **extra_fields):
@@ -48,16 +50,9 @@ class CustomUserManager(BaseUserManager):
             
         return queryset
 
-class User(AbstractUser):
-    username = None
-    email = models.EmailField(unique=True)
-    
-    # GitHub specific fields
-    github_username = models.CharField(max_length=100, blank=True, null=True)
-    github_avatar_url = models.URLField(max_length=255, blank=True, null=True)
-    github_profile_url = models.URLField(max_length=255, blank=True, null=True)
+class User(AbstractUser, BaseUser):
+    username = None  # This tells Django to use email as the username
     github_access_token = models.CharField(max_length=255, blank=True, null=True)
-    
     is_internal = models.BooleanField(
         default=False,
         help_text="Designates whether this user is an internal user (registered in our system) or external (just a GitHub user)."
@@ -65,41 +60,18 @@ class User(AbstractUser):
     
     objects = CustomUserManager()
     
-    # Use email as the username field
     USERNAME_FIELD = 'email'
     REQUIRED_FIELDS = []
     
+    class Meta(AbstractUser.Meta):
+        swappable = 'AUTH_USER_MODEL'
+        
     def __str__(self):
-        return self.email
+        return f"{self.email} ({self.github_username or 'no GitHub'})"
     
     def get_full_name(self):
         return f"{self.first_name} {self.last_name}".strip() or self.email
-    
-    def _update_relationship_status(self, relationship, other_relationship_exists):
-        """Helper method to update relationship status to mutual if needed"""
-        if other_relationship_exists:
-            relationship.relationship_type = UserFollowing.RelationshipType.MUTUAL
-            relationship.save()
-            return relationship
-        return relationship
 
-
-
-    def save(self, *args, **kwargs):
-        created = not self.pk
-        super().save(*args, **kwargs)
-        
-        # If user has GitHub info, try to sync followers/following
-        if self.github_access_token:
-            try:
-                from users.tasks import sync_github_followers_following
-                sync_github_followers_following.delay(self.id)
-            except Exception as e:
-                # Log the error but don't fail the save operation
-                import logging
-                logger = logging.getLogger(__name__)
-                logger.error(f"Error scheduling GitHub sync for user {self.id}: {str(e)}", exc_info=True)
-                
 class UserFollowing(models.Model):
     """Through model for the many-to-many relationship between users."""
     
@@ -108,17 +80,15 @@ class UserFollowing(models.Model):
         # Removed MUTUAL status as it's redundant
     
     from_user = models.ForeignKey(
-        User,
+        settings.AUTH_USER_MODEL,
         related_name='following_relationships',
-        on_delete=models.CASCADE,
-        help_text='The user who is following'
+        on_delete=models.CASCADE
     )
     
     to_user = models.ForeignKey(
-        User,
+        settings.AUTH_USER_MODEL,
         related_name='follower_relationships',
-        on_delete=models.CASCADE,
-        help_text='The user being followed'
+        on_delete=models.CASCADE
     )
     
     created_at = models.DateTimeField(auto_now_add=True)

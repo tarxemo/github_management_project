@@ -31,7 +31,7 @@ urlpatterns = [
     path('', HomeView.as_view(), name='home'),
     
     
-    path('search/', SearchUsersView.as_view(), name='search_users'),
+    path('search/', SearchUsersView.as_view(), name='opensearch'),
     # Sitemap
     path('sitemap.xml', sitemap, {'sitemaps': sitemaps}, name='django.contrib.sitemaps.views.sitemap'),
     

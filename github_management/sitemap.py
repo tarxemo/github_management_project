@@ -5,12 +5,16 @@ from django.conf import settings
 from .models import Country, GitHubUser
 
 # Get the current site domain
-try:
-    current_site = Site.objects.get_current()
-    base_url = f'https://{current_site.domain}'
-except:
-    base_url = 'https://github.tarxemo.com'  # Fallback URL
+def get_base_url():
+    try:
+        current_site = Site.objects.get_current()
+        return f'https://{current_site.domain}'
+    except:
+        return 'https://github.tarxemo.com'  # Fallback URL
 
+base_url = get_base_url()
+
+# Rest of your sitemap classes...
 class StaticViewSitemap(Sitemap):
     priority = 0.8
     changefreq = 'daily'

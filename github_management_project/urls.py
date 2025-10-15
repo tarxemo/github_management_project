@@ -33,7 +33,7 @@ urlpatterns = [
     
     path('search/', SearchUsersView.as_view(), name='opensearch'),
     # Sitemap
-    path('sitemap.xml', sitemap, {'sitemaps': sitemaps}, name='django.contrib.sitemaps.views.sitemap'),
+    path('sitemap.xml', sitemap, {'sitemaps': sitemaps}, name='sitemap'),
     
     # Google One Tap authentication
     path('accounts/google/onetap/', google_one_tap_auth, name='google_one_tap_auth'),

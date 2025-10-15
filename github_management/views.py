@@ -271,7 +271,7 @@ class SearchUsersView(View):
 
         results = [{
             'username': user.username,
-            'name': user.get_full_name() or user.username,
+            'name': user.full_name() or user.username,
             'avatar_url': user.avatar_url or '',
             'url': user.get_absolute_url(),
             'country': user.country.name if user.country else ''

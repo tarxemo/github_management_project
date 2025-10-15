@@ -1,0 +1,109 @@
+{% extends "base.html" %}
+
+{% block title %}{{ github_user.username }} - GitHub User{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div class="bg-white dark:bg-gray-800 shadow overflow-hidden sm:rounded-lg">
+        <div class="px-4 py-5 sm:px-6 flex items-center">
+            <img class="h-16 w-16 rounded-full" 
+                 src="{{ github_user.avatar_url|default:'https://www.gravatar.com/avatar/00000000000000000000000000000000?d=mp&f=y' }}" 
+                 alt="{{ github_user.username }}">
+            <div class="ml-4">
+                <h3 class="text-lg leading-6 font-medium text-gray-900 dark:text-white">
+                    {{ github_user.get_full_name|default:github_user.username }}
+                </h3>
+                <p class="mt-1 max-w-2xl text-sm text-gray-500 dark:text-gray-400">
+                    @{{ github_user.username }}
+                </p>
+            </div>
+            <div class="ml-auto">
+                {% if is_following %}
+                    <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
+                        Following
+                    </span>
+                {% else %}
+                    <button class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700">
+                        <i class="fas fa-user-plus mr-2"></i>
+                        Follow
+                    </button>
+                {% endif %}
+            </div>
+        </div>
+        
+        <div class="border-t border-gray-200 dark:border-gray-700 px-4 py-5 sm:px-6">
+            <dl class="grid grid-cols-1 gap-x-4 gap-y-4 sm:grid-cols-3">
+                <div class="sm:col-span-1">
+                    <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Country</dt>
+                    <dd class="mt-1 text-sm text-gray-900 dark:text-white">
+                        <a href="{% url 'github_management:country_detail' slug=github_user.country.slug %}" 
+                           class="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-300">
+                            {{ github_user.country.name }}
+                        </a>
+                    </dd>
+                </div>
+                <div class="sm:col-span-1">
+                    <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Rank</dt>
+                    <dd class="mt-1 text-sm text-gray-900 dark:text-white">#{{ github_user.rank }}</dd>
+                </div>
+                <div class="sm:col-span-1">
+                    <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Followers</dt>
+                    <dd class="mt-1 text-sm text-gray-900 dark:text-white">{{ github_user.followers|intcomma }}</dd>
+                </div>
+                <div class="sm:col-span-1">
+                    <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Following</dt>
+                    <dd class="mt-1 text-sm text-gray-900 dark:text-white">{{ github_user.following|intcomma }}</dd>
+                </div>
+                <div class="sm:col-span-1">
+                    <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Contributions (last year)</dt>
+                    <dd class="mt-1 text-sm text-gray-900 dark:text-white">{{ github_user.contributions_last_year|intcomma }}</dd>
+                </div>
+                <div class="sm:col-span-1">
+                    <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Profile</dt>
+                    <dd class="mt-1 text-sm">
+                        <a href="{{ github_user.profile_url|default:'#' }}" 
+                           target="_blank" 
+                           rel="noopener noreferrer"
+                           class="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-300">
+                            View on GitHub <i class="fas fa-external-link-alt ml-1"></i>
+                        </a>
+                    </dd>
+                </div>
+            </dl>
+        </div>
+    </div>
+
+    <!-- Similar Users Section -->
+    <div class="mt-8">
+        <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-4">Similar Developers</h3>
+        <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {% for user in similar_users %}
+            <div class="bg-white dark:bg-gray-800 overflow-hidden shadow rounded-lg">
+                <div class="px-4 py-5 sm:p-6">
+                    <div class="flex items-center">
+                        <img class="h-12 w-12 rounded-full" 
+                             src="{{ user.avatar_url|default:'https://www.gravatar.com/avatar/00000000000000000000000000000000?d=mp&f=y' }}" 
+                             alt="{{ user.username }}">
+                        <div class="ml-4">
+                            <h4 class="text-lg font-medium text-gray-900 dark:text-white">
+                                <a href="{% url 'github_management:user_detail' username=user.username %}" 
+                                   class="hover:underline">
+                                    {{ user.get_full_name|default:user.username }}
+                                </a>
+                            </h4>
+                            <p class="text-sm text-gray-500 dark:text-gray-400">
+                                @{{ user.username }}
+                            </p>
+                            <div class="mt-1 flex items-center text-sm text-gray-500 dark:text-gray-400">
+                                <span class="mr-4">{{ user.contributions_last_year|intcomma }} contributions</span>
+                                <span>#{{ user.rank }}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -10,7 +10,6 @@ from django.utils import timezone
 from datetime import timedelta
 import random
 import logging
-
 from .models import Country, GitHubUser, GitHubFollowAction
 from users.models import UserFollowing
 
@@ -19,7 +18,6 @@ logger = logging.getLogger(__name__)
 from django.views.generic import ListView
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.db.models import Q
-from django_countries import countries
 
 class CountryListView(LoginRequiredMixin, ListView):
     """View to list all available countries with search and pagination"""
@@ -232,3 +230,51 @@ class UpdateFollowStatusView(LoginRequiredMixin, View):
                 'success': False,
                 'message': str(e)
             }, status=400)
+
+class UserDetailView(LoginRequiredMixin, View):
+    """View to show detailed information about a GitHub user"""
+    def get(self, request, username):
+        user = get_object_or_404(GitHubUser, username__iexact=username)
+        
+        # Check if the current user is following this GitHub user
+        is_following = GitHubFollowAction.objects.filter(
+            user=request.user,
+            github_user=user
+        ).exists()
+        
+        # Get similar users from the same country
+        similar_users = GitHubUser.objects.filter(
+            country=user.country
+        ).exclude(id=user.id).order_by('-contributions_last_year')[:5]
+        
+        context = {
+            'github_user': user,
+            'is_following': is_following,
+            'similar_users': similar_users,
+            'active_tab': 'users',
+        }
+        
+        return render(request, 'github_management/user_detail.html', context)
+    
+
+class SearchUsersView(View):
+    def get(self, request):
+        query = request.GET.get('q', '').strip()
+        if not query:
+            return JsonResponse({'results': []})
+
+        users = GitHubUser.objects.filter(
+            Q(username__icontains=query) |
+            Q(first_name__icontains=query) |
+            Q(last_name__icontains=query)
+        )[:10]  # Limit to 10 results
+
+        results = [{
+            'username': user.username,
+            'name': user.get_full_name() or user.username,
+            'avatar_url': user.avatar_url or '',
+            'url': user.get_absolute_url(),
+            'country': user.country.name if user.country else ''
+        } for user in users]
+
+        return JsonResponse({'results': results})

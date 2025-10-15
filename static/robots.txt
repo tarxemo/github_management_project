@@ -1,0 +1,15 @@
+User-agent: *
+Allow: /
+Sitemap: https://github.tarxemo.com/sitemap.xml
+
+# Crawl-delay: 10
+
+# Disallow admin area
+Disallow: /admin/
+Disallow: /api/
+
+# Allow media and static files
+Allow: /media/
+Allow: /static/
+
+# Crawl-delay can be adjusted based on server load

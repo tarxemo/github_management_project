@@ -1,0 +1,399 @@
+{% load i18n %}
+{% load static %}
+<style>
+    /* Search results styling */
+    #search-results {
+        scrollbar-width: thin;
+        scrollbar-color: #c7d2fe #f5f3ff;
+    }
+
+    #search-results::-webkit-scrollbar {
+        width: 6px;
+    }
+
+    #search-results::-webkit-scrollbar-track {
+        background: #f5f3ff;
+        border-radius: 0 0 8px 0;
+    }
+
+    #search-results::-webkit-scrollbar-thumb {
+        background-color: #c7d2fe;
+        border-radius: 3px;
+    }
+
+    .dark #search-results::-webkit-scrollbar-track {
+        background: #1f2937;
+    }
+
+    .dark #search-results::-webkit-scrollbar-thumb {
+        background-color: #4b5563;
+    }
+</style>
+
+<!-- Mobile Menu Overlay -->
+<div id="mobile-overlay" class="hidden fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden" onclick="toggleMobileMenu()"></div>
+
+<!-- Navigation -->
+<nav class="sticky top-0 z-50 bg-white/80 dark:bg-gray-800/80 backdrop-blur-md border-b border-gray-200 dark:border-gray-700 shadow-sm">
+    <div class="max-w-7xl mx-auto px-3 sm:px-4 lg:px-6">
+        <div class="flex justify-between h-16">
+            <!-- Logo and Brand -->
+            <div class="flex items-center min-w-0">
+                <a href="{% url 'home' %}" class="flex items-center group flex-shrink-0">
+                    <div class="relative">
+                        <i class="fab fa-github text-2xl sm:text-3xl text-indigo-600 dark:text-indigo-400 group-hover:scale-110 transition-transform duration-200"></i>
+                        <div class="absolute -top-1 -right-1 w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                    </div>
+                    <span class="ml-2 sm:ml-3 text-base sm:text-xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 dark:from-indigo-400 dark:to-purple-400 bg-clip-text text-transparent hidden xs:inline">
+                        GitHub Manager
+                    </span>
+                </a>
+                
+                <!-- Desktop Navigation -->
+                {% if user.is_authenticated %}
+                <div class="hidden lg:ml-6 xl:ml-10 lg:flex lg:space-x-1">
+                    <a href="{% url 'profile' %}" 
+                       class="px-3 xl:px-4 py-2 rounded-lg text-sm font-medium text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/30 hover:bg-indigo-100 dark:hover:bg-indigo-900/50"
+                       title="Dashboard">
+                        <i class="fas fa-home mr-0 xl:mr-2"></i>
+                        <span class="hidden xl:inline">Dashboard</span>
+                    </a>
+                    <a href="{% url 'github_management:country_list' %}" 
+                       class="px-3 xl:px-4 py-2 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+                       title="Countries">
+                        <i class="fas fa-globe mr-0 xl:mr-2"></i>
+                        <span class="hidden xl:inline">Countries</span>
+                    </a>
+                    <a href="{% url 'github_management:follow_random' %}" 
+                       class="px-3 xl:px-4 py-2 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+                       title="Follow">
+                        <i class="fas fa-user-plus mr-0 xl:mr-2"></i>
+                        <span class="hidden xl:inline">Follow</span>
+                    </a>
+                    <a href="{% url 'github_management:unfollow_non_followers' %}" 
+                       class="px-3 xl:px-4 py-2 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+                       title="Unfollow">
+                        <i class="fas fa-user-minus mr-0 xl:mr-2"></i>
+                        <span class="hidden xl:inline">Unfollow</span>
+                    </a>
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- Right Side Actions -->
+            <div class="flex items-center space-x-1 sm:space-x-2">
+                {% if user.is_authenticated %}
+                    <!-- Search Bar - Desktop Only -->
+                    <div class="relative hidden lg:block ml-2 xl:ml-4">
+                        <div class="relative">
+                            <input type="text" 
+                                   id="user-search" 
+                                   class="w-48 xl:w-64 px-3 xl:px-4 py-2 pl-9 xl:pl-10 text-sm text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 border border-transparent rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent" 
+                                   placeholder="Search users...">
+                            <div class="absolute left-2.5 xl:left-3 top-2.5 text-gray-400">
+                                <i class="fas fa-search text-sm"></i>
+                            </div>
+                        </div>
+                        <!-- Search Results Dropdown -->
+                        <div id="search-results" class="hidden absolute z-50 w-80 mt-1 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 max-h-96 overflow-y-auto">
+                            <!-- Results will be populated here -->
+                        </div>
+                    </div>
+                {% endif %}
+
+                <!-- Theme Toggle -->
+                <button onclick="toggleTheme()" 
+                        class="p-2 rounded-lg text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors duration-200"
+                        aria-label="Toggle theme">
+                    <i class="fas fa-moon text-base sm:text-lg dark:hidden"></i>
+                    <i class="fas fa-sun text-base sm:text-lg hidden dark:block"></i>
+                </button>
+
+                {% if user.is_authenticated %}
+                    <!-- Desktop Quick Actions -->
+                    <div class="hidden lg:flex items-center space-x-1 ml-1">
+                        <a href="{% url 'add_github_token' %}" 
+                           class="px-2.5 xl:px-3 py-2 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors duration-200"
+                           title="Add GitHub Token">
+                            <i class="fab fa-github"></i>
+                            <span class="hidden 2xl:inline ml-1">Token</span>
+                        </a>
+                        <a href="{% url 'relationship_management' %}" 
+                           class="px-2.5 xl:px-3 py-2 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors duration-200"
+                           title="Relationship Management">
+                            <i class="fas fa-user-friends"></i>
+                            <span class="hidden 2xl:inline ml-1">Relations</span>
+                        </a>
+                    </div>
+
+                    <!-- User Profile Section -->
+                    <div class="hidden lg:flex items-center ml-2 xl:ml-4 pl-2 xl:pl-4 border-l border-gray-200 dark:border-gray-700">
+                        <div class="flex items-center space-x-2 xl:space-x-3">
+                            {% if user.socialaccount_set.all.0.get_avatar_url %}
+                                <img class="h-8 w-8 xl:h-9 xl:w-9 rounded-full ring-2 ring-indigo-500 dark:ring-indigo-400" 
+                                     src="{{ user.socialaccount_set.all.0.get_avatar_url }}" 
+                                     alt="{{ user.username }}">
+                            {% else %}
+                                <div class="h-8 w-8 xl:h-9 xl:w-9 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-semibold text-sm ring-2 ring-indigo-500">
+                                    {% if user.username %}
+                                        {{ user.username|first|upper }}
+                                    {% elif user.email %}
+                                        {{ user.email|first|upper }}
+                                    {% else %}
+                                        U
+                                    {% endif %}
+                                </div>
+                            {% endif %}
+                            <div class="hidden 2xl:block">
+                                <div class="text-sm font-medium text-gray-900 dark:text-gray-100">
+                                    {% if user.get_full_name %}
+                                        {{ user.get_full_name }}
+                                    {% elif user.username %}
+                                        {{ user.username }}
+                                    {% elif user.email %}
+                                        {{ user.email|truncatechars:20 }}
+                                    {% else %}
+                                        User
+                                    {% endif %}
+                                </div>
+                                <a href="{% url 'account_logout' %}" 
+                                   class="text-xs text-gray-500 dark:text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400">
+                                    <i class="fas fa-sign-out-alt mr-1"></i>Sign out
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Mobile Menu Button -->
+                    <button onclick="toggleMobileMenu()" 
+                            class="lg:hidden p-2 rounded-lg text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+                            aria-label="Toggle menu">
+                        <i class="fas fa-bars text-lg sm:text-xl"></i>
+                    </button>
+                {% else %}
+                    <!-- Guest Actions -->
+                    <div class="flex items-center space-x-1 sm:space-x-2 ml-1 sm:ml-2">
+                        <a href="{% url 'account_login' %}" 
+                           class="px-3 sm:px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors duration-200">
+                            <span class="hidden sm:inline">Sign in</span>
+                            <i class="fas fa-sign-in-alt sm:hidden"></i>
+                        </a>
+                        <a href="{% url 'account_signup' %}" 
+                           class="px-3 sm:px-4 py-2 rounded-lg text-sm font-medium text-white bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 shadow-md hover:shadow-lg transition-all duration-200">
+                            <span class="hidden sm:inline">Sign up</span>
+                            <i class="fas fa-user-plus sm:hidden"></i>
+                        </a>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</nav>
+
+<!-- Mobile Sidebar Menu -->
+{% if user.is_authenticated %}
+<div id="mobile-menu" 
+     class="lg:hidden fixed top-0 right-0 h-full w-80 max-w-[85vw] bg-white dark:bg-gray-800 shadow-2xl z-50 transform translate-x-full">
+    <div class="h-full flex flex-col">
+        <!-- Mobile Menu Header -->
+        <div class="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
+            <div class="flex items-center space-x-3">
+                {% if user.socialaccount_set.all.0.get_avatar_url %}
+                    <img class="h-12 w-12 rounded-full ring-2 ring-indigo-500" 
+                         src="{{ user.socialaccount_set.all.0.get_avatar_url }}" 
+                         alt="{{ user.username }}">
+                {% else %}
+                    <div class="h-12 w-12 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-semibold text-lg ring-2 ring-indigo-500">
+                        {% if user.username %}
+                            {{ user.username|first|upper }}
+                        {% elif user.email %}
+                            {{ user.email|first|upper }}
+                        {% else %}
+                            U
+                        {% endif %}
+                    </div>
+                {% endif %}
+                <div class="min-w-0 flex-1">
+                    <div class="text-sm font-semibold text-gray-900 dark:text-gray-100 truncate">
+                        {% if user.get_full_name %}
+                            {{ user.get_full_name }}
+                        {% elif user.username %}
+                            {{ user.username }}
+                        {% else %}
+                            {{ user.email|truncatechars:20 }}
+                        {% endif %}
+                    </div>
+                    <div class="text-xs text-gray-500 dark:text-gray-400 truncate">
+                        {% if user.username %}
+                            @{{ user.username }}
+                        {% else %}
+                            {{ user.email|truncatechars:20 }}
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            <button onclick="toggleMobileMenu()" 
+                    class="p-2 rounded-lg text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 flex-shrink-0">
+                <i class="fas fa-times text-xl"></i>
+            </button>
+        </div>
+
+        <!-- Mobile Search Bar -->
+        <div class="p-4 border-b border-gray-200 dark:border-gray-700">
+            <div class="relative">
+                <input type="text" 
+                       id="mobile-user-search" 
+                       class="w-full px-4 py-2 pl-10 text-sm text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 border border-transparent rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent" 
+                       placeholder="Search users...">
+                <div class="absolute left-3 top-2.5 text-gray-400">
+                    <i class="fas fa-search"></i>
+                </div>
+            </div>
+            <!-- Mobile Search Results -->
+            <div id="mobile-search-results" class="hidden mt-2 bg-gray-50 dark:bg-gray-700/50 rounded-lg shadow-inner border border-gray-200 dark:border-gray-600 max-h-64 overflow-y-auto">
+                <!-- Results will be populated here -->
+            </div>
+        </div>
+
+        <!-- Mobile Menu Items -->
+        <div class="flex-1 overflow-y-auto p-4 space-y-2">
+            <a href="{% url 'profile' %}" 
+               class="flex items-center px-4 py-3 rounded-lg text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/30 font-medium">
+                <i class="fas fa-home w-6"></i>
+                <span class="ml-3">Dashboard</span>
+            </a>
+            <a href="{% url 'github_management:country_list' %}" 
+               class="flex items-center px-4 py-3 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700">
+                <i class="fas fa-globe w-6"></i>
+                <span class="ml-3">Countries</span>
+            </a>
+            <a href="{% url 'github_management:follow_random' %}" 
+               class="flex items-center px-4 py-3 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700">
+                <i class="fas fa-user-plus w-6"></i>
+                <span class="ml-3">Follow Users</span>
+            </a>
+            <a href="{% url 'github_management:unfollow_non_followers' %}" 
+               class="flex items-center px-4 py-3 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700">
+                <i class="fas fa-user-minus w-6"></i>
+                <span class="ml-3">Unfollow Non-Followers</span>
+            </a>
+            
+            <div class="pt-4 mt-4 border-t border-gray-200 dark:border-gray-700">
+                <div class="px-4 py-2 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                    Quick Actions
+                </div>
+                <a href="{% url 'add_github_token' %}" 
+                   class="flex items-center px-4 py-3 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700">
+                    <i class="fab fa-github w-6"></i>
+                    <span class="ml-3">Add GitHub Token</span>
+                </a>
+                <a href="{% url 'relationship_management' %}" 
+                   class="flex items-center px-4 py-3 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700">
+                    <i class="fas fa-user-friends w-6"></i>
+                    <span class="ml-3">Relationship Management</span>
+                </a>
+            </div>
+        </div>
+
+        <!-- Mobile Menu Footer -->
+        <div class="p-4 border-t border-gray-200 dark:border-gray-700">
+            <a href="{% url 'account_logout' %}" 
+               class="flex items-center justify-center px-4 py-3 rounded-lg text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 font-medium">
+                <i class="fas fa-sign-out-alt mr-2"></i>
+                Sign out
+            </a>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Desktop Search
+    const searchInput = document.getElementById('user-search');
+    const searchResults = document.getElementById('search-results');
+    
+    // Mobile Search
+    const mobileSearchInput = document.getElementById('mobile-user-search');
+    const mobileSearchResults = document.getElementById('mobile-search-results');
+    
+    let searchTimeout;
+
+    function handleSearch(inputElement, resultsElement) {
+        inputElement.addEventListener('input', function(e) {
+            clearTimeout(searchTimeout);
+            const query = e.target.value.trim();
+            
+            if (query.length < 2) {
+                resultsElement.classList.add('hidden');
+                return;
+            }
+
+            searchTimeout = setTimeout(() => {
+                fetch(`/search/?q=${encodeURIComponent(query)}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        displayResults(data.results, resultsElement);
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        resultsElement.classList.add('hidden');
+                    });
+            }, 300);
+        });
+    }
+
+    function displayResults(users, resultsElement) {
+        resultsElement.innerHTML = '';
+        
+        if (users.length === 0) {
+            const noResults = document.createElement('div');
+            noResults.className = 'p-4 text-sm text-gray-500 dark:text-gray-400';
+            noResults.textContent = 'No users found';
+            resultsElement.appendChild(noResults);
+        } else {
+            users.forEach(user => {
+                const userElement = document.createElement('a');
+                userElement.href = user.url;
+                userElement.className = 'flex items-center p-3 hover:bg-gray-50 dark:hover:bg-gray-700 border-b border-gray-100 dark:border-gray-700 last:border-b-0 transition-colors';
+                userElement.innerHTML = `
+                    <img src="${user.avatar_url || '{% static "img/default-avatar.png" %}'}" 
+                         alt="${user.name}" 
+                         class="w-10 h-10 rounded-full object-cover mr-3 flex-shrink-0">
+                    <div class="min-w-0 flex-1">
+                        <div class="font-medium text-gray-900 dark:text-white truncate">${user.name}</div>
+                        <div class="text-xs text-gray-500 dark:text-gray-400 truncate">@${user.username}</div>
+                        ${user.country ? `<div class="text-xs text-indigo-600 dark:text-indigo-400">${user.country}</div>` : ''}
+                    </div>
+                `;
+                resultsElement.appendChild(userElement);
+            });
+        }
+        
+        resultsElement.classList.remove('hidden');
+    }
+
+    // Initialize search for both desktop and mobile
+    if (searchInput && searchResults) {
+        handleSearch(searchInput, searchResults);
+        
+        // Close search results when clicking outside
+        document.addEventListener('click', function(e) {
+            if (!searchResults.contains(e.target) && e.target !== searchInput) {
+                searchResults.classList.add('hidden');
+            }
+        });
+    }
+    
+    if (mobileSearchInput && mobileSearchResults) {
+        handleSearch(mobileSearchInput, mobileSearchResults);
+        
+        // Close mobile search results when clicking outside
+        document.addEventListener('click', function(e) {
+            if (!mobileSearchResults.contains(e.target) && e.target !== mobileSearchInput) {
+                mobileSearchResults.classList.add('hidden');
+            }
+        });
+    }
+});
+</script>
+{% endif %}

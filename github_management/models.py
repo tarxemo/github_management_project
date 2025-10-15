@@ -14,6 +14,9 @@ class Country(models.Model):
     user_count = models.PositiveIntegerField(default=0)
     is_fetching = models.BooleanField(default=False)
     
+    def get_absolute_url(self):
+        return reverse('github_management:country_detail', kwargs={'slug': self.slug})
+
     class Meta:
         verbose_name_plural = "Countries"
         ordering = ['name']
@@ -50,7 +53,11 @@ class GitHubUser(models.Model):
     
     def __str__(self):
         return f"{self.username} ({self.country.name}) - {self.contributions_last_year} contributions"
-    
+   
+    def get_absolute_url(self):
+        """Return the canonical URL for this GitHub user."""
+        return reverse('github_management:user_detail', kwargs={'username': self.username})
+
     @property
     def full_name(self):
         """Return the full name if available, otherwise return username."""

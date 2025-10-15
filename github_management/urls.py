@@ -15,6 +15,9 @@ urlpatterns = [
     path('countries/<slug:slug>/fetch/', login_required(views.FetchUsersView.as_view()), name='fetch_users'),
     path('api/countries/<slug:slug>/status/', login_required(views.FetchStatusView.as_view()), name='country_status'),
     
+    path('user/<str:username>/', 
+         login_required(views.UserDetailView.as_view()), 
+         name='user_detail'),
     # Follow/Unfollow functionality
 path('follow/', 
      login_required(views.FollowRandomUsersView.as_view()), 

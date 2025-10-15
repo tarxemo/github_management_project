@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<OpenSearchDescription xmlns="http://a9.com/-/spec/opensearch/1.1/">
+  <ShortName>GitHub Management</ShortName>
+  <Description>Search GitHub users and repositories by country</Description>
+  <Tags>github users repositories country</Tags>
+  <Image width="16" height="16" type="image/x-icon">https://github.tarxemo.com/static/logo/favicon.ico</Image>
+  <Url type="text/html" template="https://github.tarxemo.com/search/?q={searchTerms}" />
+  <Url type="application/opensearchdescription+xml" rel="self" template="https://github.tarxemo.com/opensearch.xml" />
+  <Language>en-us</Language>
+  <OutputEncoding>UTF-8</OutputEncoding>
+  <InputEncoding>UTF-8</InputEncoding>
+</OpenSearchDescription>

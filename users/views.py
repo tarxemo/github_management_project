@@ -97,7 +97,7 @@ def relationship_management(request):
         users_page = paginator.page(1)
     except EmptyPage:
         users_page = paginator.page(paginator.num_pages)
-    
+    User.with_fresh_data(users_page)
     context = {
         'users': users_page,
         'stats': stats,

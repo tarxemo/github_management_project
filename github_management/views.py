@@ -56,7 +56,7 @@ class CountryDetailView(LoginRequiredMixin, View):
         paginator = Paginator(users, 25)  # Show 25 users per page
         page_number = request.GET.get('page')
         page_obj = paginator.get_page(page_number)
-        
+        GitHubUser.objects.with_fresh_data(page_obj)
         return render(request, 'github_management/country_detail.html', {
             'country': country,
             'page_obj': page_obj,
@@ -109,7 +109,7 @@ class FollowRandomUsersView(LoginRequiredMixin, View):
         
         # Get all countries for the filter dropdown
         countries = Country.objects.all().order_by('name')
-        
+        GitHubUser.objects.with_fresh_data(users_to_follow)
         # Get the most common country from the users to follow (for display purposes)
         country = users_to_follow[0].country.name if users_to_follow else None
         
@@ -246,7 +246,7 @@ class UserDetailView(LoginRequiredMixin, View):
         similar_users = GitHubUser.objects.filter(
             country=user.country
         ).exclude(id=user.id).order_by('-contributions_last_year')[:5]
-        
+        GitHubUser.objects.with_fresh_data(similar_users)
         context = {
             'github_user': user,
             'is_following': is_following,

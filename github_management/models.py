@@ -6,6 +6,7 @@ from django.utils import timezone
 from datetime import timedelta
 from users.services.github_service import GitHubService
 from django.urls import reverse
+from .managers import GitHubUserManager
 
 class Country(models.Model):
     """Model to store available countries from committers.top"""
@@ -36,11 +37,13 @@ class GitHubUser(models.Model):
     followers = models.PositiveIntegerField(default=0)
     following = models.PositiveIntegerField(default=0)
     contributions_last_year = models.PositiveIntegerField(default=0)
-    country = models.ForeignKey(Country, on_delete=models.CASCADE, related_name='users')
+    country = models.ForeignKey('Country', on_delete=models.CASCADE, related_name='users')
     rank = models.PositiveIntegerField(default=0)
     fetched_at = models.DateTimeField(auto_now=True)
     profile_url = models.URLField(max_length=255, blank=True, null=True)
     avatar_url = models.URLField(max_length=255, blank=True, null=True)
+    
+    objects = GitHubUserManager()
     
     class Meta:
         ordering = ['-contributions_last_year']
@@ -53,7 +56,7 @@ class GitHubUser(models.Model):
         ]
     
     def __str__(self):
-        return f"{self.username} ({self.country.name}) - {self.contributions_last_year} contributions"
+        return f"{self.username} ({self.country.name if self.country else 'No Country'}) - {self.contributions_last_year} contributions"
    
     def get_absolute_url(self):
         """Return the canonical URL for this GitHub user."""

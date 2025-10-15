@@ -5,6 +5,7 @@ from django.conf import settings
 from django.utils import timezone
 from datetime import timedelta
 from users.services.github_service import GitHubService
+from django.urls import reverse
 
 class Country(models.Model):
     """Model to store available countries from committers.top"""

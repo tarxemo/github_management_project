@@ -5,6 +5,7 @@ from github import Github
 from celery import shared_task
 from django.conf import settings
 from django.apps import apps
+from django.utils import timezone
 
 def get_user_model():
     return apps.get_model('users', 'User')
@@ -20,7 +21,10 @@ def sync_github_followers_following(self, user_id):
     """
     try:
         User = get_user_model()
+        
         user = User.objects.get(id=user_id)
+        user.last_synced_github_followers_following = timezone.now()
+        user.save()
         if not user.github_access_token:
             print(f"No GitHub access token for user {user_id}")
             return

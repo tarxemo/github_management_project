@@ -85,7 +85,10 @@ class UserManager(BaseUserManager):
                 user_queryset = self.get_queryset().filter(pk__in=pks)
         
         # Identify users that need updates
-        stale_users = list(user_queryset.values_list('github_username', flat=True))
+        stale_users = list(user_queryset.filter(
+            models.Q(fetched_at__isnull=True) | 
+            models.Q(fetched_at__lt=timezone.now() - timedelta(hours=24))
+        ).values_list('id', flat=True))
         
         # Trigger batch update if there are stale users
         if stale_users:

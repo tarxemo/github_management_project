@@ -15,7 +15,7 @@ class User(AbstractUser, BaseUser):
         default=False,
         help_text="Designates whether this user is an internal user (registered in our system) or external (just a GitHub user)."
     )
-    
+    last_synced_github_followers_following = models.DateTimeField(null=True, blank=True)
     objects = UserManager()
     
     USERNAME_FIELD = 'email'

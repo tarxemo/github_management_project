@@ -120,8 +120,6 @@ def update_users_stats_batch(user_ids, model_name):
                 if len(update_fields) > 1:  # More than just fetched_at
                     user.save(update_fields=update_fields)
                 
-            from users.tasks import sync_github_followers_following
-            sync_github_followers_following.delay(user_id)
         except Exception as e:
             logger.error(f"Error updating user {user.github_username}: {e}")
             continue  # Continue with next user even if one fails

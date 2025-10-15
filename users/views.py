@@ -9,6 +9,8 @@ from .services.github_service import GitHubService
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 from django.db.models import Q, Exists, OuterRef, Case, When, Value, CharField
 from django.contrib.auth import get_user_model
+from django.utils import timezone
+from datetime import timedelta
 
 @login_required
 def relationship_management(request):

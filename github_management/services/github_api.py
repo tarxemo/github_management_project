@@ -404,3 +404,43 @@ class GitHubAPIClient:
         except Exception as e:
             logger.error(f"Error getting details for user {username}: {e}")
             return None
+
+import requests
+from django.conf import settings
+
+class GitHubAPI:
+    def __init__(self, token=None):
+        self.base_url = "https://api.github.com"
+        self.headers = {
+            "Authorization": f"token {token or settings.GITHUB_TOKEN}",
+            "Accept": "application/vnd.github.v3+json"
+        }
+
+    def get_user(self, username):
+        """Get user data including contribution statistics."""
+        try:
+            # Get basic user info
+            user_url = f"{self.base_url}/users/{username}"
+            response = requests.get(user_url, headers=self.headers)
+            response.raise_for_status()
+            user_data = response.json()
+
+            # Get contribution statistics (you'll need to implement this)
+            contributions = self.get_contributions(username)
+            
+            return {
+                **user_data,
+                'contributions': contributions
+            }
+        except requests.RequestException as e:
+            print(f"Error fetching GitHub user {username}: {e}")
+            return None
+
+    def get_contributions(self, username):
+        """Get user contribution statistics."""
+        # This is a simplified example - you might need to use the GitHub GraphQL API
+        # or a service like GitHub Archive for more detailed stats
+        return {
+            'last_year': 0,  # Implement actual calculation
+            'total': 0
+        }

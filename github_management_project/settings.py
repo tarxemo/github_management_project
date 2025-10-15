@@ -160,7 +160,7 @@ SOCIALACCOUNT_AUTO_SIGNUP = True
 LOGIN_REDIRECT_URL = '/profile/'
 LOGOUT_REDIRECT_URL = '/'
 
-
+GITHUB_TOKEN=os.getenv("GITHUB_TOKEN")
 # -----------------------------
 # OAuth Settings (GitHub + Google)
 # -----------------------------

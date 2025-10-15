@@ -93,7 +93,9 @@ def relationship_management(request):
         per_page = 12
     
     # Update this condition
-    if user.github_access_token:
+    if (user.github_access_token and 
+        (user.last_synced_github_followers_following is None or 
+        user.last_synced_github_followers_following < timezone.now() - timedelta(days=1))):
         from users.tasks import sync_github_followers_following
         sync_github_followers_following.delay(user.id)
     

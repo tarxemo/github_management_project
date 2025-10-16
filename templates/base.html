@@ -16,21 +16,21 @@
     <meta property="og:url" content="{{ request.build_absolute_uri }}">
     <meta property="og:title" content="GitHub Management - Connect with Developers Worldwide">
     <meta property="og:description" content="Discover and connect with GitHub users by country. Find top developers, follow, and grow your network.">
-    <meta property="og:image" content="https://github.tarxemo.com/static/logo/og-image.jpg">
+    <meta property="og:image" content="{% static 'logo/og-image.png' %}">
     
     <!-- Twitter -->
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:url" content="{{ request.build_absolute_uri }}">
     <meta name="twitter:title" content="GitHub Management - Connect with Developers Worldwide">
     <meta name="twitter:description" content="Discover and connect with GitHub users by country. Find top developers, follow, and grow your network.">
-    <meta name="twitter:image" content="https://github.tarxemo.com/static/logo/og-image.jpg">
+    <meta name="twitter:image" content="{% static 'logo/og-image.png' %}">
     
     <!-- Canonical URL -->
     <link rel="canonical" href="{{ request.build_absolute_uri }}">
     
     <!-- Favicon -->
-    <link rel="icon" type="image/x-icon" href="https://github.tarxemo.com/static/logo/favicon.ico">
-    <link rel="apple-touch-icon" href="https://github.tarxemo.com/static/logo/apple-touch-icon.png">
+    <link rel="icon" type="image/x-icon" href="{% static 'logo/favicon.ico' %}">
+    <link rel="apple-touch-icon" href="{% static 'logo/apple-touch-icon.png' %}">
     
     <!-- OpenSearch -->
     <link rel="search" type="application/opensearchdescription+xml" title="GitHub Management" href="{% url 'opensearch' %}">

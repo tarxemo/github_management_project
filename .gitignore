@@ -23,9 +23,6 @@ logs
 *.sqlite3
 *.dump
 *.pdf
-*.jpg
-*.jpeg
-*.png
 *.odt
 
 # Scripts

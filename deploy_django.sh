@@ -467,6 +467,8 @@ print_step "STEP 9: Configuring Nginx"
 # Configure firewall
 print_step "STEP 10: Configuring Firewall"
 
+
+
 # Create management script
 print_step "STEP 12: Creating Management Scripts"
 MANAGE_SCRIPT="$PROJECT_PATH/manage-app.sh"

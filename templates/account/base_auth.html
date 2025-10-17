@@ -15,19 +15,8 @@
     <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
-    <script>
-        // Theme management
-        (function() {
-            const theme = localStorage.getItem('theme') || 
-                         (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
-            document.documentElement.classList.toggle('dark', theme === 'dark');
-        })();
-
-        function toggleTheme() {
-            const isDark = document.documentElement.classList.toggle('dark');
-            localStorage.setItem('theme', isDark ? 'dark' : 'light');
-        }
-    </script>
+    <!-- Theme Script -->
+    <script src="{% static 'js/theme.js' %}" defer></script>
     
     <style>
         body {

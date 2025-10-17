@@ -408,12 +408,15 @@ class GitHubAPIClient:
 import requests
 from django.conf import settings
 
+
 class GitHubAPI:
     def __init__(self, token=None):
         self.base_url = "https://api.github.com"
+        self.graphql_url = "https://api.github.com/graphql"
+        self.token = token or settings.GITHUB_TOKEN
         self.headers = {
-            "Authorization": f"token {token or settings.GITHUB_TOKEN}",
-            "Accept": "application/vnd.github.v3+json"
+            "Authorization": f"Bearer {self.token}",
+            "Accept": "application/vnd.github+json"
         }
 
     def get_user(self, username):
@@ -425,22 +428,56 @@ class GitHubAPI:
             response.raise_for_status()
             user_data = response.json()
 
-            # Get contribution statistics (you'll need to implement this)
+            # Fetch contribution data via GraphQL
             contributions = self.get_contributions(username)
-            
+
+            # Combine both
             return {
                 **user_data,
-                'contributions': contributions
+                "contributions": contributions
             }
+
         except requests.RequestException as e:
             print(f"Error fetching GitHub user {username}: {e}")
             return None
 
     def get_contributions(self, username):
-        """Get user contribution statistics."""
-        # This is a simplified example - you might need to use the GitHub GraphQL API
-        # or a service like GitHub Archive for more detailed stats
-        return {
-            'last_year': 0,  # Implement actual calculation
-            'total': 0
+        """Get user contribution statistics from GitHub GraphQL API."""
+        query = """
+        query($login: String!) {
+          user(login: $login) {
+            contributionsCollection {
+              contributionCalendar {
+                totalContributions
+              }
+            }
+          }
         }
+        """
+        variables = {"login": username}
+
+        try:
+            resp = requests.post(
+                self.graphql_url,
+                json={"query": query, "variables": variables},
+                headers=self.headers
+            )
+            resp.raise_for_status()
+
+            data = resp.json()
+            total_contributions = (
+                data.get("data", {})
+                .get("user", {})
+                .get("contributionsCollection", {})
+                .get("contributionCalendar", {})
+                .get("totalContributions", 0)
+            )
+
+            return {
+                "last_year": total_contributions,
+                "total": total_contributions
+            }
+
+        except Exception as e:
+            print(f"Error fetching contributions for {username}: {e}")
+            return {"last_year": 0, "total": 0}

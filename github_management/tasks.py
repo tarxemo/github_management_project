@@ -105,9 +105,9 @@ def update_users_stats_batch(user_ids, model_name):
                     
                 contributions = user_data.get('contributions', {})
                 contributions_last_year = contributions.get('last_year', 0)
-                # if user.contributions_last_year != contributions_last_year:
-                #     user.contributions_last_year = contributions_last_year
-                #     update_fields.append('contributions_last_year')
+                if user.contributions_last_year != contributions_last_year:
+                    user.contributions_last_year = contributions_last_year
+                    update_fields.append('contributions_last_year')
                     
                 if user_data.get('avatar_url') and user.avatar_url != user_data['avatar_url']:
                     user.avatar_url = user_data['avatar_url']

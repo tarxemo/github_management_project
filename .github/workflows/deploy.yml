@@ -36,6 +36,9 @@ jobs:
         echo "Running migrations..."
         python manage.py migrate --noinput
 
+        echo "Restarting celery..."
+        sudo systemctl restart celery
+
         echo "Restarting Gunicorn..."
         sudo systemctl restart gunicorn
 

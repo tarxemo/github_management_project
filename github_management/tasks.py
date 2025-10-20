@@ -46,7 +46,9 @@ def fetch_users_for_country(self, country_id):
         existing_usernames = {user.github_username for user in existing}
 
         to_create = [obj for obj in user_objs if obj.github_username not in existing_usernames]
+        to_update = [obj for obj in user_objs if obj.github_username in existing_usernames]
         GitHubUser.objects.bulk_create(to_create)
+        GitHubUser.objects.bulk_update(to_update, ['followers', 'contributions_last_year', 'rank', 'profile_url', 'avatar_url'])
         
         # Update country stats
         country.user_count = len(user_objs)

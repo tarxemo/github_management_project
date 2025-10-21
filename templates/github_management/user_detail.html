@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}{{ github_user.github_username }} () - GitHub User{% endblock %}
+{% block title %}{{ github_user.github_username }} ({{ github_user.full_name|default:github_user.github_username }}) ({{ github_user.rank }} rank in {{ github_user.country.name }}) - GitHub User{% endblock %}
 
 {% block content %}
 {% load humanize %}

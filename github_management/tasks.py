@@ -33,6 +33,7 @@ def fetch_users_for_country(self, country_id):
             user_objs.append(GitHubUser(
                 github_username=user_data['username'],
                 first_name=user_data.get('first_name', ''),
+                middle_name=user_data.get('middle_name', ''),
                 last_name=user_data.get('last_name', ''),
                 followers=user_data.get('followers', 0),
                 contributions_last_year=user_data.get('contributions', 0),
@@ -42,14 +43,43 @@ def fetch_users_for_country(self, country_id):
                 avatar_url=user_data.get('avatar_url', f"https://github.com/{user_data['username']}.png")
             ))
         
-        existing = GitHubUser.objects.filter(github_username__in=[obj.github_username for obj in user_objs])
-        existing_usernames = {user.github_username for user in existing}
+        existing = GitHubUser.objects.filter(
+            github_username__in=[obj.github_username for obj in user_objs]
+        )
+        existing_map = {user.github_username: user for user in existing}
 
-        to_create = [obj for obj in user_objs if obj.github_username not in existing_usernames]
-        to_update = [obj for obj in user_objs if obj.github_username in existing_usernames]
-        GitHubUser.objects.bulk_create(to_create)
-        GitHubUser.objects.bulk_update(to_update, ['followers', 'contributions_last_year', 'rank', 'profile_url', 'avatar_url'])
-        
+        to_create = []
+        to_update = []
+
+        for obj in user_objs:
+            if obj.github_username in existing_map:
+                existing_user = existing_map[obj.github_username]
+                # Update existing fields
+                existing_user.followers = obj.followers
+                existing_user.contributions_last_year = obj.contributions_last_year
+                existing_user.rank = obj.rank
+                existing_user.profile_url = obj.profile_url
+                existing_user.avatar_url = obj.avatar_url
+                # Update name fields only if provided (non-empty)
+                if obj.first_name:
+                    existing_user.first_name = obj.first_name
+                if obj.middle_name:
+                    existing_user.middle_name = obj.middle_name
+                if obj.last_name:
+                    existing_user.last_name = obj.last_name
+                to_update.append(existing_user)  # now includes PK
+            else:
+                to_create.append(obj)
+
+        if to_create:
+            GitHubUser.objects.bulk_create(to_create)
+
+        if to_update:
+            GitHubUser.objects.bulk_update(
+                to_update,
+                ['followers', 'contributions_last_year', 'rank', 'profile_url', 'avatar_url', 'first_name', 'middle_name', 'last_name']
+            )
+
         # Update country stats
         country.user_count = len(user_objs)
         country.last_updated = timezone.now()

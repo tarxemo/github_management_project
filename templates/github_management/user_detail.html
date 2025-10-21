@@ -12,7 +12,7 @@
                  alt="{{ github_user.github_username }}">
             <div class="ml-4">
                 <h3 class="text-lg leading-6 font-medium text-gray-900 dark:text-white">
-                    {{ github_user.get_full_name|default:github_user.github_username }}
+                    {{ github_user.full_name|default:github_user.github_username }}
                 </h3>
                 <p class="mt-1 max-w-2xl text-sm text-gray-500 dark:text-gray-400">
                     @{{ github_user.github_username }}
@@ -89,7 +89,7 @@
                             <h4 class="text-lg font-medium text-gray-900 dark:text-white">
                                 <a href="{% url 'github_management:user_detail' github_username=user.github_username %}" 
                                    class="hover:underline">
-                                    {{ user.get_full_name|default:user.github_username }}
+                                    {{ user.full_name|default:user.github_username }}
                                 </a>
                             </h4>
                             <p class="text-sm text-gray-500 dark:text-gray-400">

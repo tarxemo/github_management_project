@@ -73,12 +73,19 @@
                                 </div>
                             </div>
                         <div class="mt-2 sm:flex sm:justify-between">
-                            <div class="sm:flex">
+                            <div class="sm:flex space-x-6">
                                 <p class="flex items-center text-sm text-gray-500 dark:text-gray-400">
                                     <svg class="flex-shrink-0 mr-1.5 h-5 w-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                                        <path fill-rule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clip-rule="evenodd" />
+                                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm.75-12.75a.75.75 0 00-1.5 0v4.5c0 .199.079.39.22.53l3 3a.75.75 0 001.06-1.06l-2.78-2.78V5.25z" clip-rule="evenodd" />
                                     </svg>
-                                    {{ country.name }}
+                                    Last updated: {{ country.last_updated|date:"Y-m-d H:i"|default:"-" }}
+                                </p>
+                                <p class="flex items-center text-sm text-gray-500 dark:text-gray-400">
+                                    {% if country.is_fetching %}
+                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200">Fetching…</span>
+                                    {% else %}
+                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">Idle</span>
+                                    {% endif %}
                                 </p>
                             </div>
                         </div>

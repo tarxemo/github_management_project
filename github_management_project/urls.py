@@ -41,9 +41,6 @@ Allow: /static/"""
 urlpatterns = [
     path('hidfor/', admin.site.urls),
     
-    # GraphQL endpoint
-    path("gql/", csrf_exempt(GraphQLView.as_view(graphiql=settings.DEBUG))),
-    
     # Allauth URLs for authentication
     path('accounts/', include('allauth.urls')),
     

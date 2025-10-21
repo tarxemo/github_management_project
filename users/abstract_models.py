@@ -6,6 +6,7 @@ class BaseUser(models.Model):
     """Abstract base model for user-related models."""
     github_username = models.CharField(max_length=100, unique=True, null=True, blank=True)
     first_name = models.CharField(max_length=100, blank=True, null=True)
+    middle_name = models.CharField(max_length=100, blank=True, null=True)
     last_name = models.CharField(max_length=100, blank=True, null=True)
     followers = models.PositiveIntegerField(default=0)
     following = models.PositiveIntegerField(default=0)
@@ -30,7 +31,7 @@ class BaseUser(models.Model):
     @property
     def full_name(self):
         """Return the full name of the user."""
-        return f"{self.first_name or ''} {self.last_name or ''}".strip()
+        return f"{self.first_name or ''} {self.middle_name or ''} {self.last_name or ''}".strip()
 
     def __str__(self):
         return self.github_username or self.email

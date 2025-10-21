@@ -58,15 +58,6 @@ class GitHubAPIClient:
             raise
     
     def get_users_by_country(self, country: str, max_users: int = 256) -> List[Dict[str, Any]]:
-        """Get top GitHub users by country from committers.top.
-        
-        Args:
-            country: Country name (e.g., 'tanzania')
-            max_users: Maximum number of users to return (max 256)
-            
-        Returns:
-            List of user dictionaries with their details
-        """
         try:
             # First try to get the main page for the country
             soup = self._make_request(f"{country.lower()}_public")
@@ -98,15 +89,35 @@ class GitHubAPIClient:
                         username = username.split('github.com/')[-1].split('/')[0]
                     
                     # Get user's name (if available)
+                    # Get user's name (text inside parentheses after <br>)
                     name = None
-                    name_span = cols[1].find('span')
-                    if name_span:
-                        name = name_span.get_text(strip=True).strip('()')
-                        # Clean up common patterns
-                        name = re.sub(r'\(.*\)', '', name).strip()  # Remove anything in parentheses
-                        name = re.sub(r',.*', '', name).strip()  # Remove anything after comma
-                        name = re.sub(r'[^\w\s-]', '', name)  # Remove special characters except spaces and hyphens
-                    
+                    br = cols[1].find('br')
+                    if br:
+                        following_text = ''
+                        for sib in br.next_siblings:
+                            if isinstance(sib, str):
+                                following_text += sib
+                            else:
+                                break
+                        candidate = (following_text or (br.next_sibling or '')).strip()
+                        if candidate.startswith('(') and candidate.endswith(')'):
+                            name = candidate[1:-1].strip()
+                        elif candidate:
+                            name = candidate.strip()
+
+                    # Extract first, middle, last names if available
+                    first_name = middle_name = last_name = ''
+                    if name:
+                        parts = name.split()
+                        if len(parts) == 1:
+                            first_name = parts[0]
+                        elif len(parts) == 2:
+                            first_name, last_name = parts
+                        else:
+                            first_name = parts[0]
+                            middle_name = ' '.join(parts[1:-1])
+                            last_name = parts[-1]
+
                     # Get contributions count
                     contributions = 0
                     try:
@@ -124,12 +135,14 @@ class GitHubAPIClient:
                     # Create user data dict
                     user_data = {
                         'username': username,
+                        'first_name': first_name,
+                        'middle_name': middle_name,
+                        'last_name': last_name,
                         'rank': i,
                         'contributions': contributions,
                         'profile_url': f"https://github.com/{username}",
                         'avatar_url': avatar_url or f"https://github.com/{username}.png"
                     }
-                    
                     # Add name if available
                     if name and name.lower() != username.lower():  # Only add if name is different from username
                         # Handle different name formats
@@ -148,13 +161,16 @@ class GitHubAPIClient:
                             else:
                                 first_name = name
                                 last_name = ''
-                        
+                        print(f"Name: {name}, First Name: {first_name}, Last Name: {last_name}")
                         user_data.update({
                             'name': name,
                             'first_name': first_name,
-                            'last_name': last_name,
-                            'followers': 0  # Default value since we don't have this info
+                            'middle_name': middle_name,
+                            'last_name': last_name
                         })
+
+                    print(f"user data: {user_data}")
+
                     
                     users.append(user_data)
                     
@@ -199,6 +215,9 @@ class GitHubAPIClient:
                 'contributions': user.get('contributions', 0),
                 'followers': user.get('followers', 0),
                 'name': user.get('name', ''),
+                'first_name': user.get('first_name', ''),
+                'middle_name': user.get('middle_name', ''),
+                'last_name': user.get('last_name', ''),
                 'rank': user.get('rank', 0)
             } for user in paginated_users]
             

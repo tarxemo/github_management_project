@@ -78,6 +78,13 @@ def google_one_tap_auth(request):
                 "error": "Authentication failed",
                 "details": str(e)
             }, status=500)
+        # Ensure app is saved and attached to current site
+        if not getattr(google_app, 'pk', None):
+            google_app.save()
+        current_site = Site.objects.get_current()
+        if current_site not in google_app.sites.all():
+            google_app.sites.add(current_site)
+            google_app.save()
         token_info = requests.get(
             f"https://oauth2.googleapis.com/tokeninfo?id_token={credential}"
         ).json()
@@ -112,11 +119,13 @@ def google_one_tap_auth(request):
             uid=token_info.get("sub"),
             defaults={"extra_data": token_info},
         )
+        if not social_account.pk:
+            social_account.save()
 
         # Save token
         SocialToken.objects.update_or_create(
-            app=google_app,
-            account=social_account,
+            app_id=google_app.id,
+            account_id=social_account.id,
             defaults={"token": credential}
         )
 

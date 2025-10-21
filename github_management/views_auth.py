@@ -12,6 +12,7 @@ from django.conf import settings
 from django.contrib.sites.models import Site
 
 from allauth.socialaccount.models import SocialAccount, SocialApp, SocialToken
+from allauth.socialaccount.adapter import get_adapter as get_social_adapter
 from allauth.socialaccount.helpers import complete_social_login
 from allauth.socialaccount.models import SocialLogin
 
@@ -69,7 +70,14 @@ def google_one_tap_auth(request):
             return JsonResponse({"error": "Missing credential"}, status=400)
 
         # Verify token via Google
-        google_app = SocialApp.objects.get(provider='google')
+        try:
+            adapter = get_social_adapter(request)
+            google_app = adapter.get_app(request, 'google')
+        except Exception as e:
+            return JsonResponse({
+                "error": "Authentication failed",
+                "details": str(e)
+            }, status=500)
         token_info = requests.get(
             f"https://oauth2.googleapis.com/tokeninfo?id_token={credential}"
         ).json()

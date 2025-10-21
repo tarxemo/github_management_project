@@ -1,8 +1,14 @@
 from allauth.account.adapter import DefaultAccountAdapter
+from allauth.account.models import EmailAddress
+from allauth.account.utils import perform_login, user_email
+from allauth.exceptions import ImmediateHttpResponse
 from allauth.socialaccount.adapter import DefaultSocialAccountAdapter
 from allauth.socialaccount import providers
+from django.contrib import messages
 from django.contrib.auth import get_user_model
+from django.shortcuts import redirect
 from django.utils.text import slugify
+from django.urls import reverse
 
 User = get_user_model()
 
@@ -18,6 +24,49 @@ class CustomSocialAccountAdapter(DefaultSocialAccountAdapter):
     
     def is_open_for_signup(self, request, sociallogin):
         return True
+
+    def pre_social_login(self, request, sociallogin):
+        # If already authenticated, let allauth connect this provider to current user
+        if request.user and request.user.is_authenticated:
+            return
+
+        # Determine email and whether it's verified by provider
+        email = sociallogin.account.extra_data.get("email") or user_email(sociallogin.user)
+
+        # Prefer verified flag from EmailAddress objects collected by allauth
+        provider_verified = False
+        if getattr(sociallogin, "email_addresses", None):
+            for e in sociallogin.email_addresses:
+                if e.email and e.verified:
+                    provider_verified = True
+                    if not email:
+                        email = e.email
+                    break
+        else:
+            provider_verified = (
+                sociallogin.account.extra_data.get("email_verified")
+                or sociallogin.account.extra_data.get("verified_email")
+                or False
+            )
+
+        if not email:
+            messages.info(request, "No email was provided by the provider. Please sign in and link your account from profile.")
+            raise ImmediateHttpResponse(redirect(reverse("account_login")))
+
+        # If an account with this email exists
+        try:
+            existing = User.objects.get(email__iexact=email)
+        except User.DoesNotExist:
+            return  # proceed with normal signup
+
+        # Only auto-link when we can trust the email as verified
+        if provider_verified:
+            sociallogin.connect(request, existing)
+            raise ImmediateHttpResponse(perform_login(request, existing, email_verification="optional"))
+        else:
+            # Ask user to login first, then they can connect provider
+            messages.info(request, "Please sign in to your existing account to link this provider.")
+            raise ImmediateHttpResponse(redirect(reverse("account_login")))
 
     def populate_username(self, request, user):
         if hasattr(user, 'email') and user.email:

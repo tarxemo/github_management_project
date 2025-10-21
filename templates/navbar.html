@@ -290,19 +290,6 @@
 </div>
 {% endif %}
 
-<!-- Mobile Bottom Navigation for Guest Users -->
-{% if not user.is_authenticated %}
-<div class="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 dark:bg-gray-800/95 backdrop-blur-md border-t border-gray-200 dark:border-gray-700 shadow-lg">
-    <div class="flex justify-around items-center h-16 px-4">
-        <a href="{% url 'github_management:country_list' %}" 
-           class="flex flex-col items-center justify-center flex-1 text-gray-700 dark:text-gray-300 hover:text-indigo-600 dark:hover:text-indigo-400">
-            <i class="fas fa-globe text-xl mb-1"></i>
-            <span class="text-xs">Countries</span>
-        </a>
-    </div>
-</div>
-{% endif %}
-
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     // Search functionality

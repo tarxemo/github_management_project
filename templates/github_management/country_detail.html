@@ -21,6 +21,67 @@
                     {% endif %}
                 </p>
             </div>
+        <script>
+        document.addEventListener('DOMContentLoaded', function(){
+            function intercept(form){
+                form.addEventListener('submit', function(e){
+                    e.preventDefault();
+                    const btn = form.querySelector('button[type="submit"]');
+                    const csrfInput = form.querySelector('[name=csrfmiddlewaretoken]');
+                    if(!btn || !csrfInput) return;
+                    const original = btn.innerHTML;
+                    btn.disabled = true; btn.innerHTML = 'Working...';
+                    fetch(form.action, {
+                        method: 'POST',
+                        headers: { 'X-CSRFToken': csrfInput.value, 'Accept':'application/json' },
+                        body: JSON.stringify({})
+                    }).then(async (res)=>{
+                        const data = await res.json().catch(()=>({}));
+                        function showNotice(html){
+                            const n = document.createElement('div');
+                            n.className = 'fixed inset-x-0 top-4 z-50 flex justify-center px-4';
+                            n.innerHTML = `<div class="max-w-xl w-full message-animate rounded-lg shadow-md p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 text-sm text-gray-800 dark:text-gray-200">${html}</div>`;
+                            document.body.appendChild(n);
+                            setTimeout(()=>{ n.remove(); }, 8000);
+                        }
+                        if(res.status === 401 && data.login_url){
+                            showNotice(`To follow users you must be logged in. Prefer GitHub login. <a class="underline text-indigo-600 dark:text-indigo-400" href="${data.login_url}">Login here</a>.`);
+                            btn.disabled = false; btn.innerHTML = original;
+                            return;
+                        }
+                        if(res.status === 400 && data.add_token_url){
+                            showNotice(`You need to add a GitHub token to follow users. <a class=\"underline text-indigo-600 dark:text-indigo-400\" href=\"${data.add_token_url}\">Add token here</a>.`);
+                            btn.disabled = false; btn.innerHTML = original;
+                            return;
+                        }
+                        if(data.success){
+                            const following = document.createElement('span');
+                            following.className = 'inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200';
+                            following.textContent = 'Following';
+                            form.parentNode.replaceChild(following, form);
+                        } else {
+                            alert(data.message || 'Failed to follow');
+                            btn.disabled = false; btn.innerHTML = original;
+                        }
+                    }).catch(()=>{
+                        btn.disabled = false; btn.innerHTML = original;
+                        alert('Network error');
+                    });
+                });
+            }
+            document.querySelectorAll('.follow-form').forEach(intercept);
+            // Event delegation backup
+            document.addEventListener('submit', function(e){
+                const form = e.target.closest && e.target.closest('.follow-form');
+                if(form && !form.__wired){
+                    e.preventDefault();
+                    form.__wired = true;
+                    intercept(form);
+                    form.dispatchEvent(new Event('submit', {cancelable:true, bubbles:false}));
+                }
+            });
+        });
+        </script>
             <div class="mt-4 flex md:mt-0 md:ml-4">
                 {% if request.user.is_superuser %}
                 <form method="post" action="{% url 'github_management:fetch_users' slug=country.slug %}" class="inline-flex">
@@ -45,17 +106,17 @@
                 <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
                     <thead class="bg-gray-50 dark:bg-gray-700">
                         <tr>
-                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">#</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider hidden sm:table-cell">#</th>
                             <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">User</th>
-                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Username</th>
-                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Status</th>
-                            <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Actions</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider hidden sm:table-cell">Username</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider hidden sm:table-cell">Status</th>
+                            <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider hidden sm:table-cell">Actions</th>
                         </tr>
                     </thead>
                     <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
                         {% for user in page_obj %}
                         <tr class="hover:bg-gray-50 dark:hover:bg-gray-700">
-                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300 hidden sm:table-cell">
                                 {{ forloop.counter0|add:page_obj.start_index }}
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap">
@@ -63,28 +124,48 @@
                                     <div class="flex-shrink-0 h-10 w-10">
                                         <img class="h-10 w-10 rounded-full" src="{{ user.avatar_url|default:'https://via.placeholder.com/40' }}" alt="">
                                     </div>
-                                    <div class="ml-4">
-                                        <div class="text-sm font-medium text-gray-900 dark:text-white">
+                                    <div class="ml-4 min-w-0">
+                                        <div class="text-sm font-medium text-gray-900 dark:text-white truncate">
                                             {{ user.full_name|default:'-' }}
+                                        </div>
+                                        <div class="text-sm text-gray-500 dark:text-gray-400 sm:hidden">
+                                            <a href="{% url 'github_management:user_detail' github_username=user.github_username %}" class="break-all">@{{ user.github_username }}</a>
+                                        </div>
+                                        <div class="mt-1 flex flex-wrap gap-2">
+                                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
+                                                {{ user.followers|default:0 }} followers
+                                            </span>
+                                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300">
+                                                {{ user.following|default:0 }} following
+                                            </span>
+                                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
+                                                {{ user.contributions_last_year|default:0 }} contributions
+                                            </span>
+                                            <!-- Mobile status badge -->
+                                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full sm:hidden 
+                                                {% if user.is_followed %}bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200
+                                                {% else %}bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300{% endif %}">
+                                                {% if user.is_followed %}Following{% else %}Not Following{% endif %}
+                                            </span>
                                         </div>
                                     </div>
                                 </div>
                             </td>
-                            <td class="px-6 py-4 whitespace-nowrap">
+                            <td class="px-6 py-4 whitespace-nowrap hidden sm:table-cell">
                                 <a href="{% url 'github_management:user_detail' github_username=user.github_username %}"  target="_blank" class="text-sm text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-300">
                                     @{{ user.github_username }}
                                 </a>
                             </td>
-                            <td class="px-6 py-4 whitespace-nowrap">
+                            <td class="px-6 py-4 whitespace-nowrap hidden sm:table-cell">
                                 <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
                                     {% if user.is_followed %}bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200
                                     {% else %}bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300{% endif %}">
                                     {% if user.is_followed %}Following{% else %}Not Following{% endif %}
                                 </span>
                             </td>
-                            <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                            <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium hidden sm:table-cell">
                                 {% if not user.is_followed %}
-                                <form method="post" action="{% url 'github_management:follow_user' user_id=user.id %}" class="inline">
+                                <form method="post" action="{% url 'github_management:follow_user' user_id=user.id %}" class="inline follow-form">
                                     {% csrf_token %}
                                     <button type="submit" class="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-300">
                                         Follow
@@ -94,6 +175,24 @@
                                 <span class="text-gray-400 dark:text-gray-500">Following</span>
                                 {% endif %}
                             </td>
+                        </tr>
+                        <!-- Mobile actions row -->
+                        <tr class="sm:hidden">
+                            <td class="px-6 pb-4 pt-0" colspan="5">
+                                <div class="flex justify-end">
+                                    {% if not user.is_followed %}
+                                    <form method="post" action="{% url 'github_management:follow_user' user_id=user.id %}" class="w-full follow-form">
+                                        {% csrf_token %}
+                                        <button type="submit" class="w-full inline-flex items-center justify-center px-3 py-2 rounded-md text-sm font-medium bg-indigo-600 text-white hover:bg-indigo-700">
+                                            Follow
+                                        </button>
+                                    </form>
+                                    {% else %}
+                                    <span class="inline-flex items-center px-3 py-2 rounded-md text-sm font-medium bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">Following</span>
+                                    {% endif %}
+                                </div>
+                            </td>
+                        </tr>
                         </tr>
                         {% endfor %}
                     </tbody>

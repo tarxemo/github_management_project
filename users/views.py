@@ -139,13 +139,27 @@ def relationship_stats(request):
 @login_required
 def follow_user(request, username):
     target_user = get_object_or_404(User, github_username__iexact=username)
+    # Ensure token present
+    if not getattr(request.user, 'github_access_token', None):
+        from django.urls import reverse
+        add_token_url = reverse('add_github_token')
+        messages.error(request, f"GitHub token missing. Please add your token here: {add_token_url}")
+        return redirect('relationship_management')
     GitHubService.follow_user_on_github(request.user, target_user.github_username)
+    messages.success(request, f"Started following {target_user.github_username}.")
     return redirect('relationship_management')
 
 @login_required
 def unfollow_user(request, username):
     target_user = get_object_or_404(User, github_username__iexact=username)
+    # Ensure token present
+    if not getattr(request.user, 'github_access_token', None):
+        from django.urls import reverse
+        add_token_url = reverse('add_github_token')
+        messages.error(request, f"GitHub token missing. Please add your token here: {add_token_url}")
+        return redirect('relationship_management')
     GitHubService.unfollow_user_on_github(request.user, target_user.github_username)
+    messages.success(request, f"Unfollowed {target_user.github_username}.")
     return redirect('relationship_management')
 
 @login_required

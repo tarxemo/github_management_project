@@ -86,7 +86,7 @@
                             <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Followed On</th>
                             <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Status</th>
                             <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Last Checked</th>
-                            <th scope="col" class="relative px-6 py-3">
+                            <th scope="col" class="relative px-6 py-3 hidden sm:table-cell">
                                 <span class="sr-only">Actions</span>
                             </th>
                         </tr>
@@ -106,6 +106,17 @@
                                         <div class="text-sm text-gray-500 dark:text-gray-400">
                                             {{ action.github_user.name|default:'' }}
                                         </div>
+                                        <div class="mt-1 flex flex-wrap gap-2">
+                                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
+                                                {{ action.github_user.followers|default:0 }} followers
+                                            </span>
+                                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300">
+                                                {{ action.github_user.following|default:0 }} following
+                                            </span>
+                                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
+                                                {{ action.github_user.contributions_last_year|default:0 }} contributions
+                                            </span>
+                                        </div>
                                     </div>
                                 </div>
                             </td>
@@ -123,7 +134,7 @@
                             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
                                 {{ action.updated_at|timesince }} ago
                             </td>
-                            <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                            <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium hidden sm:table-cell">
                                 {% if action.status == 'pending' %}
                                 <button onclick="cancelAction('{{ action.id }}', this)" 
                                         class="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300">
@@ -132,6 +143,21 @@
                                 {% else %}
                                 <span class="text-gray-400 dark:text-gray-500">-</span>
                                 {% endif %}
+                            </td>
+                        </tr>
+                        <!-- Mobile actions row -->
+                        <tr class="sm:hidden">
+                            <td class="px-6 pb-4 pt-0" colspan="5">
+                                <div class="flex justify-end">
+                                    {% if action.status == 'pending' %}
+                                    <button onclick="cancelAction('{{ action.id }}', this)" 
+                                            class="w-full inline-flex items-center justify-center px-3 py-2 rounded-md text-sm font-medium bg-red-600 text-white hover:bg-red-700">
+                                        Cancel
+                                    </button>
+                                    {% else %}
+                                    <span class="inline-flex items-center px-3 py-2 rounded-md text-sm font-medium bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300">No Action</span>
+                                    {% endif %}
+                                </div>
                             </td>
                         </tr>
                         {% endfor %}

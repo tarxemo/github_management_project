@@ -20,6 +20,17 @@
             </p>
         </div>
 
+        {% if not request.user.github_access_token %}
+        <div class="mb-6">
+            <div class="message-animate rounded-lg shadow-md p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800">
+                <div class="text-sm text-gray-800 dark:text-gray-200">
+                    To view and manage relationships with GitHub, you must add a GitHub access token.
+                    <a href="{% url 'add_github_token' %}" class="underline text-indigo-600 dark:text-indigo-400">Add token here</a>.
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
         <!-- Stats Overview -->
         <div class="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4 mb-8">
             <!-- Total Relationships Card -->
@@ -225,20 +236,26 @@
                             </a>
                             
                             <div class="flex space-x-2">
-                                {% if user_obj.is_following %}
-                                    <form method="post" action="{% url 'unfollow_user' user_obj.github_username %}" class="inline">
-                                        {% csrf_token %}
-                                        <button type="submit" class="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md text-red-700 bg-red-100 hover:bg-red-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 dark:bg-red-900/30 dark:text-red-300 dark:hover:bg-red-900/50">
-                                            Unfollow
-                                        </button>
-                                    </form>
+                                {% if not request.user.github_access_token %}
+                                    <a href="{% url 'add_github_token' %}" class="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                                        Add GitHub Token
+                                    </a>
                                 {% else %}
-                                    <form method="post" action="{% url 'follow_user' user_obj.github_username %}" class="inline">
-                                        {% csrf_token %}
-                                        <button type="submit" class="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
-                                            Follow
-                                        </button>
-                                    </form>
+                                    {% if user_obj.is_following %}
+                                        <form method="post" action="{% url 'unfollow_user' user_obj.github_username %}" class="inline">
+                                            {% csrf_token %}
+                                            <button type="submit" class="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md text-red-700 bg-red-100 hover:bg-red-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 dark:bg-red-900/30 dark:text-red-300 dark:hover:bg-red-900/50">
+                                                Unfollow
+                                            </button>
+                                        </form>
+                                    {% else %}
+                                        <form method="post" action="{% url 'follow_user' user_obj.github_username %}" class="inline">
+                                            {% csrf_token %}
+                                            <button type="submit" class="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                                                Follow
+                                            </button>
+                                        </form>
+                                    {% endif %}
                                 {% endif %}
                             </div>
                         </div>

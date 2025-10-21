@@ -21,7 +21,11 @@
                 <div class="mt-2 max-w-xl text-sm text-gray-500 dark:text-gray-400">
                     <p>Enter the number of users you'd like to follow and click the button below.</p>
                 </div>
-                <form method="post" action="{% url 'github_management:follow_random' %}" class="mt-5 sm:flex sm:items-center">
+                <form method="post" action="{% url 'github_management:follow_random' %}" id="batch-follow-form" class="mt-5 sm:flex sm:items-center"
+                      data-auth="{% if request.user.is_authenticated %}1{% else %}0{% endif %}"
+                      data-has-token="{% if request.user.is_authenticated and request.user.github_access_token %}1{% else %}0{% endif %}"
+                      data-login-url="{% url 'account_login' %}"
+                      data-add-token-url="{% url 'add_github_token' %}">
                     {% csrf_token %}
                     <div class="w-full sm:max-w-xs">
                         <label for="count" class="sr-only">Number of users to follow</label>
@@ -58,7 +62,7 @@
             <ul class="divide-y divide-gray-200 dark:divide-gray-700">
                 {% for user in users %}
                 <li class="px-4 py-4 sm:px-6 hover:bg-gray-50 dark:hover:bg-gray-700 transition duration-150 ease-in-out">
-                    <div class="flex items-center justify-between">
+                    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between">
                         <div class="flex items-center">
                             <div class="flex-shrink-0 h-12 w-12">
                                 <img class="h-12 w-12 rounded-full" src="{{ user.avatar_url|default:'https://via.placeholder.com/48' }}" alt="{{ user.github_username }}">
@@ -70,9 +74,17 @@
                                 <div class="text-sm text-gray-500 dark:text-gray-400">
                                     @{{ user.github_username }}
                                 </div>
+                                {% if user.bio %}
+                                <div class="text-sm text-gray-500 dark:text-gray-400 mt-1 line-clamp-1">
+                                    {{ user.bio }}
+                                </div>
+                                {% endif %}
                                 <div class="mt-1 flex space-x-2">
                                     <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
                                         {{ user.followers|default:0 }} followers
+                                    </span>
+                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300">
+                                        {{ user.following|default:0 }} following
                                     </span>
                                     <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
                                         {{ user.contributions_last_year|default:0 }} contributions
@@ -80,14 +92,14 @@
                                 </div>
                             </div>
                         </div>
-                        <div class="ml-4 flex-shrink-0">
+                        <div class="mt-4 sm:mt-0 sm:ml-4 flex-shrink-0 w-full sm:w-auto">
                             {% if user.is_following %}
-                                <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
+                                <span class="inline-flex items-center justify-center w-full sm:w-auto px-3 py-2 rounded-md text-sm font-medium bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
                                     Following
                                 </span>
                             {% else %}
                                 <button onclick="followUser('{{ user.id }}', this)" 
-                                        class="inline-flex items-center px-3 py-1 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                                        class="w-full sm:w-auto inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
                                     Follow
                                 </button>
                             {% endif %}
@@ -120,6 +132,36 @@
 </div>
 
 <script>
+// Intercept batch follow to show descriptive message instead of redirect when blocked
+document.addEventListener('DOMContentLoaded', function(){
+  const form = document.getElementById('batch-follow-form');
+  if(!form) return;
+  function showNotice(html){
+    const n = document.createElement('div');
+    n.className = 'fixed inset-x-0 top-4 z-50 flex justify-center px-4';
+    n.innerHTML = `<div class=\"max-w-xl w-full message-animate rounded-lg shadow-md p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 text-sm text-gray-800 dark:text-gray-200\">${html}</div>`;
+    document.body.appendChild(n);
+    setTimeout(()=>{ try{ n.remove(); }catch(e){} }, 8000);
+  }
+  form.addEventListener('submit', function(e){
+    const isAuth = form.getAttribute('data-auth') === '1';
+    const hasToken = form.getAttribute('data-has-token') === '1';
+    const loginUrl = form.getAttribute('data-login-url');
+    const addTokenUrl = form.getAttribute('data-add-token-url');
+    if(!isAuth){
+      e.preventDefault();
+      showNotice(`To follow users in batch you must be logged in. Prefer GitHub login. <a class=\"underline text-indigo-600 dark:text-indigo-400\" href=\"${loginUrl}\">Login here</a>.`);
+      return;
+    }
+    if(!hasToken){
+      e.preventDefault();
+      showNotice(`GitHub token required to follow users. <a class=\"underline text-indigo-600 dark:text-indigo-400\" href=\"${addTokenUrl}\">Add one here</a>.`);
+      return;
+    }
+    // else allow normal submit
+  });
+});
+
 function followUser(userId, button) {
     const url = `/github/follow_user/${userId}/`;
     const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
@@ -143,8 +185,28 @@ function followUser(userId, button) {
         },
         body: JSON.stringify({})
     })
-    .then(response => response.json())
-    .then(data => {
+    .then(async response => {
+        let data = {};
+        try { data = await response.json(); } catch(e) {}
+        function showNotice(html){
+            const n = document.createElement('div');
+            n.className = 'fixed inset-x-0 top-4 z-50 flex justify-center px-4';
+            n.innerHTML = `<div class="max-w-xl w-full message-animate rounded-lg shadow-md p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 text-sm text-gray-800 dark:text-gray-200">${html}</div>`;
+            document.body.appendChild(n);
+            setTimeout(()=>{ n.remove(); }, 8000);
+        }
+        if (response.status === 401 && data.login_url) {
+            showNotice(`To follow users you must be logged in. Prefer GitHub login. <a class=\"underline text-indigo-600 dark:text-indigo-400\" href=\"${data.login_url}\">Login here</a>.`);
+            button.disabled = false;
+            button.innerHTML = originalText;
+            return;
+        }
+        if (response.status === 400 && data.add_token_url) {
+            showNotice(`You need to add a GitHub token to follow users. <a class=\"underline text-indigo-600 dark:text-indigo-400\" href=\"${data.add_token_url}\">Add token here</a>.`);
+            button.disabled = false;
+            button.innerHTML = originalText;
+            return;
+        }
         if (data.success) {
             // Update button to show success state
             button.innerHTML = 'Following';

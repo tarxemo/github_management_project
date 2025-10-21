@@ -15,6 +15,7 @@ from users.models import UserFollowing
 from django.contrib.auth.mixins import UserPassesTestMixin
 from django.views.generic import View
 from .tasks import fetch_all_countries_users
+from django.urls import reverse
 
 logger = logging.getLogger(__name__)
 
@@ -139,8 +140,13 @@ class FollowRandomUsersView(View):
     
     def post(self, request):
         if not request.user.is_authenticated:
-            #set message
-            messages.error(request, "You must be logged in to follow users.")
+            login_url = reverse('account_login')
+            messages.error(request, f"You need to login first. Prefer GitHub login. Go to {login_url}")
+            return redirect('github_management:follow_random')
+        # Token check
+        if not getattr(request.user, 'github_access_token', None):
+            add_token_url = reverse('add_github_token')
+            messages.error(request, f"GitHub token required to follow users. Add one here: {add_token_url}")
             return redirect('github_management:follow_random')
         
         count = int(request.POST.get('count', 10))  # Default to 10 users
@@ -182,11 +188,21 @@ class FollowUserView(View):
     """API endpoint to follow a specific GitHub user"""
     def post(self, request, user_id):
         if not request.user.is_authenticated:
-            messages.error(request, "You must be logged in to follow users.")
+            login_url = reverse('account_login')
             return JsonResponse({
                 'success': False,
-                'message': 'You must be logged in to follow users.'
+                'message': 'You need to login first. Prefer GitHub login.',
+                'login_url': login_url
             }, status=401)
+
+        # Token check
+        if not getattr(request.user, 'github_access_token', None):
+            add_token_url = reverse('add_github_token')
+            return JsonResponse({
+                'success': False,
+                'message': 'GitHub token missing. Please add your token to proceed.',
+                'add_token_url': add_token_url
+            }, status=400)
             
         github_user = get_object_or_404(GitHubUser, id=user_id)
         

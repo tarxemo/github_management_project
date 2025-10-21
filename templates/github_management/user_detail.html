@@ -18,26 +18,70 @@
                     @{{ github_user.github_username }}
                 </p>
             </div>
+<script>
+(function(){
+  const form = document.querySelector('.follow-form');
+  if(!form) return;
+  form.addEventListener('submit', function(e){
+    e.preventDefault();
+    const btn = form.querySelector('button[type="submit"]');
+    const csrf = form.querySelector('[name=csrfmiddlewaretoken]');
+    if(!btn||!csrf) return;
+    const original = btn.innerHTML; btn.disabled=true; btn.innerHTML='Working...';
+    fetch(form.action, {method:'POST', headers:{'X-CSRFToken': csrf.value, 'Accept':'application/json'}, body: JSON.stringify({})})
+      .then(async (res)=>{ const data = await res.json().catch(()=>({}));
+        function showNotice(html){
+          const n = document.createElement('div');
+          n.className = 'fixed inset-x-0 top-4 z-50 flex justify-center px-4';
+          n.innerHTML = `<div class="max-w-xl w-full message-animate rounded-lg shadow-md p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 text-sm text-gray-800 dark:text-gray-200">${html}</div>`;
+          document.body.appendChild(n);
+          setTimeout(()=>{ n.remove(); }, 8000);
+        }
+        if(res.status===401 && data.login_url){
+          showNotice(`To follow users you must be logged in. Prefer GitHub login. <a class=\"underline text-indigo-600 dark:text-indigo-400\" href=\"${data.login_url}\">Login here</a>.`);
+          btn.disabled=false; btn.innerHTML=original; return;
+        }
+        if(res.status===400 && data.add_token_url){
+          showNotice(`You need to add a GitHub token to follow users. <a class=\"underline text-indigo-600 dark:text-indigo-400\" href=\"${data.add_token_url}\">Add token here</a>.`);
+          btn.disabled=false; btn.innerHTML=original; return;
+        }
+        if(data.success){
+          const badge = document.createElement('span');
+          badge.className='inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200';
+          badge.textContent='Following';
+          form.parentNode.replaceChild(badge, form);
+        } else {
+          alert(data.message || 'Failed to follow');
+          btn.disabled=false; btn.innerHTML=original;
+        }
+      })
+      .catch(()=>{ btn.disabled=false; btn.innerHTML=original; alert('Network error'); });
+  });
+})();
+</script>
             <div class="ml-auto">
                 {% if is_following %}
                     <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
                         Following
                     </span>
                 {% else %}
-                    <button class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700">
-                        <i class="fas fa-user-plus mr-2"></i>
-                        Follow
-                    </button>
+                    <form method="post" action="{% url 'github_management:follow_user' user_id=github_user.id %}" class="follow-form inline">
+                        {% csrf_token %}
+                        <button class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700" type="submit">
+                            <i class="fas fa-user-plus mr-2"></i>
+                            Follow
+                        </button>
+                    </form>
                 {% endif %}
             </div>
         </div>
         
         <div class="border-t border-gray-200 dark:border-gray-700 px-4 py-5 sm:px-6">
-            <dl class="grid grid-cols-1 gap-x-4 gap-y-4 sm:grid-cols-3">
+            <dl class="grid grid-cols-1 gap-x-4 gap-y-6 sm:grid-cols-3">
                 <div class="sm:col-span-1">
                     <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Country</dt>
                     <dd class="mt-1 text-sm text-gray-900 dark:text-white">
-                        <a href="{% url 'github_management:country_detail' slug=github_user.country.slug %}" 
+                        <a href="{% url 'github_management:country_detail' slug=github_user.country.slug %}"
                            class="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-300">
                             {{ github_user.country.name }}
                         </a>
@@ -48,29 +92,98 @@
                     <dd class="mt-1 text-sm text-gray-900 dark:text-white">#{{ github_user.rank }}</dd>
                 </div>
                 <div class="sm:col-span-1">
-                    <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Followers</dt>
-                    <dd class="mt-1 text-sm text-gray-900 dark:text-white">{{ github_user.followers|intcomma }}</dd>
-                </div>
-                <div class="sm:col-span-1">
-                    <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Following</dt>
-                    <dd class="mt-1 text-sm text-gray-900 dark:text-white">{{ github_user.following|intcomma }}</dd>
-                </div>
-                <div class="sm:col-span-1">
-                    <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Contributions (last year)</dt>
-                    <dd class="mt-1 text-sm text-gray-900 dark:text-white">{{ github_user.contributions_last_year|intcomma }}</dd>
-                </div>
-                <div class="sm:col-span-1">
                     <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Profile</dt>
                     <dd class="mt-1 text-sm">
-                        <a href="{{ github_user.profile_url|default:'#' }}" 
-                           target="_blank" 
+                        <a href="{{ github_user.profile_url|default:'#' }}"
+                           target="_blank"
                            rel="noopener noreferrer"
                            class="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-300">
                             View on GitHub <i class="fas fa-external-link-alt ml-1"></i>
                         </a>
                     </dd>
                 </div>
+
+                <div class="sm:col-span-1">
+                    <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Company</dt>
+                    <dd class="mt-1 text-sm text-gray-900 dark:text-white">{{ github_user.company|default:'-' }}</dd>
+                </div>
+                <div class="sm:col-span-1">
+                    <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Location</dt>
+                    <dd class="mt-1 text-sm text-gray-900 dark:text-white">{{ github_user.location|default:'-' }}</dd>
+                </div>
+                <div class="sm:col-span-1">
+                    <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Blog/Website</dt>
+                    <dd class="mt-1 text-sm">
+                        {% if github_user.blog %}
+                        <a href="{{ github_user.blog }}" target="_blank" class="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-300">{{ github_user.blog }}</a>
+                        {% else %}-{% endif %}
+                    </dd>
+                </div>
+
+                <div class="sm:col-span-1">
+                    <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Email</dt>
+                    <dd class="mt-1 text-sm">
+                        {% if github_user.email_public %}
+                            <a href="mailto:{{ github_user.email_public }}" class="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-300">{{ github_user.email_public }}</a>
+                        {% else %}-{% endif %}
+                    </dd>
+                </div>
+                <div class="sm:col-span-1">
+                    <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Twitter</dt>
+                    <dd class="mt-1 text-sm">
+                        {% if github_user.twitter_username %}
+                            <a href="https://twitter.com/{{ github_user.twitter_username }}" target="_blank" class="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-300">@{{ github_user.twitter_username }}</a>
+                        {% else %}-{% endif %}
+                    </dd>
+                </div>
+                <div class="sm:col-span-1">
+                    <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Hireable</dt>
+                    <dd class="mt-1 text-sm text-gray-900 dark:text-white">{% if github_user.hireable %}Yes{% elif github_user.hireable is not None %}No{% else %}-{% endif %}</dd>
+                </div>
+
+                <div class="sm:col-span-1">
+                    <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Public Repos</dt>
+                    <dd class="mt-1 text-sm text-gray-900 dark:text-white">{{ github_user.public_repos|intcomma }}</dd>
+                </div>
+                <div class="sm:col-span-1">
+                    <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Public Gists</dt>
+                    <dd class="mt-1 text-sm text-gray-900 dark:text-white">{{ github_user.public_gists|intcomma }}</dd>
+                </div>
+                <div class="sm:col-span-1">
+                    <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Account</dt>
+                    <dd class="mt-1 text-sm text-gray-900 dark:text-white">{{ github_user.account_type|default:'-' }}{% if github_user.site_admin %} • Site Admin{% endif %}</dd>
+                </div>
+
+                <div class="sm:col-span-1">
+                    <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Joined GitHub</dt>
+                    <dd class="mt-1 text-sm text-gray-900 dark:text-white">{% if github_user.github_created_at %}{{ github_user.github_created_at|date:"M d, Y" }} ({{ github_user.github_created_at|timesince }} ago){% else %}-{% endif %}</dd>
+                </div>
+                <div class="sm:col-span-1">
+                    <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Last Updated</dt>
+                    <dd class="mt-1 text-sm text-gray-900 dark:text-white">{% if github_user.github_updated_at %}{{ github_user.github_updated_at|date:"M d, Y H:i" }}{% else %}-{% endif %}</dd>
+                </div>
             </dl>
+        </div>
+
+        <div class="border-t border-gray-200 dark:border-gray-700 px-4 py-5 sm:px-6">
+            <div>
+                <h4 class="text-md font-medium text-gray-900 dark:text-white mb-2">Bio</h4>
+                <p class="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-line">{{ github_user.bio|default:'-' }}</p>
+            </div>
+            <div class="mt-6 grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div class="bg-gray-50 dark:bg-gray-700 rounded-md p-4">
+                    <div class="text-sm text-gray-500 dark:text-gray-300">Followers</div>
+                    <div class="text-xl font-semibold text-gray-900 dark:text-white">{{ github_user.followers|intcomma }}</div>
+                </div>
+                <div class="bg-gray-50 dark:bg-gray-700 rounded-md p-4">
+                    <div class="text-sm text-gray-500 dark:text-gray-300">Following</div>
+                    <div class="text-xl font-semibold text-gray-900 dark:text-white">{{ github_user.following|intcomma }}</div>
+                </div>
+                <div class="bg-gray-50 dark:bg-gray-700 rounded-md p-4">
+                    <div class="text-sm text-gray-500 dark:text-gray-300">Contributions (last year)</div>
+                    <div class="text-xl font-semibold text-gray-900 dark:text-white">{{ github_user.contributions_last_year|intcomma }}</div>
+                </div>
+            </div>
         </div>
     </div>
 

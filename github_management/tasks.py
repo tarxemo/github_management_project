@@ -4,6 +4,7 @@ from celery import shared_task
 from django.utils import timezone
 from django.core.management import call_command
 from django.db import transaction
+from django.utils.dateparse import parse_datetime
 from .models import Country, GitHubUser
 from .services.github_api import GitHubAPIClient
 
@@ -122,7 +123,7 @@ def update_users_stats_batch(user_ids, model_name):
     for user_id, user in users.items():
         try:
             user_data = github_api.get_user(user.github_username)
-            
+            print(user_data)
             if user_data:
                 update_fields = ['fetched_at']
                 user.fetched_at = timezone.now()
@@ -138,9 +139,9 @@ def update_users_stats_batch(user_ids, model_name):
                 contributions = user_data.get('contributions', {})
                 contributions_last_year = contributions.get('last_year', 0)
                 print(f"Contributions last year: {contributions_last_year}")
-                # if user.contributions_last_year != contributions_last_year:
-                #     user.contributions_last_year = contributions_last_year
-                #     update_fields.append('contributions_last_year')
+                if user.contributions_last_year != contributions_last_year:
+                    user.contributions_last_year = contributions_last_year
+                    update_fields.append('contributions_last_year')
                     
                 if user_data.get('avatar_url') and user.avatar_url != user_data['avatar_url']:
                     user.avatar_url = user_data['avatar_url']
@@ -149,6 +150,37 @@ def update_users_stats_batch(user_ids, model_name):
                 if user_data.get('html_url') and user.profile_url != user_data['html_url']:
                     user.profile_url = user_data['html_url']
                     update_fields.append('profile_url')
+                
+                # Additional profile fields from REST API
+                mapping = [
+                    ('github_id', 'id'),
+                    ('github_node_id', 'node_id'),
+                    ('display_name', 'name'),
+                    ('company', 'company'),
+                    ('blog', 'blog'),
+                    ('location', 'location'),
+                    ('email_public', 'email'),
+                    ('hireable', 'hireable'),
+                    ('bio', 'bio'),
+                    ('twitter_username', 'twitter_username'),
+                    ('public_repos', 'public_repos'),
+                    ('public_gists', 'public_gists'),
+                    ('account_type', 'type'),
+                    ('user_view_type', 'user_view_type'),
+                    ('site_admin', 'site_admin'),
+                ]
+                for model_field, api_field in mapping:
+                    if api_field in user_data and getattr(user, model_field, None) != user_data.get(api_field):
+                        setattr(user, model_field, user_data.get(api_field))
+                        update_fields.append(model_field)
+
+                # Datetime fields
+                for model_field, api_field in [('github_created_at', 'created_at'), ('github_updated_at', 'updated_at')]:
+                    if api_field in user_data and user_data.get(api_field):
+                        dt = parse_datetime(user_data.get(api_field))
+                        if dt and getattr(user, model_field) != dt:
+                            setattr(user, model_field, dt)
+                            update_fields.append(model_field)
                 
                 if len(update_fields) > 1:  # More than just fetched_at
                     user.save(update_fields=update_fields)

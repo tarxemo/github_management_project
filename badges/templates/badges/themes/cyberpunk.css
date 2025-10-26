@@ -1,0 +1,7 @@
+:root{
+  --bg-grad-1:#0b0f1a; --bg-grad-2:#121b33;
+  --text:#e6f0ff; --muted:#9fb3ff;
+  --accent-1:#00e1ff; --accent-2:#ff2bd1;
+  --border:#2b355a; --shadow:#060a14;
+  --panel:rgba(10,16,32,0.6); --panel-border:#28314e;
+}

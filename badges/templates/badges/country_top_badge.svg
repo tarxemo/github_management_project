@@ -1,0 +1,14 @@
+{% extends 'badges/base.svg' %}
+{% block content %}
+  <g transform="translate(28,24)">
+    <text class="title" fill="{{ text_override|default:'#fff' }}">Top in {{ country }}</text>
+  </g>
+  <g transform="translate(28,64)">
+    <rect x="0" y="0" width="704" height="110" class="card" fill="var(--panel)" stroke="var(--panel-border)"/>
+    {% if country_percentile %}
+      <text x="24" y="78" class="value" fill="var(--text)">Top {{ 100 - country_percentile }}%</text>
+    {% else %}
+      <text x="24" y="78" class="value" fill="var(--text)">No country data</text>
+    {% endif %}
+  </g>
+{% endblock %}

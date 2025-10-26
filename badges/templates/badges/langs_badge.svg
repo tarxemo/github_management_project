@@ -1,0 +1,18 @@
+{% extends 'badges/base.svg' %}
+{% block content %}
+  <g transform="translate(28,24)">
+    <text class="title" fill="{{ text_override|default:'#fff' }}">{{ display_name }} · Top Languages</text>
+  </g>
+  <g transform="translate(28,64)">
+    <rect x="0" y="0" width="704" height="110" class="card" fill="var(--panel)" stroke="var(--panel-border)"/>
+    {% if languages and languages|length > 0 %}
+      {% for lang in languages %}
+        <rect x="{{ 16 + forloop.counter0* (680 / languages|length) }}" y="48" width="{{ (lang.percent/100.0) * 672 }}" height="16"
+              fill="url(#accentGrad)" opacity="0.9" />
+        <text x="{{ 16 + forloop.counter0* (680 / languages|length) }}" y="36" class="label" fill="var(--text)">{{ lang.name }} {{ lang.percent }}%</text>
+      {% endfor %}
+    {% else %}
+      <text x="24" y="68" class="label" fill="var(--muted)">No language data available</text>
+    {% endif %}
+  </g>
+{% endblock %}

@@ -1,0 +1,17 @@
+{% extends 'badges/base.svg' %}
+{% block content %}
+  <g transform="translate(28,24)">
+    <text class="title" fill="{{ text_override|default:'#fff' }}">{{ display_name }} · Streak</text>
+  </g>
+  <g transform="translate(380,100)">
+    <circle cx="0" cy="0" r="64" fill="none" stroke="var(--panel-border)" stroke-width="10" />
+    <circle cx="0" cy="0" r="64" fill="none" stroke="url(#accentGrad)" stroke-width="10" stroke-linecap="round"
+            stroke-dasharray="{{ streak.current|default:0 }}, 400">
+      {% if animated %}
+      <animate attributeName="stroke-dasharray" values="0,400;{{ streak.current|default:0 }},400" dur="1.6s" fill="freeze" />
+      {% endif %}
+    </circle>
+    <text x="0" y="8" text-anchor="middle" class="value" fill="var(--text)">{{ streak.current }}d</text>
+    <text x="0" y="32" text-anchor="middle" class="label" fill="var(--muted)">Best {{ streak.best }}d</text>
+  </g>
+{% endblock %}

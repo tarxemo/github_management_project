@@ -93,6 +93,8 @@ INSTALLED_APPS = [
     'github_management',
     'django_celery_beat',
     'users',
+    # 'discussions',
+    'badges',
 ]
 
 

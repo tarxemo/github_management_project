@@ -1,0 +1,29 @@
+{% extends 'badges/base.svg' %}
+{% block content %}
+  <g transform="translate(28,24)">
+    <text class="title" fill="{{ text_override|default:'#fff' }}">{{ display_name }} · GitHub Stats</text>
+  </g>
+
+  <g transform="translate(28,64)">
+    <rect x="0" y="0" width="210" height="110" class="card" fill="var(--panel)" stroke="var(--panel-border)"/>
+    <text x="16" y="28" class="label" fill="var(--muted)">Followers</text>
+    <text x="16" y="70" class="value" fill="var(--text)" filter="url(#glow)">{{ followers }}</text>
+  </g>
+
+  <g transform="translate(258,64)">
+    <rect x="0" y="0" width="210" height="110" class="card" fill="var(--panel)" stroke="var(--panel-border)"/>
+    <text x="16" y="28" class="label" fill="var(--muted)">Following</text>
+    <text x="16" y="70" class="value" fill="var(--text)" filter="url(#glow)">{{ following }}</text>
+  </g>
+
+  <g transform="translate(488,64)">
+    <rect x="0" y="0" width="244" height="110" class="card" fill="var(--panel)" stroke="var(--panel-border)"/>
+    <text x="16" y="28" class="label" fill="var(--muted)">Repos · Contrib · Rank</text>
+    <text x="16" y="70" class="value" fill="var(--text)">{{ public_repos }} · {{ contributions_last_year }} · #{{ rank }}</text>
+    {% if animated %}
+    <rect x="220" y="18" width="8" height="8" rx="2" fill="url(#accentGrad)">
+      <animate attributeName="y" values="18;26;18" dur="2.4s" repeatCount="indefinite" />
+    </rect>
+    {% endif %}
+  </g>
+{% endblock %}

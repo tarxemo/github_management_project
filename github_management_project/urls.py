@@ -61,6 +61,8 @@ urlpatterns = [
     # GitHub Management URLs
     path('github/', include(("github_management.urls", "github_management"), namespace="github_management")),
     path('relationships/', include('users.urls')),
+    # path('discussions/', include(('discussions.urls', 'discussions'), namespace='discussions')),
+    path('', include(('badges.urls', 'badges'), namespace='badges')),
     path('robots.txt', robots_txt, name='robots'),
 ]
 

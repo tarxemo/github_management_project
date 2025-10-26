@@ -1,0 +1,20 @@
+{% extends 'badges/base.svg' %}
+{% block content %}
+  <g transform="translate(28,24)">
+    <text class="title" fill="{{ text_override|default:'#fff' }}">{{ display_name }} · Global Rank</text>
+  </g>
+  <g transform="translate(28,56)">
+    <circle cx="60" cy="60" r="56" fill="var(--panel)" stroke="url(#accentGrad)" stroke-width="4" />
+    <text x="60" y="68" text-anchor="middle" class="value" fill="var(--text)" filter="url(#glow)">#{{ global_rank }}</text>
+  </g>
+  <g transform="translate(160,56)">
+    <rect x="0" y="0" width="560" height="120" class="card" fill="var(--panel)" stroke="var(--panel-border)"/>
+    <text x="24" y="48" class="label" fill="var(--muted)">Country</text>
+    <text x="24" y="88" class="value" fill="var(--text)">{{ country }}{% if country_rank %} · #{{ country_rank }}{% endif %}</text>
+    {% if animated %}
+    <rect x="520" y="20" width="18" height="18" rx="6" fill="url(#accentGrad)">
+      <animate attributeName="opacity" values="0.5;1;0.5" dur="2s" repeatCount="indefinite" />
+    </rect>
+    {% endif %}
+  </g>
+{% endblock %}

@@ -1,0 +1,15 @@
+{% extends 'badges/base.svg' %}
+{% block content %}
+  <g transform="translate(28,24)">
+    <text class="title" fill="{{ text_override|default:'#fff' }}">{{ display_name }} · Git Impact</text>
+  </g>
+  <g transform="translate(28,64)">
+    <rect x="0" y="0" width="704" height="110" class="card" fill="var(--panel)" stroke="var(--panel-border)"/>
+    <text x="24" y="78" class="value" fill="var(--text)" filter="url(#glow)">{{ impact }}</text>
+    {% if animated %}
+    <rect x="640" y="20" width="36" height="36" rx="10" fill="url(#accentGrad)">
+      <animate attributeName="y" values="20;28;20" dur="2s" repeatCount="indefinite" />
+    </rect>
+    {% endif %}
+  </g>
+{% endblock %}

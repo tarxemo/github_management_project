@@ -60,7 +60,7 @@ class GitHubAPIClient:
     def get_users_by_country(self, country: str, max_users: int = 256) -> List[Dict[str, Any]]:
         try:
             # First try to get the main page for the country
-            soup = self._make_request(f"{country.lower()}_private")
+            soup = self._make_request(f"{country.lower()}_public")
             
             # Find the users table
             users_table = soup.find('table', class_='users-list')

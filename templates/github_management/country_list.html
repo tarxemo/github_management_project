@@ -55,6 +55,19 @@
             <ul class="divide-y divide-gray-200 dark:divide-gray-700">
                 {% for country in page_obj %}
                 <li class="hover:bg-gray-50 dark:hover:bg-gray-700">
+                    {% if user.is_superuser %}
+                    <form method="post" action="{% url 'github_management:country_update_stats' slug=country.slug %}" class="px-4 pt-4 sm:px-6 flex justify-end"
+                          onsubmit="return confirm('Start updating stats for all users in {{ country.name }}?')">
+                        {% csrf_token %}
+                        <button type="submit"
+                                class="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                            <svg class="-ml-0.5 mr-1.5 h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                            </svg>
+                            Update Stats
+                        </button>
+                    </form>
+                    {% endif %}
                     <a href="{% url 'github_management:country_detail' slug=country.slug %}" class="block">
                         <div class="px-4 py-4 sm:px-6">
                             <div class="flex items-center justify-between">

@@ -61,6 +61,29 @@ class FetchAllCountriesView(View):
         else:
             messages.error(request, "You do not have permission to perform this action.")
         return redirect('github_management:country_list')
+
+class UpdateCountryUsersStatsView(LoginRequiredMixin, UserPassesTestMixin, View):
+    """Trigger batch update of all GitHub users' stats for a given country (superuser only)."""
+    def test_func(self):
+        return self.request.user.is_superuser
+
+    def post(self, request, slug):
+        country = get_object_or_404(Country, slug=slug)
+        user_ids = list(GitHubUser.objects.filter(country=country).values_list('id', flat=True))
+
+        if not user_ids:
+            messages.info(request, f"No users found for {country.name} to update.")
+            return redirect('github_management:country_detail', slug=slug)
+
+        try:
+            from .tasks import update_users_stats_batch
+            task = update_users_stats_batch.delay(user_ids, "GitHubUser")
+            messages.success(request, f"Started updating stats for {len(user_ids)} users in {country.name}. Task ID: {task.id}")
+        except Exception as e:
+            logger.error(f"Error enqueuing stats update for {country.name}: {e}")
+            messages.error(request, f"Failed to start update: {str(e)}")
+
+        return redirect('github_management:country_detail', slug=slug)
     
 class CountryDetailView(View):
     """View to show users for a specific country"""

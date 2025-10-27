@@ -12,6 +12,7 @@ urlpatterns = [
     # Protected pages (require login)
     path('countries/', views.CountryListView.as_view(), name='country_list'),
     path('countries/<slug:slug>/', views.CountryDetailView.as_view(), name='country_detail'),
+    path('countries/<slug:slug>/update-stats/', views.UpdateCountryUsersStatsView.as_view(), name='country_update_stats'),
     path('countries/<slug:slug>/fetch/', views.FetchUsersView.as_view(), name='fetch_users'),
     path('api/countries/<slug:slug>/status/', views.FetchStatusView.as_view(), name='country_status'),
     

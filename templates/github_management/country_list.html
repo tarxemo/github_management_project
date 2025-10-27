@@ -56,7 +56,7 @@
                 {% for country in page_obj %}
                 <li class="hover:bg-gray-50 dark:hover:bg-gray-700">
                     {% if user.is_superuser %}
-                    <form method="post" action="{% url 'github_management:country_update_stats' slug=country.slug %}" class="px-4 pt-4 sm:px-6 flex justify-end"
+                    <form method="post" action="{% url 'github_management:country_update_stats' slug=country.slug %}" class="px-4 pt-4 sm:px-6 flex justify-end js-update-stats" data-country-name="{{ country.name }}"
                           onsubmit="return confirm('Start updating stats for all users in {{ country.name }}?')">
                         {% csrf_token %}
                         <button type="submit"
@@ -145,4 +145,59 @@
         </div>
     </div>
 </div>
+{% endblock %}
+{% block extra_js %}
+<script>
+(function() {
+  function getCsrfToken(form) {
+    const input = form.querySelector('input[name="csrfmiddlewaretoken"]');
+    return input ? input.value : '';
+  }
+
+  function showToast(message, type) {
+    // Minimal inline toast; assumes Tailwind is present
+    const toast = document.createElement('div');
+    const color = type === 'error' ? 'bg-red-600' : 'bg-green-600';
+    toast.className = `${color} text-white px-4 py-2 rounded shadow fixed bottom-4 right-4 z-50`;
+    toast.textContent = message;
+    document.body.appendChild(toast);
+    setTimeout(() => toast.remove(), 3000);
+  }
+
+  document.querySelectorAll('form.js-update-stats').forEach(function(form) {
+    form.addEventListener('submit', function(e) {
+      e.preventDefault();
+      const countryName = form.getAttribute('data-country-name') || 'country';
+      const url = form.getAttribute('action');
+      const csrftoken = getCsrfToken(form);
+      const submitBtn = form.querySelector('button[type="submit"]');
+      const originalText = submitBtn.textContent;
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Starting…';
+
+      fetch(url, {
+        method: 'POST',
+        headers: {
+          'X-Requested-With': 'XMLHttpRequest',
+          'X-CSRFToken': csrftoken,
+          'Accept': 'application/json',
+        },
+      }).then(async (resp) => {
+        const data = await resp.json().catch(() => ({}));
+        if (resp.ok && data && data.success) {
+          showToast(data.message || `Started updating ${countryName}.`, 'success');
+        } else {
+          const msg = (data && data.message) || `Failed to start update for ${countryName}.`;
+          showToast(msg, 'error');
+        }
+      }).catch(() => {
+        showToast(`Network error while updating ${countryName}.`, 'error');
+      }).finally(() => {
+        submitBtn.disabled = false;
+        submitBtn.textContent = originalText;
+      });
+    });
+  });
+})();
+</script>
 {% endblock %}

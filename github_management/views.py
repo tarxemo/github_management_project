@@ -72,15 +72,34 @@ class UpdateCountryUsersStatsView(LoginRequiredMixin, UserPassesTestMixin, View)
         user_ids = list(GitHubUser.objects.filter(country=country).values_list('id', flat=True))
 
         if not user_ids:
+            if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+                return JsonResponse({
+                    'success': True,
+                    'message': f"No users found for {country.name} to update.",
+                    'task_id': None,
+                    'count': 0,
+                })
             messages.info(request, f"No users found for {country.name} to update.")
             return redirect('github_management:country_detail', slug=slug)
 
         try:
             from .tasks import update_users_stats_batch
             task = update_users_stats_batch.delay(user_ids, "GitHubUser")
+            if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+                return JsonResponse({
+                    'success': True,
+                    'message': f"Started updating stats for {len(user_ids)} users in {country.name}.",
+                    'task_id': str(task.id),
+                    'count': len(user_ids),
+                })
             messages.success(request, f"Started updating stats for {len(user_ids)} users in {country.name}. Task ID: {task.id}")
         except Exception as e:
             logger.error(f"Error enqueuing stats update for {country.name}: {e}")
+            if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+                return JsonResponse({
+                    'success': False,
+                    'message': f"Failed to start update: {str(e)}",
+                }, status=400)
             messages.error(request, f"Failed to start update: {str(e)}")
 
         return redirect('github_management:country_detail', slug=slug)

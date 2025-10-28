@@ -74,9 +74,9 @@
                     </form>
                 {% endif %}
                 {% if request.user.is_authenticated %}
-                <form method="post" action="{% url 'github_management:user_update_stats' github_username=github_user.github_username %}" class="refresh-form inline">
+                <form method="post" action="{% url 'github_management:user_update_stats' github_username=github_user.github_username %}" class="refresh-form inline" onsubmit="return false;">
                     {% csrf_token %}
-                    <button class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700" type="submit">
+                    <button class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 refresh-btn" type="button">
                         <i class="fas fa-sync mr-2"></i>
                         Refresh
                     </button>
@@ -241,12 +241,11 @@
 (function(){
   const form = document.querySelector('.refresh-form');
   if(!form) return;
-  form.addEventListener('submit', function(e){
-    e.preventDefault();
-    const btn = form.querySelector('button[type="submit"]');
-    const csrf = form.querySelector('[name=csrfmiddlewaretoken]');
-    if(!btn||!csrf) return;
-    const original = btn.innerHTML; btn.disabled=true; btn.innerHTML='Refreshing…';
+  const btn = form.querySelector('.refresh-btn');
+  const csrf = form.querySelector('[name=csrfmiddlewaretoken]');
+  if(!btn||!csrf) return;
+  btn.addEventListener('click', function(){
+    const original = btn.innerHTML; btn.disabled = true; btn.innerHTML = 'Refreshing…';
     fetch(form.action, {method:'POST', headers:{'X-CSRFToken': csrf.value, 'Accept':'application/json', 'X-Requested-With':'XMLHttpRequest'}})
       .then(async (res)=>{
         const data = await res.json().catch(()=>({}));

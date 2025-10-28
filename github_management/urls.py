@@ -19,6 +19,9 @@ urlpatterns = [
     path('user/<str:github_username>/', 
          views.UserDetailView.as_view(), 
          name='user_detail'),
+    path('user/<str:github_username>/refresh/',
+         views.UpdateSingleUserStatsView.as_view(),
+         name='user_update_stats'),
     # Follow/Unfollow functionality
 path('follow/', 
      views.FollowRandomUsersView.as_view(), 

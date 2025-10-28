@@ -334,6 +334,16 @@ class UserDetailView(View):
     def get(self, request, github_username):
         user = get_object_or_404(GitHubUser, github_username__iexact=github_username)
         
+        # Auto-refresh stats in background if data is stale (> 1 day)
+        auto_refresh_started = False
+        try:
+            if not user.fetched_at or (timezone.now() - user.fetched_at) > timedelta(days=1):
+                from .tasks import update_users_stats_batch
+                update_users_stats_batch.delay([user.id], "GitHubUser")
+                auto_refresh_started = True
+        except Exception as e:
+            logger.error(f"Failed to auto-enqueue refresh for {user.github_username}: {e}")
+
         # Check if the current user is following this GitHub user
         # Only check if the user is authenticated
         is_following = False
@@ -354,9 +364,42 @@ class UserDetailView(View):
             'is_following': is_following,
             'similar_users': similar_users,
             'active_tab': 'users',
+            'auto_refresh_started': auto_refresh_started,
         }
         
         return render(request, 'github_management/user_detail.html', context)
+
+
+class UpdateSingleUserStatsView(LoginRequiredMixin, View):
+    """AJAX endpoint to refresh a single GitHub user's stats from the detail page."""
+    def post(self, request, github_username):
+        gh_user = get_object_or_404(GitHubUser, github_username__iexact=github_username)
+        # Only refresh if data is stale (> 1 day)
+        is_stale = (not gh_user.fetched_at) or ((timezone.now() - gh_user.fetched_at) > timedelta(days=1))
+        if not is_stale:
+            return JsonResponse({
+                'success': True,
+                'message': f'@{gh_user.github_username} is already up to date (last fetched {gh_user.fetched_at}).',
+                'task_id': None,
+                'user_id': gh_user.id,
+                'stale': False,
+            })
+        try:
+            from .tasks import update_users_stats_batch
+            task = update_users_stats_batch.delay([gh_user.id], "GitHubUser")
+            return JsonResponse({
+                'success': True,
+                'message': f'Started refreshing stats for @{gh_user.github_username}.',
+                'task_id': str(task.id),
+                'user_id': gh_user.id,
+                'stale': True,
+            })
+        except Exception as e:
+            logger.error(f"Error enqueuing single user update for {gh_user.github_username}: {e}")
+            return JsonResponse({
+                'success': False,
+                'message': f'Failed to start refresh: {str(e)}'
+            }, status=400)
 
     
 

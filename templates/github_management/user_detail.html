@@ -59,7 +59,7 @@
   });
 })();
 </script>
-            <div class="ml-auto">
+            <div class="ml-auto flex items-center space-x-3">
                 {% if is_following %}
                     <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
                         Following
@@ -73,8 +73,24 @@
                         </button>
                     </form>
                 {% endif %}
+                {% if request.user.is_authenticated %}
+                <form method="post" action="{% url 'github_management:user_update_stats' github_username=github_user.github_username %}" class="refresh-form inline">
+                    {% csrf_token %}
+                    <button class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700" type="submit">
+                        <i class="fas fa-sync mr-2"></i>
+                        Refresh
+                    </button>
+                </form>
+                {% endif %}
             </div>
         </div>
+        {% if auto_refresh_started %}
+        <div class="px-4 sm:px-6">
+            <div class="mt-2 text-xs text-gray-600 dark:text-gray-400">
+                A background refresh was started because this profile was last fetched over a day ago.
+            </div>
+        </div>
+        {% endif %}
         
         <div class="border-t border-gray-200 dark:border-gray-700 px-4 py-5 sm:px-6">
             <dl class="grid grid-cols-1 gap-x-4 gap-y-6 sm:grid-cols-3">
@@ -221,3 +237,36 @@
     </div>
 </div>
 {% endblock %}
+<script>
+(function(){
+  const form = document.querySelector('.refresh-form');
+  if(!form) return;
+  form.addEventListener('submit', function(e){
+    e.preventDefault();
+    const btn = form.querySelector('button[type="submit"]');
+    const csrf = form.querySelector('[name=csrfmiddlewaretoken]');
+    if(!btn||!csrf) return;
+    const original = btn.innerHTML; btn.disabled=true; btn.innerHTML='Refreshing…';
+    fetch(form.action, {method:'POST', headers:{'X-CSRFToken': csrf.value, 'Accept':'application/json', 'X-Requested-With':'XMLHttpRequest'}})
+      .then(async (res)=>{
+        const data = await res.json().catch(()=>({}));
+        const ok = res.ok && data && data.success;
+        const msg = (data && data.message) || (ok ? 'Refresh has started.' : 'Failed to start refresh.');
+        const color = ok ? 'bg-green-600' : 'bg-red-600';
+        const toast = document.createElement('div');
+        toast.className = `${color} text-white px-4 py-2 rounded shadow fixed bottom-4 right-4 z-50`;
+        toast.textContent = msg;
+        document.body.appendChild(toast);
+        setTimeout(()=> toast.remove(), 3000);
+      })
+      .catch(()=>{
+        const toast = document.createElement('div');
+        toast.className = 'bg-red-600 text-white px-4 py-2 rounded shadow fixed bottom-4 right-4 z-50';
+        toast.textContent = 'Network error while starting refresh.';
+        document.body.appendChild(toast);
+        setTimeout(()=> toast.remove(), 3000);
+      })
+      .finally(()=>{ btn.disabled=false; btn.innerHTML=original; });
+  });
+})();
+</script>

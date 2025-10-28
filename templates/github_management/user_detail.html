@@ -250,21 +250,22 @@
     fetch(form.action, {method:'POST', headers:{'X-CSRFToken': csrf.value, 'Accept':'application/json', 'X-Requested-With':'XMLHttpRequest'}})
       .then(async (res)=>{
         const data = await res.json().catch(()=>({}));
-        const ok = res.ok && data && data.success;
-        const msg = (data && data.message) || (ok ? 'Refresh has started.' : 'Failed to start refresh.');
-        const color = ok ? 'bg-green-600' : 'bg-red-600';
+        const ok = !!(res && res.ok && data && data.success !== false);
+        const stale = !!(data && data.stale);
+        const msg = (data && data.message) || (ok ? (stale ? 'Refresh has started.' : 'Already up to date.') : 'Failed to start refresh.');
+        const color = ok ? (stale ? 'bg-green-600' : 'bg-blue-600') : 'bg-red-600';
         const toast = document.createElement('div');
         toast.className = `${color} text-white px-4 py-2 rounded shadow fixed bottom-4 right-4 z-50`;
         toast.textContent = msg;
         document.body.appendChild(toast);
-        setTimeout(()=> toast.remove(), 3000);
+        setTimeout(()=> toast.remove(), 3500);
       })
       .catch(()=>{
         const toast = document.createElement('div');
         toast.className = 'bg-red-600 text-white px-4 py-2 rounded shadow fixed bottom-4 right-4 z-50';
         toast.textContent = 'Network error while starting refresh.';
         document.body.appendChild(toast);
-        setTimeout(()=> toast.remove(), 3000);
+        setTimeout(()=> toast.remove(), 3500);
       })
       .finally(()=>{ btn.disabled=false; btn.innerHTML=original; });
   });

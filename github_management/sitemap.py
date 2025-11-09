@@ -6,7 +6,7 @@ from .models import Country, GitHubUser
 
 # Get the current site domain
 def get_base_url():
-    return getattr(settings, 'SITE_URL', 'https://github.tarxemo.com')
+    return 'https://github.tarxemo.com'
 
 base_url = get_base_url()
 

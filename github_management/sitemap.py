@@ -65,12 +65,25 @@ class CountrySitemap(Sitemap):
             return f"{base_url}?page={page}"
         return base_url
 
-class UserSitemap(Sitemap):
+class UserSitemapPart1(Sitemap):
     changefreq = 'weekly'
     priority = 0.7
 
     def items(self):
-        return GitHubUser.objects.all()
+        return GitHubUser.objects.order_by('id')[:25000]
+
+    def location(self, obj):
+        return reverse('github_management:user_detail', kwargs={'github_username': obj.github_username})
+
+    def lastmod(self, obj):
+        return obj.fetched_at or None
+
+class UserSitemapPart2(Sitemap):
+    changefreq = 'weekly'
+    priority = 0.7
+
+    def items(self):
+        return GitHubUser.objects.order_by('id')[25000:]
 
     def location(self, obj):
         return reverse('github_management:user_detail', kwargs={'github_username': obj.github_username})
@@ -84,7 +97,8 @@ class SitemapIndex(Sitemap):
         return [
             ('static', StaticViewSitemap),
             ('countries', CountrySitemap),
-            ('users', UserSitemap),
+            ('users-1', UserSitemapPart1),
+            ('users-2', UserSitemapPart2),
         ]
 
     def location(self, item):
@@ -93,5 +107,6 @@ class SitemapIndex(Sitemap):
 sitemaps = {
     'static': StaticViewSitemap,
     'countries': CountrySitemap,
-    'users': UserSitemap,
+    'users-1': UserSitemapPart1,
+    'users-2': UserSitemapPart2,
 }

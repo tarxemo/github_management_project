@@ -32,14 +32,6 @@ class StaticViewSitemap(Sitemap):
             return f"{reverse('github_management:country_list')}?page={page}"
         return reverse(f'github_management:{item}')
 
-    def get_urls(self, **kwargs):
-        return [{
-            'location': f"{base_url}{self._location(item)}",
-            'lastmod': None,
-            'changefreq': self.changefreq,
-            'priority': self.priority,
-        } for item in self.items()]
-
 class CountrySitemap(Sitemap):
     changefreq = 'daily'
     priority = 0.9
@@ -73,20 +65,6 @@ class CountrySitemap(Sitemap):
             return f"{base_url}?page={page}"
         return base_url
 
-    def get_urls(self, **kwargs):
-        urls = []
-        for item in self.items():
-            country_slug, page = item
-            country = Country.objects.get(slug=country_slug)
-            
-            urls.append({
-                'location': f"{base_url}{self.location(item)}",
-                'lastmod': country.last_updated,
-                'changefreq': self.changefreq,
-                'priority': self.priority if page <= 1 else max(0.1, self.priority - 0.2),  # Lower priority for paginated pages
-            })
-        return urls
-
 class UserSitemap(Sitemap):
     changefreq = 'weekly'
     priority = 0.7
@@ -99,14 +77,6 @@ class UserSitemap(Sitemap):
 
     def lastmod(self, obj):
         return obj.fetched_at or None
-
-    def get_urls(self, **kwargs):
-        return [{
-            'location': f"{base_url}{self._location(item)}",
-            'lastmod': self.lastmod(item),
-            'changefreq': self.changefreq,
-            'priority': self.priority,
-        } for item in self.items()]
 
 # Sitemap index
 class SitemapIndex(Sitemap):

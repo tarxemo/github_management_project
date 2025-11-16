@@ -88,7 +88,7 @@ class UserSitemapPart2(Sitemap):
     priority = 0.7
 
     def items(self):
-        return GitHubUser.objects.order_by('id')[25000:]
+        return GitHubUser.objects.order_by('id')[25000:47000]
 
     def location(self, obj):
         return reverse('github_management:user_detail', kwargs={'github_username': obj.github_username})

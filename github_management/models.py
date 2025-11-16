@@ -8,6 +8,7 @@ from users.services.github_service import GitHubService
 from django.urls import reverse
 from .managers import GitHubUserManager
 from users.abstract_models import BaseUser
+import math
 
 class Country(models.Model):
     """Model to store available countries from committers.top"""
@@ -34,6 +35,7 @@ class GitHubUser(BaseUser):
     """Model to store GitHub user information and their statistics."""
     country = models.ForeignKey('Country', on_delete=models.CASCADE, related_name='users')
     rank = models.PositiveIntegerField(default=0)
+    intelligence_score = models.FloatField(default=0)
     
     objects = GitHubUserManager()
     
@@ -61,6 +63,42 @@ class GitHubUser(BaseUser):
             from_user=user,
             to_user__github_username__iexact=self.github_username
         ).exists()
+
+    def compute_intelligence_score(self):
+        followers = self.followers or 0
+        following = self.following or 0
+        contributions = self.contributions_last_year or 0
+        public_repos = self.public_repos or 0
+        public_gists = self.public_gists or 0
+
+        followers_score = math.log10(followers + 1)
+        following_score = math.log10(following + 1) * 0.2
+        contributions_score = math.log10(contributions + 1) * 2.0
+        repos_score = math.log10(public_repos + 1) * 1.5
+        gists_score = math.log10(public_gists + 1) * 0.5
+
+        account_age_years = 0.0
+        if self.github_created_at:
+            delta = timezone.now() - self.github_created_at
+            account_age_years = max(delta.days / 365.0, 0.0)
+        account_age_score = min(account_age_years, 10.0) * 0.1
+
+        activity_balance_score = 0.0
+        if following > 0:
+            ratio = followers / float(following)
+            activity_balance_score = min(math.log10(ratio + 1), 2.0) * 0.5
+
+        score = (
+            followers_score
+            + following_score
+            + contributions_score
+            + repos_score
+            + gists_score
+            + account_age_score
+            + activity_balance_score
+        )
+
+        return round(score, 4)
 
 
 class GitHubFollowAction(models.Model):

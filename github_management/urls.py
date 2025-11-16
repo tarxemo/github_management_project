@@ -13,6 +13,7 @@ urlpatterns = [
     path('countries/', views.CountryListView.as_view(), name='country_list'),
     path('countries/<slug:slug>/', views.CountryDetailView.as_view(), name='country_detail'),
     path('countries/<slug:slug>/update-stats/', views.UpdateCountryUsersStatsView.as_view(), name='country_update_stats'),
+    path('countries/<slug:slug>/recompute-ranking/', views.RecomputeCountryRankingView.as_view(), name='country_recompute_ranking'),
     path('countries/<slug:slug>/fetch/', views.FetchUsersView.as_view(), name='fetch_users'),
     path('api/countries/<slug:slug>/status/', views.FetchStatusView.as_view(), name='country_status'),
     
@@ -38,4 +39,7 @@ path('follow/',
     path('fetch-all-countries/', 
          login_required(views.FetchAllCountriesView.as_view()), 
          name='fetch_all_countries'),
+    path('recompute-all-countries-ranking/',
+         login_required(views.RecomputeAllCountriesRankingView.as_view()),
+         name='recompute_all_countries_ranking'),
 ]

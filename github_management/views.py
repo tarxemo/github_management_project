@@ -62,6 +62,27 @@ class FetchAllCountriesView(View):
             messages.error(request, "You do not have permission to perform this action.")
         return redirect('github_management:country_list')
 
+
+class RecomputeAllCountriesRankingView(View):
+    """View to trigger recomputing intelligence-based ranking for all countries (superuser only)."""
+    def get(self, request, *args, **kwargs):
+        if not request.user.is_superuser:
+            messages.error(request, "You do not have permission to perform this action.")
+            return redirect('github_management:country_list')
+
+        try:
+            from .tasks import recompute_all_countries_intelligence_ranking
+            task = recompute_all_countries_intelligence_ranking.delay()
+            messages.success(
+                request,
+                f"Started recomputing intelligence ranking for all countries. Task ID: {task.id}"
+            )
+        except Exception as e:
+            logger.error(f"Error enqueuing global ranking recomputation: {e}")
+            messages.error(request, f"Failed to start global ranking recomputation: {str(e)}")
+
+        return redirect('github_management:country_list')
+
 class UpdateCountryUsersStatsView(LoginRequiredMixin, UserPassesTestMixin, View):
     """Trigger batch update of all GitHub users' stats for a given country (superuser only)."""
     def test_func(self):
@@ -81,6 +102,35 @@ class UpdateCountryUsersStatsView(LoginRequiredMixin, UserPassesTestMixin, View)
                 })
             messages.info(request, f"No users found for {country.name} to update.")
             return redirect('github_management:country_detail', slug=slug)
+
+
+class RecomputeCountryRankingView(LoginRequiredMixin, UserPassesTestMixin, View):
+    """Trigger recomputation of intelligence-based ranking for a given country (superuser only)."""
+    def test_func(self):
+        return self.request.user.is_superuser
+
+    def post(self, request, slug):
+        country = get_object_or_404(Country, slug=slug)
+        try:
+            from .tasks import recompute_country_intelligence_ranking
+            task = recompute_country_intelligence_ranking.delay(country.id)
+            if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+                return JsonResponse({
+                    'success': True,
+                    'message': f"Started recomputing intelligence ranking for users in {country.name}.",
+                    'task_id': str(task.id),
+                })
+            messages.success(request, f"Started recomputing intelligence ranking for users in {country.name}. Task ID: {task.id}")
+        except Exception as e:
+            logger.error(f"Error enqueuing ranking recomputation for {country.name}: {e}")
+            if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+                return JsonResponse({
+                    'success': False,
+                    'message': f"Failed to start ranking recomputation: {str(e)}",
+                }, status=400)
+            messages.error(request, f"Failed to start ranking recomputation: {str(e)}")
+
+        return redirect('github_management:country_detail', slug=slug)
 
         try:
             from .tasks import update_users_stats_batch
@@ -110,7 +160,7 @@ class CountryDetailView(View):
         country = get_object_or_404(Country, slug=slug)
         
         # Get users for this country
-        users = GitHubUser.objects.filter(country=country).order_by('-contributions_last_year')
+        users = GitHubUser.objects.filter(country=country).order_by('rank', '-intelligence_score', '-contributions_last_year')
         
         # Pagination
         paginator = Paginator(users, 25)  # Show 25 users per page

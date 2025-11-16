@@ -95,6 +95,47 @@ def fetch_users_for_country(self, country_id):
         # Make sure to mark as not fetching even if there was an error
         Country.objects.filter(id=country_id).update(is_fetching=False)
 
+
+@shared_task(bind=True)
+def recompute_country_intelligence_ranking(self, country_id):
+    """Recompute intelligence_score and rank for all users in a country."""
+    try:
+        country = Country.objects.get(id=country_id)
+    except Country.DoesNotExist:
+        logger.warning(f"Country with id={country_id} does not exist")
+        return
+
+    users = list(GitHubUser.objects.filter(country=country))
+    if not users:
+        logger.info(f"No users found for country {country.name} to rank")
+        return
+
+    for user in users:
+        user.intelligence_score = user.compute_intelligence_score()
+
+    # Sort by intelligence score descending, then by contributions and followers as tie-breakers
+    users.sort(
+        key=lambda u: (
+            -(u.intelligence_score or 0),
+            -(u.contributions_last_year or 0),
+            -(u.followers or 0),
+        )
+    )
+
+    # Assign rank per country based on sorted order (1-based)
+    for idx, user in enumerate(users, start=1):
+        user.rank = idx
+
+    GitHubUser.objects.bulk_update(users, ["intelligence_score", "rank"])
+    logger.info(f"Recomputed intelligence ranking for {len(users)} users in {country.name}")
+
+
+@shared_task(bind=True)
+def recompute_all_countries_intelligence_ranking(self):
+    """Recompute intelligence-based rankings for all countries."""
+    for country in Country.objects.all().only("id"):
+        recompute_country_intelligence_ranking.delay(country.id)
+
 @shared_task
 def update_users_stats_batch(user_ids, model_name):
     """

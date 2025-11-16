@@ -96,6 +96,19 @@ class UserSitemapPart2(Sitemap):
     def lastmod(self, obj):
         return obj.fetched_at or None
 
+class UserSitemapPart3(Sitemap):
+    changefreq = 'weekly'
+    priority = 0.7
+
+    def items(self):
+        return GitHubUser.objects.order_by('id')[47000:]
+
+    def location(self, obj):
+        return reverse('github_management:user_detail', kwargs={'github_username': obj.github_username})
+
+    def lastmod(self, obj):
+        return obj.fetched_at or None
+
 # Sitemap index
 class SitemapIndex(Sitemap):
     def items(self):
@@ -106,6 +119,7 @@ class SitemapIndex(Sitemap):
         return [
             ('users-1', UserSitemapPart1),
             ('users-2', UserSitemapPart2),
+            ('users-3', UserSitemapPart3),
             ('other', OtherUrlsSitemap),
         ]
 
@@ -115,5 +129,6 @@ class SitemapIndex(Sitemap):
 sitemaps = {
    'users-1': UserSitemapPart1,
    'users-2': UserSitemapPart2,
+   'users-3': UserSitemapPart3,
    'other': OtherUrlsSitemap,
 }

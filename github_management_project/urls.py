@@ -58,7 +58,7 @@ urlpatterns = [
     # Explicit sitemap URLs for individual sections (for Google Search Console)
     path('sitemap-users-1.xml', sitemap, {'sitemaps': sitemaps, 'section': 'users-1'}, name='sitemap_users_1'),
     path('sitemap-users-2.xml', sitemap, {'sitemaps': sitemaps, 'section': 'users-2'}, name='sitemap_users_2'),
-    path('sitemap-users.xml', sitemap, {'sitemaps': sitemaps, 'section': 'users-2'}, name='sitemap_users_2'),
+    path('sitemap-users-3.xml', sitemap, {'sitemaps': sitemaps, 'section': 'users-3'}, name='sitemap_users_3'),
     path('sitemap-other.xml', sitemap, {'sitemaps': sitemaps, 'section': 'other'}, name='sitemap_other'),
     
     # Google One Tap authentication

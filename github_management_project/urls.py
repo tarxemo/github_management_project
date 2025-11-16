@@ -52,8 +52,13 @@ urlpatterns = [
     
     
     path('search/', SearchUsersView.as_view(), name='opensearch'),
-    # Sitemap
+    # Sitemap index (all sections)
     path('sitemap.xml', sitemap, {'sitemaps': sitemaps}, name='django.contrib.sitemaps.views.sitemap'),
+
+    # Explicit sitemap URLs for individual sections (for Google Search Console)
+    path('sitemap-users-1.xml', sitemap, {'sitemaps': sitemaps, 'section': 'users-1'}, name='sitemap_users_1'),
+    path('sitemap-users-2.xml', sitemap, {'sitemaps': sitemaps, 'section': 'users-2'}, name='sitemap_users_2'),
+    path('sitemap-other.xml', sitemap, {'sitemaps': sitemaps, 'section': 'other'}, name='sitemap_other'),
     
     # Google One Tap authentication
     path('accounts/google/onetap/', google_one_tap_auth, name='google_one_tap_auth'),

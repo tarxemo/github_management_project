@@ -2,6 +2,37 @@
 
 {% block title %}{{ github_user.github_username }} ({{ github_user.full_name|default:github_user.github_username }}) ({{ github_user.rank }} rank in {{ github_user.country.name }}) - GitHub User{% endblock %}
 
+{% block extra_head %}
+    <meta name="description" content="{{ github_user.bio|default:'Discover GitHub developer '|add:github_user.github_username|truncatechars:155 }}">
+    <meta property="og:title" content="{{ github_user.full_name|default:github_user.github_username }} - GitHub Developer from {{ github_user.country.name }}">
+    <meta property="og:description" content="{{ github_user.bio|default:'Discover GitHub developer '|add:github_user.github_username|truncatechars:200 }}">
+    <meta property="og:image" content="{{ github_user.avatar_url|default:'https://www.gravatar.com/avatar/00000000000000000000000000000000?d=mp&f=y' }}">
+    <meta property="og:type" content="profile">
+    <meta property="profile:username" content="{{ github_user.github_username }}">
+
+    <meta name="twitter:card" content="summary">
+    <meta name="twitter:title" content="{{ github_user.full_name|default:github_user.github_username }} - GitHub Developer">
+    <meta name="twitter:description" content="{{ github_user.bio|default:'Discover GitHub developer '|add:github_user.github_username|truncatechars:200 }}">
+    <meta name="twitter:image" content="{{ github_user.avatar_url|default:'https://www.gravatar.com/avatar/00000000000000000000000000000000?d=mp&f=y' }}">
+
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "Person",
+      "name": "{{ github_user.full_name|default:github_user.github_username }}",
+      "alternateName": "{{ github_user.github_username }}",
+      "description": "{{ github_user.bio|default:''|truncatechars:200 }}",
+      "image": "{{ github_user.avatar_url|default:'https://www.gravatar.com/avatar/00000000000000000000000000000000?d=mp&f=y' }}",
+      "url": "{{ github_user.profile_url }}",
+      "jobTitle": "{{ github_user.company|default:'' }}",
+      "address": {
+        "@type": "Country",
+        "name": "{{ github_user.country.name }}"
+      }
+    }
+    </script>
+{% endblock %}
+
 {% block content %}
 {% load humanize %}
 <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">

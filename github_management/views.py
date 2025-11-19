@@ -14,7 +14,7 @@ from .models import Country, GitHubUser, GitHubFollowAction
 from users.models import UserFollowing
 from django.contrib.auth.mixins import UserPassesTestMixin
 from django.views.generic import View
-from .tasks import fetch_all_countries_users
+from .tasks import fetch_all_countries_users, follow_random_users_task, unfollow_non_followers_task
 from django.urls import reverse
 
 logger = logging.getLogger(__name__)
@@ -242,37 +242,24 @@ class FollowRandomUsersView(View):
             return redirect('github_management:follow_random')
         
         count = int(request.POST.get('count', 10))  # Default to 10 users
-        country_id = request.POST.get('country')
-        
-        # Build the base query
-        users_query = GitHubUser.objects.exclude(
-            follow_actions__user=request.user
-        )
-        
-        # Filter by country if specified
-        if country_id:
-            users_query = users_query.filter(country_id=country_id)
-            country = get_object_or_404(Country, id=country_id)
-            country_name = country.name
-        else:
-            country_name = "all countries"
-        
-        # Get random users
-        users_to_follow = list(users_query.order_by('?')[:count])
-        
-        # Follow each user
-        followed = 0
-        for user in users_to_follow:
-            try:
-                GitHubFollowAction.follow_github_user(request.user, user)
-                followed += 1
-            except Exception as e:
-                logger.error(f"Error following user {user.github_username}: {e}")
-        
-        messages.success(
-            request, 
-            f"Started following {followed} new users from {country_name}."
-        )
+        country_id = request.POST.get('country') or None
+
+        try:
+            task = follow_random_users_task.delay(request.user.id, count, country_id)
+            if country_id:
+                country = get_object_or_404(Country, id=country_id)
+                country_name = country.name
+            else:
+                country_name = "all countries"
+
+            messages.success(
+                request,
+                f"Queued background task to follow up to {count} users from {country_name}. Task ID: {task.id}"
+            )
+        except Exception as e:
+            logger.error(f"Error enqueuing follow_random_users_task: {e}")
+            messages.error(request, f"Failed to start following users: {str(e)}")
+
         return redirect('github_management:follow_random')
     
     
@@ -333,14 +320,17 @@ class UnfollowNonFollowersView(View):
     
     def post(self, request):
         days = int(request.POST.get('days', 3))  # Default to 3 days
-        
+
         try:
-            unfollowed_count = GitHubFollowAction.unfollow_non_followers(request.user, days)
-            messages.success(request, f"Unfollowed {unfollowed_count} users who didn't follow you back after {days} days.")
+            task = unfollow_non_followers_task.delay(request.user.id, days)
+            messages.success(
+                request,
+                f"Queued background task to unfollow non-followers older than {days} days. Task ID: {task.id}"
+            )
         except Exception as e:
-            logger.error(f"Error unfollowing non-followers: {e}")
-            messages.error(request, f"Failed to unfollow users: {str(e)}")
-        
+            logger.error(f"Error enqueuing unfollow_non_followers_task: {e}")
+            messages.error(request, f"Failed to start unfollowing users: {str(e)}")
+
         return redirect('github_management:unfollow_non_followers')
 
 

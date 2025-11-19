@@ -5,7 +5,8 @@ from django.utils import timezone
 from django.core.management import call_command
 from django.db import transaction
 from django.utils.dateparse import parse_datetime
-from .models import Country, GitHubUser
+from django.contrib.auth import get_user_model
+from .models import Country, GitHubUser, GitHubFollowAction
 from .services.github_api import GitHubAPIClient
 
 logger = logging.getLogger(__name__)
@@ -135,6 +136,55 @@ def recompute_all_countries_intelligence_ranking(self):
     """Recompute intelligence-based rankings for all countries."""
     for country in Country.objects.all().only("id"):
         recompute_country_intelligence_ranking.delay(country.id)
+
+
+@shared_task(bind=True)
+def follow_random_users_task(self, user_id, count, country_id=None):
+    """Background task to follow random GitHub users for a given user."""
+    try:
+        User = get_user_model()
+        user = User.objects.get(id=user_id)
+
+        users_query = GitHubUser.objects.exclude(
+            follow_actions__user=user
+        )
+
+        country_name = "all countries"
+        if country_id:
+            users_query = users_query.filter(country_id=country_id)
+            try:
+                country = Country.objects.get(id=country_id)
+                country_name = country.name
+            except Country.DoesNotExist:
+                pass
+
+        users_to_follow = list(users_query.order_by("?")[:count])
+
+        followed = 0
+        for gh_user in users_to_follow:
+            try:
+                GitHubFollowAction.follow_github_user(user, gh_user)
+                followed += 1
+            except Exception as e:
+                logger.error(f"Error following user {gh_user.github_username}: {e}")
+
+        return {"followed": followed, "country_name": country_name}
+    except Exception as e:
+        logger.error(f"follow_random_users_task failed for user_id={user_id}: {e}")
+        raise
+
+
+@shared_task(bind=True)
+def unfollow_non_followers_task(self, user_id, days=3):
+    """Background task to unfollow users who haven't followed back after given days."""
+    try:
+        User = get_user_model()
+        user = User.objects.get(id=user_id)
+        unfollowed_count = GitHubFollowAction.unfollow_non_followers(user, days)
+        return {"unfollowed": unfollowed_count, "days": days}
+    except Exception as e:
+        logger.error(f"unfollow_non_followers_task failed for user_id={user_id}: {e}")
+        raise
 
 @shared_task
 def update_users_stats_batch(user_ids, model_name):

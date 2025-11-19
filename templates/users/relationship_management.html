@@ -32,6 +32,21 @@
         {% endif %}
 
         <!-- Stats Overview -->
+        <div class="flex items-center justify-between mb-4">
+            <h2 class="text-lg font-medium text-gray-900 dark:text-white">Overview</h2>
+            {% if request.user.github_access_token %}
+            <form method="post" action="{% url 'sync_relationships_now' %}">
+                {% csrf_token %}
+                <button type="submit" class="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                    <svg class="-ml-0.5 mr-1.5 h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M4 4a1 1 0 011-1h5a4 4 0 013.995 3.8L14 7a1 1 0 11-2 0 2 2 0 00-1.85-1.995L10 5H5v1a1 1 0 01-1.993.117L3 6V4zm12 6a1 1 0 01.993.883L17 11v5a1 1 0 01-1 1h-5a4 4 0 01-3.995-3.8L7 13a1 1 0 112 0 2 2 0 001.85 1.995L11 15h4v-4a1 1 0 011-1z" clip-rule="evenodd" />
+                    </svg>
+                    Sync from GitHub
+                </button>
+            </form>
+            {% endif %}
+        </div>
+
         <div class="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4 mb-8">
             <!-- Total Relationships Card -->
             <div class="bg-white dark:bg-gray-800 overflow-hidden shadow rounded-lg">

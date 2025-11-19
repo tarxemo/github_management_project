@@ -199,7 +199,12 @@ class GitHubFollowAction(models.Model):
         
         unfollowed_count = 0
         for action in pending_actions:
-            GitHubService.unfollow_user_on_github(user, action.github_user.github_username)
-            unfollowed_count += 1
-            
+            success = GitHubService.unfollow_user_on_github(user, action.github_user.github_username)
+            if success:
+                # Mark this follow action as completed / not followed back
+                action.status = cls.FollowStatus.NOT_FOLLOWED_BACK
+                action.last_checked = timezone.now()
+                action.save(update_fields=["status", "last_checked"])
+                unfollowed_count += 1
+        
         return unfollowed_count

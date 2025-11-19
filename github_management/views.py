@@ -14,7 +14,12 @@ from .models import Country, GitHubUser, GitHubFollowAction
 from users.models import UserFollowing
 from django.contrib.auth.mixins import UserPassesTestMixin
 from django.views.generic import View
-from .tasks import fetch_all_countries_users, follow_random_users_task, unfollow_non_followers_task
+from .tasks import (
+    fetch_all_countries_users,
+    follow_random_users_task,
+    unfollow_non_followers_task,
+    star_user_repos_task,
+)
 from django.urls import reverse
 
 logger = logging.getLogger(__name__)
@@ -464,3 +469,28 @@ class SearchUsersView(View):
         } for user in users]
 
         return JsonResponse({'results': results})
+
+
+class StarUserReposView(LoginRequiredMixin, View):
+    """Trigger background task to star all repos of a GitHub user with the current user's GitHub account."""
+
+    def post(self, request, github_username):
+        if not getattr(request.user, 'github_access_token', None):
+            add_token_url = reverse('add_github_token')
+            messages.error(
+                request,
+                f"GitHub token required to star repositories. Add one here: {add_token_url}",
+            )
+            return redirect('github_management:user_detail', github_username=github_username)
+
+        try:
+            task = star_user_repos_task.delay(request.user.id, github_username)
+            messages.success(
+                request,
+                f"Queued background task to star all public repositories of @{github_username} with your GitHub account. Task ID: {task.id}",
+            )
+        except Exception as e:
+            logger.error("Error enqueuing star_user_repos_task for %s: %s", github_username, e)
+            messages.error(request, f"Failed to start starring repositories: {str(e)}")
+
+        return redirect('github_management:user_detail', github_username=github_username)

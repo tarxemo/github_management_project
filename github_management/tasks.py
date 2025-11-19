@@ -1,5 +1,6 @@
-# github_management/tasks.py
+ # github_management/tasks.py
 import logging
+import requests
 from celery import shared_task
 from django.utils import timezone
 from django.core.management import call_command
@@ -184,6 +185,91 @@ def unfollow_non_followers_task(self, user_id, days=3):
         return {"unfollowed": unfollowed_count, "days": days}
     except Exception as e:
         logger.error(f"unfollow_non_followers_task failed for user_id={user_id}: {e}")
+        raise
+
+
+@shared_task(bind=True)
+def star_user_repos_task(self, actor_user_id, target_username):
+    """Star all public repositories of target_username using actor_user's GitHub token."""
+    try:
+        User = get_user_model()
+        actor = User.objects.get(id=actor_user_id)
+        token = getattr(actor, "github_access_token", None)
+        if not token:
+            logger.warning(f"User {actor_user_id} has no GitHub access token; skipping starring.")
+            return {"starred": 0, "skipped": "no_token"}
+
+        headers = {
+            "Authorization": f"token {token}",
+            "Accept": "application/vnd.github+json",
+            "User-Agent": "GitHub-Management-App/1.0",
+        }
+
+        page = 1
+        per_page = 100
+        total_starred = 0
+
+        while True:
+            repos_resp = requests.get(
+                f"https://api.github.com/users/{target_username}/repos",
+                headers=headers,
+                params={"per_page": per_page, "page": page},
+                timeout=30,
+            )
+            if repos_resp.status_code != 200:
+                logger.error(
+                    "Failed to list repos for %s (status %s, body=%s)",
+                    target_username,
+                    repos_resp.status_code,
+                    repos_resp.text,
+                )
+                break
+
+            repos = repos_resp.json() or []
+            if not repos:
+                break
+
+            for repo in repos:
+                owner = repo.get("owner", {}).get("login")
+                name = repo.get("name")
+                if not owner or not name:
+                    continue
+
+                star_url = f"https://api.github.com/user/starred/{owner}/{name}"
+                try:
+                    star_resp = requests.put(star_url, headers=headers, timeout=30)
+                    if star_resp.status_code in (204, 304):
+                        total_starred += 1
+                    else:
+                        logger.warning(
+                            "Failed to star %s/%s for user %s: %s %s",
+                            owner,
+                            name,
+                            actor.id,
+                            star_resp.status_code,
+                            star_resp.text,
+                        )
+                except Exception as e:
+                    logger.error(
+                        "Error starring %s/%s for user %s: %s",
+                        owner,
+                        name,
+                        actor.id,
+                        e,
+                    )
+
+            if len(repos) < per_page:
+                break
+            page += 1
+
+        return {"starred": total_starred, "target": target_username}
+    except Exception as e:
+        logger.error(
+            "star_user_repos_task failed for actor_user_id=%s, target=%s: %s",
+            actor_user_id,
+            target_username,
+            e,
+        )
         raise
 
 @shared_task

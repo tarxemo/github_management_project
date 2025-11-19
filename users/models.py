@@ -28,7 +28,7 @@ class User(AbstractUser, BaseUser):
         return self.email
 
     def get_full_name(self):
-        return f"{self.first_name} {self.last_name}".strip() or self.email
+        return f"{self.first_name} {self.last_name}".strip()
 
 class UserFollowing(models.Model):
     """Through model for the many-to-many relationship between users."""

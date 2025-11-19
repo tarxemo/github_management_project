@@ -135,23 +135,6 @@ def relationship_management(request):
     return render(request, 'users/relationship_management.html', context)
 
 @login_required
-def relationship_stats(request):
-    """API endpoint to get current relationship statistics"""
-    user = request.user
-    
-    following_ids = list(UserFollowing.objects.filter(from_user=user).values_list('to_user_id', flat=True))
-    follower_ids = list(UserFollowing.objects.filter(to_user=user).values_list('from_user_id', flat=True))
-    
-    stats = {
-        'following': len(following_ids),
-        'followers': len(follower_ids),
-        'mutual': len(set(following_ids) & set(follower_ids)),
-        'total': len(set(following_ids) | set(follower_ids))
-    }
-    
-    return JsonResponse(stats)
-
-@login_required
 def follow_user(request, username):
     target_user = get_object_or_404(User, github_username__iexact=username)
     # Ensure token present
@@ -179,15 +162,37 @@ def unfollow_user(request, username):
 
 @login_required
 def relationship_stats(request):
+    """API endpoint to get current relationship statistics (single implementation)."""
     user = request.user
-    
-    return JsonResponse({
-        'following': UserFollowing.objects.filter(from_user=user).count(),
-        'followers': UserFollowing.objects.filter(to_user=user).count(),
-        'mutual': UserFollowing.objects.filter(
-            Q(from_user=user) & Q(to_user__in=follower_users)
-        ).count()
-    })
+
+    following_ids = list(UserFollowing.objects.filter(from_user=user).values_list('to_user_id', flat=True))
+    follower_ids = list(UserFollowing.objects.filter(to_user=user).values_list('from_user_id', flat=True))
+
+    stats = {
+        'following': len(following_ids),
+        'followers': len(follower_ids),
+        'mutual': len(set(following_ids) & set(follower_ids)),
+        'total': len(set(following_ids) | set(follower_ids))
+    }
+
+    return JsonResponse(stats)
+
+
+@login_required
+def sync_relationships_now(request):
+    """Manually trigger sync of followers/following from GitHub for the current user."""
+    user = request.user
+
+    if not getattr(user, 'github_access_token', None):
+        from django.urls import reverse
+        add_token_url = reverse('add_github_token')
+        messages.error(request, f"GitHub token missing. Please add your token here: {add_token_url}")
+        return redirect('relationship_management')
+
+    from users.tasks import sync_github_followers_following
+    sync_github_followers_following.delay(user.id)
+    messages.success(request, "Started background sync of your GitHub followers and following.")
+    return redirect('relationship_management')
 
 
 @login_required

@@ -428,6 +428,25 @@ document.addEventListener('DOMContentLoaded', function() {
         chart.options.plugins.legend.labels.color = isDarkMode ? '#E5E7EB' : '#374151';
         chart.update();
     });
+
+    // Auto-submit filters when selects change
+    const filterForm = document.querySelector('form[method="get"]');
+    if (filterForm) {
+        const relationshipSelect = document.getElementById('relationship');
+        const sortSelect = document.getElementById('sort');
+
+        if (relationshipSelect) {
+            relationshipSelect.addEventListener('change', function() {
+                filterForm.submit();
+            });
+        }
+
+        if (sortSelect) {
+            sortSelect.addEventListener('change', function() {
+                filterForm.submit();
+            });
+        }
+    }
 });
 </script>
 {% endblock %}

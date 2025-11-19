@@ -16,9 +16,10 @@ from datetime import timedelta
 def relationship_management(request):
     user = request.user
     
-    # Get filter and search parameters
-    filter_type = request.GET.get('filter', 'all')  # all, following, followers, mutual
-    search_query = request.GET.get('search', '').strip()
+    # Get filter and search parameters (aligned with template fields)
+    filter_type = request.GET.get('relationship', 'all')  # all, following, followers, mutual, non_followers
+    search_query = request.GET.get('q', '').strip()
+    sort_param = request.GET.get('sort', '-created_at')
     page_number = request.GET.get('page', 1)
     per_page = request.GET.get('per_page', 12)
     
@@ -63,6 +64,9 @@ def relationship_management(request):
         users_qs = users_qs.filter(is_follower=True)
     elif filter_type == 'mutual':
         users_qs = users_qs.filter(is_following=True, is_follower=True)
+    elif filter_type == 'non_followers':
+        # Users you follow who do NOT follow you back
+        users_qs = users_qs.filter(is_following=True, is_follower=False)
     
     # Apply search filter
     if search_query:
@@ -73,8 +77,18 @@ def relationship_management(request):
             Q(email__icontains=search_query)
         )
     
-    # Order by most recent relationship
-    users_qs = users_qs.order_by('-id')
+    # Apply sorting
+    if sort_param == 'username':
+        users_qs = users_qs.order_by('github_username')
+    elif sort_param == '-follower_count':
+        # Fallback to most recently added if follower_count field is not available
+        try:
+            users_qs = users_qs.order_by('-followers')
+        except Exception:
+            users_qs = users_qs.order_by('-id')
+    else:
+        # Default: recently added
+        users_qs = users_qs.order_by('-id')
     
     # Calculate stats
     stats = {
@@ -113,6 +127,7 @@ def relationship_management(request):
         'stats': stats,
         'filter_type': filter_type,
         'search_query': search_query,
+        'sort_param': sort_param,
         'per_page': per_page,
         'paginator': paginator,
     }

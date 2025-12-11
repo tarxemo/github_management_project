@@ -109,10 +109,11 @@ def sync_github_followers_following(self, user_id):
                 # We follow them
                 UserFollowing.follow(user, target_user)
 
-        # Clean up any relationships that no longer exist on GitHub
+        # COMPLETE REAL SYNC: Remove ALL relationships that no longer exist on GitHub
         UserFollowing = get_userfollowing_model()
+        User = get_user_model()
         
-        # Get the actual User objects, not the relationship objects
+        # Get current local relationships
         current_following = set(rel.to_user.github_username.lower() 
                               for rel in UserFollowing.get_following(user) 
                               if rel.to_user.github_username)
@@ -120,16 +121,44 @@ def sync_github_followers_following(self, user_id):
                               for rel in UserFollowing.get_followers(user) 
                               if rel.from_user.github_username)
         
-        # Remove relationships that no longer exist
-        for username in (current_following - set(github_following.keys())):
+        # Get current GitHub relationships (convert to lowercase for comparison)
+        github_following_set = set(username.lower() for username in github_following.keys())
+        github_followers_set = set(username.lower() for username in github_followers.keys())
+        
+        # REMOVE following relationships that no longer exist on GitHub
+        following_to_remove = current_following - github_following_set
+        for username in following_to_remove:
             try:
-                User = get_user_model()
-                UserFollowing = get_userfollowing_model()
                 target_user = User.objects.get(github_username__iexact=username)
-                # Use the unfollow method on the model
-                UserFollowing.objects.filter(from_user=user, to_user=target_user).delete()
-            except (User.DoesNotExist, UserFollowing.DoesNotExist):
-                pass
+                deleted_count = UserFollowing.objects.filter(
+                    from_user=user, 
+                    to_user=target_user
+                ).delete()
+                if deleted_count[0] > 0:
+                    print(f"🗑️  Removed following relationship: {user.github_username} -> {username}")
+            except User.DoesNotExist:
+                print(f"⚠️  Target user {username} not found when removing following relationship")
+        
+        # REMOVE followers relationships that no longer exist on GitHub
+        followers_to_remove = current_followers - github_followers_set
+        for username in followers_to_remove:
+            try:
+                follower_user = User.objects.get(github_username__iexact=username)
+                deleted_count = UserFollowing.objects.filter(
+                    from_user=follower_user, 
+                    to_user=user
+                ).delete()
+                if deleted_count[0] > 0:
+                    print(f"🗑️  Removed follower relationship: {username} -> {user.github_username}")
+            except User.DoesNotExist:
+                print(f"⚠️  Follower user {username} not found when removing follower relationship")
+        
+        # Summary of cleanup
+        total_removed = len(following_to_remove) + len(followers_to_remove)
+        if total_removed > 0:
+            print(f"🧹 Real sync complete: Removed {len(following_to_remove)} following and {len(followers_to_remove)} follower relationships that no longer exist on GitHub")
+        else:
+            print("✅ Real sync complete: Local relationships match GitHub exactly")
 
     except Exception as e:
         print(f"Error in sync_github_followers_following: {e}")

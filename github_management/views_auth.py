@@ -10,6 +10,7 @@ from django.contrib.auth.decorators import login_required
 from django.utils.decorators import method_decorator
 from django.conf import settings
 from django.contrib.sites.models import Site
+from django.utils import timezone
 
 from allauth.socialaccount.models import SocialAccount, SocialApp, SocialToken
 from allauth.socialaccount.adapter import get_adapter as get_social_adapter
@@ -38,7 +39,103 @@ class ProfileView(TemplateView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context['user'] = self.request.user
+        
+        # Add intelligent follow context
+        user = self.request.user
+        context['can_enable_intelligent'] = bool(user.github_access_token)
+        context['intelligent_follow_enabled'] = user.intelligent_follow_enabled
+        context['intelligent_follow_schedule'] = user.intelligent_follow_schedule
+        context['last_intelligent_follow'] = user.last_intelligent_follow
+        
+        # Get recent follow actions
+        from github_management.models import GitHubFollowAction
+        recent_actions = GitHubFollowAction.objects.filter(
+            user=user
+        ).order_by('-followed_at')[:10]
+        context['recent_actions'] = recent_actions
+        
         return context
+    
+    def post(self, request, *args, **kwargs):
+        """Handle intelligent follow settings updates"""
+        user = request.user
+        
+        # Check if user has GitHub token
+        if not user.github_access_token:
+            return JsonResponse({
+                'success': False,
+                'message': 'You must add a GitHub access token first to enable intelligent following.'
+            })
+        
+        # Validate GitHub token for intelligent follow
+        try:
+            from users.validators import validate_github_token_for_intelligent_follow
+            validate_github_token_for_intelligent_follow(user.github_access_token)
+        except Exception as e:
+            return JsonResponse({
+                'success': False,
+                'message': f'GitHub token validation failed: {str(e)}'
+            })
+        
+        action = request.POST.get('action')
+        
+        if action == 'toggle_intelligent':
+            enabled = request.POST.get('enabled') == 'true'
+            user.intelligent_follow_enabled = enabled
+            user.save()
+            
+            return JsonResponse({
+                'success': True,
+                'message': f"Intelligent following {'enabled' if enabled else 'disabled'}"
+            })
+        
+        elif action == 'update_schedule':
+            schedule = request.POST.get('schedule')
+            if schedule in ['daily', 'weekly', 'manual']:
+                user.intelligent_follow_schedule = schedule
+                user.save()
+                
+                return JsonResponse({
+                    'success': True,
+                    'message': f"Schedule updated to {schedule}"
+                })
+            else:
+                return JsonResponse({
+                    'success': False,
+                    'message': 'Invalid schedule'
+                })
+        
+        elif action == 'run_manual':
+            from users.services.intelligent_follow_service import IntelligentFollowService
+            from github_management.models import GitHubFollowAction
+            
+            # Run intelligent follow manually
+            result = IntelligentFollowService.intelligent_follow_users(user, max_follows=10)
+            
+            # Record action - using existing model structure
+            from github_management.models import GitHubUser
+            # Create or get a placeholder GitHubUser for tracking
+            placeholder_user, _ = GitHubUser.objects.get_or_create(
+                github_username="manual_run",
+                defaults={
+                    'country': GitHubUser.objects.first().country if GitHubUser.objects.exists() else None
+                }
+            )
+            GitHubFollowAction.objects.create(
+                user=user,
+                github_user=placeholder_user,
+                status='followed_back' if result['success'] else 'pending'
+            )
+            
+            user.last_intelligent_follow = timezone.now()
+            user.save()
+            
+            return JsonResponse(result)
+        
+        return JsonResponse({
+            'success': False,
+            'message': 'Invalid action'
+        })
 
 
 import json

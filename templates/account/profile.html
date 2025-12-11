@@ -33,6 +33,10 @@
                     <i class="fas fa-user-plus mr-3 text-gray-400 group-hover:text-gray-500 dark:group-hover:text-gray-300 flex-shrink-0 -ml-1"></i>
                     <span class="truncate">Follow Users</span>
                 </a>
+                <a href="#intelligent" class="group flex items-center px-3 py-2 text-sm font-medium rounded-md text-gray-700 hover:text-gray-900 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-800 dark:hover:text-white">
+                    <i class="fas fa-robot mr-3 text-gray-400 group-hover:text-gray-500 dark:group-hover:text-gray-300 flex-shrink-0 -ml-1"></i>
+                    <span class="truncate">Intelligent Follow</span>
+                </a>
             </nav>
             
             <!-- GitHub Stats Card -->
@@ -309,6 +313,135 @@
             </div>
         </div>
     </div>
+    
+    <!-- Intelligent Follow Section -->
+    <div id="intelligent" class="mt-12">
+        <div class="bg-white dark:bg-gray-800 shadow rounded-lg">
+            <div class="px-4 py-5 sm:p-6">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-lg leading-6 font-medium text-gray-900 dark:text-white">
+                        <i class="fas fa-robot mr-2 text-indigo-500"></i>
+                        Intelligent Follow System
+                    </h3>
+                    {% if can_enable_intelligent %}
+                        <div class="flex items-center">
+                            <label class="relative inline-flex items-center cursor-pointer">
+                                <input type="checkbox" id="intelligent-toggle" 
+                                       class="sr-only peer" 
+                                       {% if intelligent_follow_enabled %}checked{% endif %}>
+                                <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-indigo-300 dark:peer-focus:ring-indigo-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-indigo-600"></div>
+                                <span class="ml-3 text-sm font-medium text-gray-700 dark:text-gray-300">
+                                    {% if intelligent_follow_enabled %}Enabled{% else %}Disabled{% endif %}
+                                </span>
+                            </label>
+                        </div>
+                    {% else %}
+                        <div class="text-sm text-amber-600 dark:text-amber-400">
+                            <i class="fas fa-exclamation-triangle mr-1"></i>
+                            GitHub token required
+                        </div>
+                    {% endif %}
+                </div>
+                
+                {% if not can_enable_intelligent %}
+                    <div class="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-md p-4 mb-4">
+                        <div class="flex">
+                            <div class="flex-shrink-0">
+                                <i class="fas fa-exclamation-triangle text-amber-400"></i>
+                            </div>
+                            <div class="ml-3">
+                                <h3 class="text-sm font-medium text-amber-800 dark:text-amber-200">
+                                    GitHub Access Token Required
+                                </h3>
+                                <div class="mt-2 text-sm text-amber-700 dark:text-amber-300">
+                                    <p>To enable intelligent following, you need to add a GitHub access token first.</p>
+                                    <div class="mt-3">
+                                        <a href="{% url 'users:add_github_token' %}" 
+                                           class="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                                            <i class="fas fa-key mr-2"></i>
+                                            Add GitHub Token
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                {% endif %}
+                
+                {% if can_enable_intelligent %}
+                    <div class="space-y-4">
+                        <!-- Schedule Selection -->
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                Schedule
+                            </label>
+                            <select id="schedule-select" class="block w-full pl-3 pr-10 py-2 text-base border-gray-300 dark:border-gray-600 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md dark:bg-gray-700 dark:text-white">
+                                <option value="manual" {% if intelligent_follow_schedule == 'manual' %}selected{% endif %}>Manual Only</option>
+                                <option value="daily" {% if intelligent_follow_schedule == 'daily' %}selected{% endif %}>Daily</option>
+                                <option value="weekly" {% if intelligent_follow_schedule == 'weekly' %}selected{% endif %}>Weekly</option>
+                            </select>
+                            <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                                Choose how often the system should automatically follow/unfollow users
+                            </p>
+                        </div>
+                        
+                        <!-- Manual Run Button -->
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-sm text-gray-700 dark:text-gray-300">
+                                    Last run: {% if last_intelligent_follow %}{{ last_intelligent_follow|date:"M d, Y H:i" }}{% else %}Never{% endif %}
+                                </p>
+                            </div>
+                            <button id="manual-run-btn" 
+                                    class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                                    {% if not intelligent_follow_enabled %}disabled{% endif %}>
+                                <i class="fas fa-play mr-2"></i>
+                                Run Now
+                            </button>
+                        </div>
+                        
+                        <!-- Recent Actions -->
+                        {% if recent_actions %}
+                            <div>
+                                <h4 class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Recent Actions</h4>
+                                <div class="space-y-2">
+                                    {% for action in recent_actions %}
+                                        <div class="flex items-center justify-between py-2 px-3 bg-gray-50 dark:bg-gray-700 rounded-md">
+                                            <div class="flex items-center">
+                                                <i class="fas fa-user-plus text-green-500 mr-2"></i>
+                                                <span class="text-sm text-gray-700 dark:text-gray-300">
+                                                    Followed {{ action.github_user.github_username|default:"Unknown" }}
+                                                    {% if action.status == 'followed_back' %}
+                                                        (followed back)
+                                                    {% elif action.status == 'not_followed_back' %}
+                                                        (not followed back)
+                                                    {% else %}
+                                                        (pending)
+                                                    {% endif %}
+                                                </span>
+                                            </div>
+                                            <div class="text-right">
+                                                <span class="text-xs text-gray-500 dark:text-gray-400">
+                                                    {{ action.followed_at|date:"M d, H:i" }}
+                                                </span>
+                                                {% if action.status == 'followed_back' %}
+                                                    <i class="fas fa-check-circle text-green-500 ml-1"></i>
+                                                {% elif action.status == 'not_followed_back' %}
+                                                    <i class="fas fa-times-circle text-red-500 ml-1"></i>
+                                                {% else %}
+                                                    <i class="fas fa-clock text-yellow-500 ml-1"></i>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        {% endif %}
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
 </div>
 {% endblock %}
 
@@ -325,6 +458,157 @@
                 });
             }
         });
+    });
+    
+    // Intelligent Follow System JavaScript
+    document.addEventListener('DOMContentLoaded', function() {
+        const toggle = document.getElementById('intelligent-toggle');
+        const scheduleSelect = document.getElementById('schedule-select');
+        const manualRunBtn = document.getElementById('manual-run-btn');
+        
+        // Toggle intelligent follow
+        if (toggle) {
+            toggle.addEventListener('change', function() {
+                const enabled = this.checked;
+                
+                fetch('{% url "profile" %}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                        'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+                    },
+                    body: `action=toggle_intelligent&enabled=${enabled}`
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        // Update UI
+                        const statusText = toggle.nextElementSibling;
+                        statusText.textContent = enabled ? 'Enabled' : 'Disabled';
+                        
+                        // Enable/disable manual run button
+                        if (manualRunBtn) {
+                            manualRunBtn.disabled = !enabled;
+                        }
+                        
+                        // Show notification
+                        showNotification(data.message, 'success');
+                    } else {
+                        // Revert toggle and show error
+                        toggle.checked = !enabled;
+                        showNotification(data.message, 'error');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    toggle.checked = !enabled;
+                    showNotification('An error occurred', 'error');
+                });
+            });
+        }
+        
+        // Update schedule
+        if (scheduleSelect) {
+            scheduleSelect.addEventListener('change', function() {
+                const schedule = this.value;
+                
+                fetch('{% url "profile" %}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                        'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+                    },
+                    body: `action=update_schedule&schedule=${schedule}`
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        showNotification(data.message, 'success');
+                    } else {
+                        showNotification(data.message, 'error');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    showNotification('An error occurred', 'error');
+                });
+            });
+        }
+        
+        // Manual run
+        if (manualRunBtn) {
+            manualRunBtn.addEventListener('click', function() {
+                // Disable button and show loading
+                this.disabled = true;
+                this.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Running...';
+                
+                fetch('{% url "profile" %}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                        'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+                    },
+                    body: 'action=run_manual'
+                })
+                .then(response => response.json())
+                .then(data => {
+                    // Restore button
+                    this.disabled = false;
+                    this.innerHTML = '<i class="fas fa-play mr-2"></i>Run Now';
+                    
+                    if (data.success) {
+                        showNotification(data.message, 'success');
+                        // Reload page after 2 seconds to show updated actions
+                        setTimeout(() => location.reload(), 2000);
+                    } else {
+                        showNotification(data.message, 'error');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    this.disabled = false;
+                    this.innerHTML = '<i class="fas fa-play mr-2"></i>Run Now';
+                    showNotification('An error occurred', 'error');
+                });
+            });
+        }
+        
+        // Notification function
+        function showNotification(message, type) {
+            const notification = document.createElement('div');
+            notification.className = `fixed top-4 right-4 p-4 rounded-md shadow-lg z-50 ${
+                type === 'success' 
+                    ? 'bg-green-50 border border-green-200 text-green-800' 
+                    : 'bg-red-50 border border-red-200 text-red-800'
+            }`;
+            notification.innerHTML = `
+                <div class="flex">
+                    <div class="flex-shrink-0">
+                        <i class="fas ${type === 'success' ? 'fa-check-circle' : 'fa-exclamation-circle'}"></i>
+                    </div>
+                    <div class="ml-3">
+                        <p class="text-sm font-medium">${message}</p>
+                    </div>
+                    <div class="ml-auto pl-3">
+                        <div class="-mx-1.5 -my-1.5">
+                            <button onclick="this.parentElement.parentElement.parentElement.remove()" 
+                                    class="inline-flex rounded-md p-1.5 ${type === 'success' ? 'bg-green-50 text-green-500 hover:bg-green-100' : 'bg-red-50 text-red-500 hover:bg-red-100'}">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            document.body.appendChild(notification);
+            
+            // Auto-remove after 5 seconds
+            setTimeout(() => {
+                if (notification.parentElement) {
+                    notification.remove();
+                }
+            }, 5000);
+        }
     });
 </script>
 {% endblock %}

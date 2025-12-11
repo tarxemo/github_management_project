@@ -10,6 +10,7 @@ from .managers import GitHubUserManager
 from users.abstract_models import BaseUser
 import math
 
+
 class Country(models.Model):
     """Model to store available countries from committers.top"""
     name = models.CharField(max_length=100, unique=True)

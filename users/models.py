@@ -16,6 +16,21 @@ class User(AbstractUser, BaseUser):
         help_text="Designates whether this user is an internal user (registered in our system) or external (just a GitHub user)."
     )
     last_synced_github_followers_following = models.DateTimeField(null=True, blank=True)
+    intelligent_follow_enabled = models.BooleanField(
+        default=False,
+        help_text="Enable intelligent follow/unfollow to boost followers"
+    )
+    intelligent_follow_schedule = models.CharField(
+        max_length=20,
+        choices=[
+            ('daily', 'Daily'),
+            ('weekly', 'Weekly'),
+            ('manual', 'Manual Only')
+        ],
+        default='manual',
+        help_text="How often to run intelligent follow/unfollow"
+    )
+    last_intelligent_follow = models.DateTimeField(null=True, blank=True)
     objects = UserManager()
     
     USERNAME_FIELD = 'email'

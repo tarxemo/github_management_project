@@ -6,6 +6,7 @@ from datetime import timedelta
 import random
 import logging
 from users.models import User, UserFollowing
+from github_management.models import GitHubFollowAction
 from .github_service import GitHubService
 
 logger = logging.getLogger(__name__)
@@ -206,6 +207,13 @@ class IntelligentFollowService:
                 if success:
                     successful_follows += 1
                     logger.info(f"Successfully followed {target_user.login}")
+                    # Log the follow action
+                    GitHubFollowAction.objects.create(
+                        user=user,
+                        target_username=target_user.login,
+                        action_type=GitHubFollowAction.FollowActionType.FOLLOW,
+                        status=GitHubFollowAction.FollowStatus.PENDING
+                    )
                 else:
                     failed_follows += 1
                 
@@ -266,6 +274,13 @@ class IntelligentFollowService:
                     if success:
                         successful_unfollows += 1
                         logger.info(f"Successfully unfollowed {target_user.login}")
+                        # Log the unfollow action
+                        GitHubFollowAction.objects.create(
+                            user=user,
+                            target_username=target_user.login,
+                            action_type=GitHubFollowAction.FollowActionType.UNFOLLOW,
+                            status=GitHubFollowAction.FollowStatus.NOT_FOLLOWED_BACK
+                        )
                     else:
                         failed_unfollows += 1
                     
@@ -314,24 +329,22 @@ class IntelligentFollowService:
     @classmethod
     def get_today_follow_count(cls, user):
         """Get number of follows performed today"""
-        from users.models import GitHubFollowAction
         today = timezone.now().date()
         return GitHubFollowAction.objects.filter(
             user=user,
-            action_type='follow',
-            created_at__date=today
+            action_type=GitHubFollowAction.FollowActionType.FOLLOW,
+            followed_at__date=today
         ).count()
     
     @classmethod
     def get_follow_date(cls, user, target_username):
         """Get when we started following a user"""
-        from users.models import GitHubFollowAction
         try:
             action = GitHubFollowAction.objects.filter(
                 user=user,
                 target_username=target_username,
-                action_type='follow'
-            ).order_by('-created_at').first()
-            return action.created_at if action else None
+                action_type=GitHubFollowAction.FollowActionType.FOLLOW
+            ).order_by('-followed_at').first()
+            return action.followed_at if action else None
         except:
             return None

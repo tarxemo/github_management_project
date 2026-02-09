@@ -36,14 +36,32 @@ To get the most out of the system, you first need to sync your GitHub data:
 - **Step 2**: Go to your **Profile** page.
 - **Step 3**: Click on "Sync GitHub Data" (or wait for the automatic daily sync) to fetch your repositories, stars, and languages.
 
-### 2. Using GitHub Profile Trophies
-You can display your platform trophies directly on your GitHub README. 
-**Copy and paste the markdown below into your GitHub README.md:**
+### 2. Showcase Badges & Trophies
+Showcase your skills and achievements directly on your GitHub profile or personal website. We offer high-fidelity SVG badges that update in real-time as your stats grow.
+
+#### Available Badge Types
+Using user **`tarxemo`** as an example, here are the available badge configurations:
+
+| Badge Type | Description | Live Preview | Markdown Example |
+| :--- | :--- | :--- | :--- |
+| **🏆 Trophies** | A premium card featuring your highest-ranked achievements. | ![](https://github.tarxemo.com/badges/tarxemo/trophies/) | `![](https://github.tarxemo.com/badges/tarxemo/trophies/)` |
+| **📊 Stats** | Standard metrics: Followers, Repos, and Contributions. | ![](https://github.tarxemo.com/badges/tarxemo/stats/) | `![](https://github.tarxemo.com/badges/tarxemo/stats/)` |
+| **🌍 Rank** | Your current Global and Regional (Country) ranking. | ![](https://github.tarxemo.com/badges/tarxemo/rank/) | `![](https://github.tarxemo.com/badges/tarxemo/rank/)` |
+| **🚀 Impact** | A weighted score showing your influence in the community. | ![](https://github.tarxemo.com/badges/tarxemo/impact/) | `![](https://github.tarxemo.com/badges/tarxemo/impact/)` |
+| **💻 Languages** | Visual breakdown of your top 5 programming languages. | ![](https://github.tarxemo.com/badges/tarxemo/langs/) | `![](https://github.tarxemo.com/badges/tarxemo/langs/)` |
+| **🔥 Streak** | Your longest and current contribution streaks. | ![](https://github.tarxemo.com/badges/tarxemo/streak/) | `![](https://github.tarxemo.com/badges/tarxemo/streak/)` |
+| **🏅 Country Top** | Your percentile ranking within your specific country. | ![](https://github.tarxemo.com/badges/tarxemo/country-top/) | `![](https://github.tarxemo.com/badges/tarxemo/country-top/)` |
+
+#### How to use them on your GitHub README:
+Copy and paste the following snippet into your `README.md` and replace `tarxemo` with your username:
 
 ```markdown
-[![GitHub Trophies](https://github.tarxemo.com/badges/YOUR_USERNAME/trophies/)](https://github.tarxemo.com/github/user/YOUR_USERNAME/)
+<!-- Trophies (Large) -->
+[![GitHub Trophies](https://github.tarxemo.com/badges/tarxemo/trophies/)](https://github.tarxemo.com/github/user/tarxemo/)
+
+<!-- Stats (Small) -->
+[![GitHub Stats](https://github.tarxemo.com/badges/tarxemo/stats/)](https://github.tarxemo.com/github/user/tarxemo/)
 ```
-*Replace `YOUR_USERNAME` with your actual GitHub username.*
 
 ### 3. Climbing the Leaderboard
 Want to reach the top? The system calculates your **Intelligence Score** based on:

@@ -109,6 +109,10 @@ class GitHubFollowAction(models.Model):
         FOLLOWED_BACK = 'followed_back', 'Followed Back'
         NOT_FOLLOWED_BACK = 'not_followed_back', 'Not Followed Back'
     
+    class FollowActionType(models.TextChoices):
+        FOLLOW = 'follow', 'Follow'
+        UNFOLLOW = 'unfollow', 'Unfollow'
+
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
@@ -117,7 +121,14 @@ class GitHubFollowAction(models.Model):
     github_user = models.ForeignKey(
         GitHubUser,
         on_delete=models.CASCADE,
-        related_name='follow_actions'
+        related_name='follow_actions',
+        null=True, blank=True # Allow null for deleted users or placeholders
+    )
+    target_username = models.CharField(max_length=100, db_index=True, null=True, blank=True)
+    action_type = models.CharField(
+        max_length=10,
+        choices=FollowActionType.choices,
+        default=FollowActionType.FOLLOW
     )
     status = models.CharField(
         max_length=20,
@@ -129,12 +140,13 @@ class GitHubFollowAction(models.Model):
     last_checked = models.DateTimeField(null=True, blank=True)
     
     class Meta:
-        unique_together = ('user', 'github_user')
         ordering = ['-followed_at']
         indexes = [
             models.Index(fields=['status']),
+            models.Index(fields=['action_type']),
             models.Index(fields=['followed_at']),
             models.Index(fields=['user', 'status']),
+            models.Index(fields=['target_username']),
         ]
     
     def __str__(self):

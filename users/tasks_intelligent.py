@@ -36,44 +36,11 @@ def intelligent_follow_scheduler(self):
             # Run intelligent follow
             follow_result = IntelligentFollowService.intelligent_follow_users(user)
             
-            # Record the action - using existing model structure
-            from github_management.models import GitHubUser
-            try:
-                placeholder_user, _ = GitHubUser.objects.get_or_create(
-                    github_username="scheduled_run",
-                    defaults={
-                        'country': GitHubUser.objects.first().country if GitHubUser.objects.exists() else None
-                    }
-                )
-                GitHubFollowAction.objects.create(
-                    user=user,
-                    github_user=placeholder_user,
-                    status='followed_back' if follow_result['success'] else 'pending'
-                )
-            except:
-                pass  # Skip recording if we can't create placeholder
-            
             # Run intelligent unfollow (if follow was successful)
             unfollow_result = {"success": False, "message": "Skipped"}
             if follow_result['success']:
                 unfollow_result = IntelligentFollowService.intelligent_unfollow_non_followers(user)
                 
-                # Record the unfollow action
-                try:
-                    placeholder_user, _ = GitHubUser.objects.get_or_create(
-                        github_username="scheduled_unfollow",
-                        defaults={
-                            'country': GitHubUser.objects.first().country if GitHubUser.objects.exists() else None
-                        }
-                    )
-                    GitHubFollowAction.objects.create(
-                        user=user,
-                        github_user=placeholder_user,
-                        status='followed_back' if unfollow_result['success'] else 'pending'
-                    )
-                except:
-                    pass  # Skip recording if we can't create placeholder
-            
             # Update user's last intelligent follow time
             user.last_intelligent_follow = timezone.now()
             user.save()
@@ -88,21 +55,6 @@ def intelligent_follow_scheduler(self):
             
         except Exception as e:
             logger.error(f"Error running intelligent follow for {user.email}: {e}")
-            # Record failure
-            try:
-                placeholder_user, _ = GitHubUser.objects.get_or_create(
-                    github_username="scheduled_error",
-                    defaults={
-                        'country': GitHubUser.objects.first().country if GitHubUser.objects.exists() else None
-                    }
-                )
-                GitHubFollowAction.objects.create(
-                    user=user,
-                    github_user=placeholder_user,
-                    status='not_followed_back'  # Error state
-                )
-            except:
-                pass
     
     logger.info(f"Intelligent follow scheduler completed: "
                f"Processed {processed_count} users, {success_count} successful")
@@ -158,23 +110,6 @@ def intelligent_follow_for_user(self, user_id):
         # Run intelligent follow
         follow_result = IntelligentFollowService.intelligent_follow_users(user)
         
-        # Record the action - using existing model structure
-        try:
-            from github_management.models import GitHubUser
-            placeholder_user, _ = GitHubUser.objects.get_or_create(
-                github_username="manual_task",
-                defaults={
-                    'country': GitHubUser.objects.first().country if GitHubUser.objects.exists() else None
-                }
-            )
-            GitHubFollowAction.objects.create(
-                user=user,
-                github_user=placeholder_user,
-                status='followed_back' if follow_result['success'] else 'pending'
-            )
-        except:
-            pass  # Skip recording if we can't create placeholder
-        
         # Update user's last intelligent follow time
         user.last_intelligent_follow = timezone.now()
         user.save()
@@ -201,7 +136,7 @@ def cleanup_old_follow_actions(self):
     try:
         cutoff_date = timezone.now() - timedelta(days=30)
         deleted_count = GitHubFollowAction.objects.filter(
-            created_at__lt=cutoff_date
+            followed_at__lt=cutoff_date
         ).delete()[0]
         
         logger.info(f"Cleaned up {deleted_count} old follow action records")

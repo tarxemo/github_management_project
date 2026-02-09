@@ -281,6 +281,14 @@ CELERY_BEAT_SCHEDULE = {
         'task': 'github_management.tasks.periodic_sync_dispatcher',
         'schedule': crontab(minute=0),  # Run every hour
     },
+    'intelligent-follow-scheduler': {
+        'task': 'users.tasks.intelligent_follow_scheduler',
+        'schedule': crontab(hour='*/3', minute=0),  # Run every 3 hours
+    },
+    'cleanup-follow-actions': {
+        'task': 'users.tasks.cleanup_old_follow_actions',
+        'schedule': crontab(hour=3, minute=0),  # Run daily at 3 AM
+    },
 }
 
 

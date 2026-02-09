@@ -1,0 +1,113 @@
+{% extends 'base.html' %}
+{% load humanize %}
+
+{% block title %}Analytics Dashboard - Your GitHub Growth{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <h1 class="fw-bold">Developer Analytics</h1>
+            <p class="text-secondary">Track your GitHub growth, performance, and impact over time.</p>
+        </div>
+        <div class="col-md-4 text-md-end">
+            <div class="btn-group shadow-sm">
+                <a href="?days=7" class="btn btn-outline-primary {% if days == 7 %}active{% endif %}">7D</a>
+                <a href="?days=30" class="btn btn-outline-primary {% if days == 30 %}active{% endif %}">30D</a>
+                <a href="?days=90" class="btn btn-outline-primary {% if days == 90 %}active{% endif %}">90D</a>
+            </div>
+        </div>
+    </div>
+
+    {% if error %}
+    <div class="alert alert-warning border-0 shadow-sm">
+        <i class="fas fa-exclamation-triangle me-2"></i> {{ error }}
+    </div>
+    {% else %}
+
+    <!-- Stats Cards -->
+    <div class="row g-4 mb-5">
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body">
+                    <h6 class="text-secondary text-uppercase small fw-bold mb-3">Total Followers</h6>
+                    <div class="d-flex align-items-center">
+                        <h2 class="mb-0 fw-bold">{{ latest.followers_count|default:0|intcomma }}</h2>
+                        {% if latest.followers_delta > 0 %}
+                        <span class="ms-2 badge bg-success-light text-success">+{{ latest.followers_delta }}</span>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body">
+                    <h6 class="text-secondary text-uppercase small fw-bold mb-3">Total Stars</h6>
+                    <div class="d-flex align-items-center">
+                        <h2 class="mb-0 fw-bold">{{ latest.stars_received_count|default:0|intcomma }}</h2>
+                        {% if latest.stars_delta > 0 %}
+                        <span class="ms-2 badge bg-success-light text-success">+{{ latest.stars_delta }}</span>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body">
+                    <h6 class="text-secondary text-uppercase small fw-bold mb-3">Contributions</h6>
+                    <div class="d-flex align-items-center">
+                        <h2 class="mb-0 fw-bold">{{ latest.contributions_count|default:0|intcomma }}</h2>
+                        {% if latest.contributions_delta > 0 %}
+                        <span class="ms-2 badge bg-success-light text-success">+{{ latest.contributions_delta }}</span>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body">
+                    <h6 class="text-secondary text-uppercase small fw-bold mb-3">Engagement Rate</h6>
+                    <div class="d-flex align-items-center">
+                        <h2 class="mb-0 fw-bold">{{ latest.engagement_rate|default:0|floatformat:2 }}%</h2>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Charts Section (Placeholder for Chart.js) -->
+    <div class="row mb-5">
+        <div class="col-12">
+            <div class="card border-0 shadow-sm p-4">
+                <h5 class="fw-bold mb-4">Growth Over Time</h5>
+                <div
+                    style="height: 300px; display: flex; align-items: flex-end; justify-content: space-around; padding-bottom: 20px; border-bottom: 2px solid #f8f9fa;">
+                    {% for day in trends %}
+                    <div class="bg-primary rounded-top" style="width: {% if trends|length > 30 %}10px{% else %}20px{% endif %}; 
+                                height: {{ day.followers_count|add:10 }}px; 
+                                opacity: 0.8;" title="{{ day.date }}: {{ day.followers_count }} followers">
+                    </div>
+                    {% endfor %}
+                </div>
+                <div class="d-flex justify-content-between mt-2 text-secondary small">
+                    {% if trends.exists %}
+                    <span>{{ trends.first.date }}</span>
+                    <span>{{ trends.last.date }}</span>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {% endif %}
+</div>
+
+<style>
+    .bg-success-light {
+        background-color: rgba(40, 167, 69, 0.1);
+    }
+</style>
+{% endblock %}

@@ -1,0 +1,66 @@
+{% extends 'base.html' %}
+{% load humanize %}
+
+{% block title %}Achievements - Unlock Your Full Potential{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row mb-5 text-center">
+        <div class="col-12">
+            <h1 class="display-5 fw-bold text-primary">Hall of Achievements</h1>
+            <p class="lead text-secondary">Celebrate your milestones and show off your skills.</p>
+        </div>
+    </div>
+
+    <!-- Achievements Grid -->
+    <div class="row">
+        {% for achievement in all_achievements %}
+        <div class="col-md-3 mb-4">
+            <div
+                class="card border-0 shadow-sm h-100 text-center p-3 {% if achievement.is_unlocked %}unlocked{% else %}locked{% endif %}">
+                <div class="achievement-icon mb-3">
+                    {% if achievement.icon %}
+                    <img src="{{ achievement.icon }}" alt="{{ achievement.name }}" class="img-fluid" width="80">
+                    {% else %}
+                    <i
+                        class="fas fa-medal fa-4x {% if achievement.is_unlocked %}text-warning{% else %}text-muted{% endif %}"></i>
+                    {% endif %}
+                </div>
+                <h5 class="fw-bold mb-1">{{ achievement.name }}</h5>
+                <p class="small text-secondary mb-3">{{ achievement.description }}</p>
+
+                {% if achievement.is_unlocked %}
+                <span class="badge bg-success rounded-pill w-auto mx-auto">Unlocked</span>
+                <small class="text-secondary mt-2">Earned on {{ achievement.unlocked_at|date }}</small>
+                {% else %}
+                <div class="progress mb-2" style="height: 8px;">
+                    <div class="progress-bar bg-primary" role="progressbar" style="width: {{ achievement.progress }}%;">
+                    </div>
+                </div>
+                <small class="text-secondary">{{ achievement.progress }}% of target</small>
+                {% endif %}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<style>
+    .card.locked {
+        opacity: 0.6;
+        filter: grayscale(1);
+    }
+
+    .card.unlocked {
+        border: 2px solid #ffca28 !important;
+    }
+
+    .achievement-icon {
+        transition: transform 0.3s ease;
+    }
+
+    .card:hover .achievement-icon {
+        transform: scale(1.1);
+    }
+</style>
+{% endblock %}

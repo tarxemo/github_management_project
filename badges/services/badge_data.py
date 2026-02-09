@@ -1,6 +1,7 @@
 from typing import Dict, Any
-from django.shortcuts import get_object_or_404
+from django.http import Http404
 from github_management.models import GitHubUser, Country
+from github_management.services import UserSyncService
 
 
 def _impact_score(user: GitHubUser) -> int:
@@ -21,7 +22,10 @@ def _streak_info(user: GitHubUser) -> Dict[str, Any]:
 
 
 def get_badge_context(username: str, badge_type: str, animated: bool, request=None) -> Dict[str, Any]:
-    user = get_object_or_404(GitHubUser, github_username__iexact=username)
+    # Automated on-the-fly sync if user is missing
+    user, created = UserSyncService.get_or_create_user(username)
+    if not user:
+        raise Http404(f"GitHub user {username} not found")
 
     base = {
         'username': user.github_username,
@@ -52,8 +56,11 @@ def get_badge_context(username: str, badge_type: str, animated: bool, request=No
     elif badge_type == 'impact':
         base.update({'impact': _impact_score(user)})
     elif badge_type == 'langs':
-        # Placeholder: if language stats exist elsewhere, wire here. Provide empty for now.
-        base.update({'languages': []})
+        from github_management.models import DeveloperSkill
+        skills = DeveloperSkill.objects.filter(github_username=user.github_username, 
+                                             skill_category=DeveloperSkill.SkillCategory.LANGUAGE).order_by('-proficiency_percentage')[:5]
+        langs = [{'name': s.skill_name, 'percentage': s.proficiency_percentage} for s in skills]
+        base.update({'languages': langs})
     elif badge_type == 'country-top':
         # Compute percentile in country
         percentile = None
@@ -61,6 +68,28 @@ def get_badge_context(username: str, badge_type: str, animated: bool, request=No
             total = GitHubUser.objects.filter(country_id=user.country_id).count() or 1
             percentile = round((user.rank / total) * 100, 1)
         base.update({'country_percentile': percentile})
+    elif badge_type == 'trophies':
+        from .trophy_service import TrophyService
+        trophies = TrophyService.get_trophies(user)
+        
+        total_trophies = len(trophies)
+        
+        # Enrich trophy data with coordinates (forced single row)
+        for i, trophy in enumerate(trophies):
+            trophy['row'] = 0
+            trophy['col'] = i
+            
+        # Dynamic width: Left Margin (28) + (Total * CardWidth+Gap) + Right Margin (28)
+        # 136px = 120px card + 16px gap
+        content_width = (total_trophies * 136) - 16
+        badge_width = max(760, 28 + content_width + 28)
+        badge_height = 200 # Fixed height for single row
+        
+        base.update({
+            'trophies': trophies,
+            'height': badge_height,
+            'width': badge_width,
+        })
     else:
         raise ValueError('Unknown badge type')
 

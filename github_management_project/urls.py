@@ -6,9 +6,9 @@ from django.views.decorators.csrf import csrf_exempt
 from django.conf import settings
 from django.conf.urls.static import static
 from django.contrib.sitemaps.views import sitemap
-from github_management.views_auth import HomeView, ProfileView, google_one_tap_auth
+from github_management.views.auth import HomeView, ProfileView, google_one_tap_auth
 from github_management.sitemap import sitemaps
-from github_management.views import SearchUsersView
+from github_management.views.core import SearchUsersView
 
 from django.views.generic.base import TemplateView
 from django.http import HttpResponse

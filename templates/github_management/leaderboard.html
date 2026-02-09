@@ -1,0 +1,164 @@
+{% extends 'base.html' %}
+{% load humanize %}
+
+{% block title %}GitHub Leaderboard - Ranking the Best Developers{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <!-- Header Section -->
+    <div class="row mb-5 text-center">
+        <div class="col-12">
+            <h1 class="display-4 fw-bold text-gradient">Top Developers</h1>
+            <p class="lead text-secondary">Ranking the most influential and productive developers on GitHub.</p>
+        </div>
+    </div>
+
+    <!-- Filters Section -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card shadow-sm border-0 bg-light-soft">
+                <div class="card-body">
+                    <form method="GET" class="row g-3 align-items-end">
+                        <div class="col-md-3">
+                            <label class="form-label fw-semibold">Ranking Type</label>
+                            <select name="type" class="form-select border-0 shadow-sm">
+                                {% for val, label in lb_types %}
+                                <option value="{{ val }}" {% if lb_type == val %}selected{% endif %}>{{ label }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label fw-semibold">Country</label>
+                            <select name="country" class="form-select border-0 shadow-sm">
+                                <option value="">Global</option>
+                                {% for country in countries %}
+                                <option value="{{ country.slug }}" {% if current_country == country.slug %}selected{% endif %}>{{ country.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label fw-semibold">Language</label>
+                            <select name="language" class="form-select border-0 shadow-sm">
+                                <option value="">All Languages</option>
+                                {% for lang in languages %}
+                                <option value="{{ lang }}" {% if current_language == lang %}selected{% endif %}>{{ lang }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <button type="submit" class="btn btn-primary w-100 shadow-sm">Apply Filters</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Leaderboard Table -->
+    <div class="row">
+        <div class="col-12">
+            {% if leaderboard and leaderboard.rankings %}
+            <div class="card shadow border-0 overflow-hidden">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="bg-dark text-white">
+                            <tr>
+                                <th class="ps-4">Rank</th>
+                                <th>Developer</th>
+                                <th class="text-center">Score</th>
+                                <th class="text-center">Contributions</th>
+                                <th class="pe-4 text-end">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for entry in leaderboard.entries.all %}
+                            <tr
+                                class="{% if entry.rank == 1 %}table-warning-light{% elif entry.rank <= 3 %}table-primary-light{% endif %}">
+                                <td class="ps-4">
+                                    <div class="d-flex align-items-center">
+                                        {% if entry.rank == 1 %}
+                                        <span class="fs-4 me-2">🥇</span>
+                                        {% elif entry.rank == 2 %}
+                                        <span class="fs-4 me-2">🥈</span>
+                                        {% elif entry.rank == 3 %}
+                                        <span class="fs-4 me-2">🥉</span>
+                                        {% else %}
+                                        <span class="badge bg-secondary rounded-pill me-2">#{{ entry.rank }}</span>
+                                        {% endif %}
+
+                                        {% if entry.rank_change > 0 %}
+                                        <small class="text-success"><i class="fas fa-caret-up"></i> {{ entry.rank_change
+                                            }}</small>
+                                        {% elif entry.rank_change < 0 %} <small class="text-danger"><i
+                                                class="fas fa-caret-down"></i> {{ entry.rank_change }}</small>
+                                            {% endif %}
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="d-flex align-items-center">
+                                        <img src="{{ entry.display_data.avatar_url }}" alt="{{ entry.github_username }}"
+                                            class="rounded-circle me-3" width="48" height="48">
+                                        <div>
+                                            <h6 class="mb-0 fw-bold">{{
+                                                entry.display_data.name|default:entry.github_username }}</h6>
+                                            <small class="text-secondary">@{{ entry.github_username }}</small>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td class="text-center">
+                                    <span class="fw-bold text-primary">{{ entry.score|floatformat:1 }}</span>
+                                </td>
+                                <td class="text-center">
+                                    {{ entry.display_data.contributions|intcomma }}
+                                </td>
+                                <td class="pe-4 text-end">
+                                    <a href="{% url 'github_management:user_detail' entry.github_username %}"
+                                        class="btn btn-sm btn-outline-primary rounded-pill">View Profile</a>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            {% else %}
+            <div class="text-center py-5 card shadow-sm border-0">
+                <div class="card-body">
+                    <div class="mb-4">
+                        <i class="fas fa-trophy fa-4x text-light-gray"></i>
+                    </div>
+                    <h4>No rankings available yet</h4>
+                    <p class="text-secondary">The leaderboard is being computed. Check back soon!</p>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<style>
+    .text-gradient {
+        background: linear-gradient(90deg, #2D3436 0%, #0984E3 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+    }
+
+    .bg-light-soft {
+        background-color: #f8f9fa;
+        border: 1px solid rgba(0, 0, 0, 0.05);
+    }
+
+    .table-warning-light {
+        background-color: rgba(255, 243, 205, 0.3);
+    }
+
+    .table-primary-light {
+        background-color: rgba(204, 229, 255, 0.2);
+    }
+
+    .text-light-gray {
+        color: #dee2e6;
+    }
+</style>
+{% endblock %}

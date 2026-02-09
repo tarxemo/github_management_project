@@ -428,18 +428,29 @@ import requests
 from django.conf import settings
 
 
+import random
+
 class GitHubAPI:
     def __init__(self, token=None):
         self.base_url = "https://api.github.com"
         self.graphql_url = "https://api.github.com/graphql"
-        self.token = token or settings.GITHUB_TOKEN
+        
+        # Token Rotation Logic
+        if token:
+            self.token = token
+        elif hasattr(settings, 'GITHUB_TOKENS') and settings.GITHUB_TOKENS:
+            # Pick a random token from the available pool
+            self.token = random.choice(settings.GITHUB_TOKENS)
+        else:
+            self.token = settings.GITHUB_TOKEN
+            
         self.headers = {
             "Authorization": f"Bearer {self.token}",
             "Accept": "application/vnd.github+json"
         }
 
     def get_user(self, username):
-        """Get user data including contribution statistics."""
+        """Get user data including contribution, stars, and language statistics."""
         try:
             # Get basic user info
             user_url = f"{self.base_url}/users/{username}"
@@ -447,27 +458,39 @@ class GitHubAPI:
             response.raise_for_status()
             user_data = response.json()
 
-            # Fetch contribution data via GraphQL
-            contributions = self.get_contributions(username)
+            # Fetch extended stats (contributions, stars, languages) via GraphQL
+            extended_stats = self.get_extended_stats(username)
 
             # Combine both
             return {
                 **user_data,
-                "contributions": contributions
+                "stats": extended_stats
             }
 
         except requests.RequestException as e:
             print(f"Error fetching GitHub user {username}: {e}")
             return None
 
-    def get_contributions(self, username):
-        """Get user contribution statistics from GitHub GraphQL API."""
+    def get_extended_stats(self, username):
+        """Get user contribution, stars, and language statistics from GitHub GraphQL API."""
         query = """
         query($login: String!) {
           user(login: $login) {
             contributionsCollection {
               contributionCalendar {
                 totalContributions
+              }
+            }
+            repositories(first: 100, ownerAffiliations: [OWNER], isFork: false, orderBy: {field: STARGAZERS, direction: DESC}) {
+              totalCount
+              nodes {
+                databaseId
+                id
+                name
+                stargazerCount
+                primaryLanguage {
+                  name
+                }
               }
             }
           }
@@ -484,19 +507,50 @@ class GitHubAPI:
             resp.raise_for_status()
 
             data = resp.json()
+            user_node = data.get("data", {}).get("user", {})
+            if not user_node:
+                return None
+
+            # Contributions
             total_contributions = (
-                data.get("data", {})
-                .get("user", {})
-                .get("contributionsCollection", {})
+                user_node.get("contributionsCollection", {})
                 .get("contributionCalendar", {})
                 .get("totalContributions", 0)
             )
 
+            # Repos, Stars, and Languages
+            repo_nodes = user_node.get("repositories", {}).get("nodes", [])
+            total_stars = sum(node.get("stargazerCount", 0) for node in repo_nodes)
+            
+            languages = {}
+            for node in repo_nodes:
+                lang = node.get("primaryLanguage")
+                if lang:
+                    lang_name = lang.get("name")
+                    languages[lang_name] = languages.get(lang_name, 0) + 1
+
             return {
-                "last_year": total_contributions,
-                "total": total_contributions
+                "contributions": {
+                    "last_year": total_contributions,
+                    "total": total_contributions
+                },
+                "total_stars": total_stars,
+                "languages": languages,
+                "top_repos": [
+                    {
+                        "github_id": node.get("databaseId"),
+                        "node_id": node.get("id"),
+                        "name": node.get("name"),
+                        "stars": node.get("stargazerCount")
+                    } for node in repo_nodes[:10]
+                ]
             }
 
         except Exception as e:
-            print(f"Error fetching contributions for {username}: {e}")
-            return {"last_year": 0, "total": 0}
+            print(f"Error fetching extended stats for {username}: {e}")
+            return {
+                "contributions": {"last_year": 0, "total": 0},
+                "total_stars": 0,
+                "languages": {},
+                "top_repos": []
+            }

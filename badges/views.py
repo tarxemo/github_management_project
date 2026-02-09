@@ -34,6 +34,7 @@ def github_badge(request, username: str, badge_type: str):
         'langs': 'badges/langs_badge.svg',
         'impact': 'badges/impact_badge.svg',
         'country-top': 'badges/country_top_badge.svg',
+        'trophies': 'badges/trophies_badge.svg',
     }
     template_name = template_map.get(badge_type)
     if not template_name:
@@ -49,6 +50,31 @@ def github_badge(request, username: str, badge_type: str):
             return resp
         # fallback to SVG if PNG renderer unavailable
 
-    resp = HttpResponse(svg, content_type='image/svg+xml; charset=utf-8')
+    resp = HttpResponse(svg, content_type='image/svg+xml')
     patch_response_headers(resp, cache_timeout=CACHE_TIMEOUT)
     return resp
+
+from django.views.generic import ListView
+from .models import Achievement, UserAchievement
+
+class AchievementListView(ListView):
+    model = Achievement
+    template_name = 'github_management/achievements.html'
+    context_object_name = 'all_achievements'
+
+    def get_queryset(self):
+        return Achievement.objects.all().order_by('tier', 'name')
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        if self.request.user.is_authenticated:
+            user_achievements = UserAchievement.objects.filter(user=self.request.user)
+            unlocked_map = {ua.achievement_id: ua for ua in user_achievements}
+            
+            # Enrich achievement objects with user status
+            for achievement in context['all_achievements']:
+                ua = unlocked_map.get(achievement.id)
+                achievement.is_unlocked = ua.is_unlocked if ua else False
+                achievement.unlocked_at = ua.unlocked_at if ua else None
+                achievement.progress = ua.progress_json if ua else 0 # Simple mock progress
+        return context

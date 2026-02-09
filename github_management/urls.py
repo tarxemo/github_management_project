@@ -1,7 +1,10 @@
 from django.urls import path
 from django.contrib.auth.decorators import login_required
-from . import views
-from .views_auth import HomeView
+from .views import core as views
+from .views.auth import HomeView
+from .views.leaderboard_view import LeaderboardView
+from .views.analytics_view import AnalyticsDashboardView
+from .views.discovery_view import DiscoveryFeedView
 
 app_name = 'github_management'
 
@@ -26,6 +29,7 @@ urlpatterns = [
     path('user/<str:github_username>/star-repos/',
          views.StarUserReposView.as_view(),
          name='user_star_repos'),
+         
     # Follow/Unfollow functionality
     path('follow/', 
          views.FollowRandomUsersView.as_view(), 
@@ -39,10 +43,16 @@ urlpatterns = [
     path('update-status/<int:action_id>/', 
          views.UpdateFollowStatusView.as_view(), 
          name='update_follow_status'),
+         
     path('fetch-all-countries/', 
          login_required(views.FetchAllCountriesView.as_view()), 
          name='fetch_all_countries'),
     path('recompute-all-countries-ranking/',
          login_required(views.RecomputeAllCountriesRankingView.as_view()),
          name='recompute_all_countries_ranking'),
+    
+    # Phase 6 Features
+    path('leaderboard/', LeaderboardView.as_view(), name='leaderboard'),
+    path('analytics/', AnalyticsDashboardView.as_view(), name='analytics'),
+    path('discovery/', DiscoveryFeedView.as_view(), name='discovery'),
 ]

@@ -6,7 +6,7 @@ from django.utils import timezone
 from datetime import timedelta
 from users.services.github_service import GitHubService
 from django.urls import reverse
-from .managers import GitHubUserManager
+from ..managers import GitHubUserManager
 from users.abstract_models import BaseUser
 import math
 

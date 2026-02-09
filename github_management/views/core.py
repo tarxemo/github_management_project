@@ -10,11 +10,11 @@ from django.utils import timezone
 from datetime import timedelta
 import random
 import logging
-from .models import Country, GitHubUser, GitHubFollowAction
+from ..models import Country, GitHubUser, GitHubFollowAction
 from users.models import UserFollowing
 from django.contrib.auth.mixins import UserPassesTestMixin
 from django.views.generic import View
-from .tasks import (
+from ..tasks import (
     fetch_all_countries_users,
     follow_random_users_task,
     unfollow_non_followers_task,
@@ -76,7 +76,7 @@ class RecomputeAllCountriesRankingView(View):
             return redirect('github_management:country_list')
 
         try:
-            from .tasks import recompute_all_countries_intelligence_ranking
+            from ..tasks import recompute_all_countries_intelligence_ranking
             task = recompute_all_countries_intelligence_ranking.delay()
             messages.success(
                 request,
@@ -117,7 +117,7 @@ class RecomputeCountryRankingView(LoginRequiredMixin, UserPassesTestMixin, View)
     def post(self, request, slug):
         country = get_object_or_404(Country, slug=slug)
         try:
-            from .tasks import recompute_country_intelligence_ranking
+            from ..tasks import recompute_country_intelligence_ranking
             task = recompute_country_intelligence_ranking.delay(country.id)
             if request.headers.get('x-requested-with') == 'XMLHttpRequest':
                 return JsonResponse({
@@ -138,7 +138,7 @@ class RecomputeCountryRankingView(LoginRequiredMixin, UserPassesTestMixin, View)
         return redirect('github_management:country_detail', slug=slug)
 
         try:
-            from .tasks import update_users_stats_batch
+            from ..tasks import update_users_stats_batch
             task = update_users_stats_batch.delay(user_ids, "GitHubUser")
             if request.headers.get('x-requested-with') == 'XMLHttpRequest':
                 return JsonResponse({
@@ -193,7 +193,7 @@ class FetchUsersView(View):
         
         try:
             # Import here to avoid circular imports
-            from .tasks import fetch_users_for_country
+            from ..tasks import fetch_users_for_country
             fetch_users_for_country.delay(country.id)
             messages.success(request, f"Started fetching users for {country.name}. This may take a while...")
         except Exception as e:
@@ -383,7 +383,7 @@ class UserDetailView(View):
         auto_refresh_started = False
         try:
             if not user.fetched_at or (timezone.now() - user.fetched_at) > timedelta(days=1):
-                from .tasks import update_users_stats_batch
+                from ..tasks import update_users_stats_batch
                 update_users_stats_batch.delay([user.id], "GitHubUser")
                 auto_refresh_started = True
         except Exception as e:
@@ -430,7 +430,7 @@ class UpdateSingleUserStatsView(LoginRequiredMixin, View):
                 'stale': False,
             })
         try:
-            from .tasks import update_users_stats_batch
+            from ..tasks import update_users_stats_batch
             task = update_users_stats_batch.delay([gh_user.id], "GitHubUser")
             return JsonResponse({
                 'success': True,

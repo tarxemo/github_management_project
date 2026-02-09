@@ -30,7 +30,34 @@ class User(AbstractUser, BaseUser):
         default='manual',
         help_text="How often to run intelligent follow/unfollow"
     )
-    last_intelligent_follow = models.DateTimeField(null=True, blank=True)
+    last_intelligent_follow = models.DateTimeField(
+        null=True, 
+        blank=True,
+        help_text="Last time the intelligent follow cycle was run"
+    )
+    # Social & Profile Enhancements
+    bio = models.TextField(max_length=500, blank=True, null=True)
+    tagline = models.CharField(max_length=160, blank=True, null=True)
+    website = models.URLField(blank=True, null=True)
+    twitter_username = models.CharField(max_length=15, blank=True, null=True)
+    linkedin_url = models.URLField(blank=True, null=True)
+    
+    class Availability(models.TextChoices):
+        OPEN_TO_COLLABORATE = 'collaborate', 'Open to Collaborate'
+        HIRING = 'hiring', 'Hiring / Looking for Talent'
+        LOOKING_FOR_JOB = 'job', 'Looking for Opportunities'
+        LEARNING = 'learning', 'Learning New Things'
+        NOT_SPECIFIED = 'none', 'Not Specified'
+        
+    availability = models.CharField(
+        max_length=20,
+        choices=Availability.choices,
+        default=Availability.NOT_SPECIFIED
+    )
+    
+    # Tech Stack (comma separated or JSON, using JSON for future flexibility)
+    preferred_tech_stack = models.JSONField(default=list, blank=True)
+    
     objects = UserManager()
     
     USERNAME_FIELD = 'email'

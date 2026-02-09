@@ -162,7 +162,12 @@ SOCIALACCOUNT_AUTO_SIGNUP = True
 LOGIN_REDIRECT_URL = '/profile/'
 LOGOUT_REDIRECT_URL = '/'
 
-GITHUB_TOKEN=os.getenv("GITHUB_TOKEN")
+GITHUB_TOKEN = os.getenv("GITHUB_TOKEN")
+# Comma-separated list of tokens for rotation
+GITHUB_TOKENS_STR = os.getenv("GITHUB_TOKENS", "")
+GITHUB_TOKENS = [t.strip() for t in GITHUB_TOKENS_STR.split(",") if t.strip()]
+if GITHUB_TOKEN and GITHUB_TOKEN not in GITHUB_TOKENS:
+    GITHUB_TOKENS.append(GITHUB_TOKEN)
 # -----------------------------
 # OAuth Settings (GitHub + Google)
 # -----------------------------
@@ -221,14 +226,19 @@ SOCIALACCOUNT_EMAIL_REQUIRED = True
 SOCIALACCOUNT_EMAIL_VERIFICATION = 'none'
 SOCIALACCOUNT_STORE_TOKENS = True
 if not DEBUG:
-    ACCOUNT_DEFAULT_HTTP_PROTOCOL = 'https'
+    ACCOUNT_DEFAULT_HTTP_PROTOCOL = os.getenv("ACCOUNT_DEFAULT_HTTP_PROTOCOL", "https")
 
     # # Session settings
-    SESSION_COOKIE_AGE = 1209600  # 2 weeks in seconds
-    SESSION_COOKIE_SECURE = True
-    CSRF_COOKIE_SECURE = True
-    SECURE_SSL_REDIRECT = True
+    SESSION_COOKIE_AGE = int(os.getenv("SESSION_COOKIE_AGE", 1209600))  # 2 weeks in seconds
+    SESSION_COOKIE_SECURE = os.getenv("SESSION_COOKIE_SECURE", "True").lower() == "true"
+    CSRF_COOKIE_SECURE = os.getenv("CSRF_COOKIE_SECURE", "True").lower() == "true"
+    SECURE_SSL_REDIRECT = os.getenv("SECURE_SSL_REDIRECT", "True").lower() == "true"
     SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+else:
+    # Explicitly disable these for local development to avoid issues
+    SESSION_COOKIE_SECURE = False
+    CSRF_COOKIE_SECURE = False
+    SECURE_SSL_REDIRECT = False
 
 
 # -----------------------------
@@ -255,6 +265,23 @@ CELERY_ACCEPT_CONTENT = ['json']
 CELERY_TASK_SERIALIZER = 'json'
 CELERY_RESULT_SERIALIZER = 'json'
 CELERY_TIMEZONE = os.getenv("CELERY_TIMEZONE", "UTC")
+
+from celery.schedules import crontab
+
+CELERY_BEAT_SCHEDULE = {
+    'daily-country-sync': {
+        'task': 'github_management.tasks.daily_country_sync_task',
+        'schedule': crontab(hour=0, minute=0),  # Run daily at midnight
+    },
+    'refresh-leaderboards': {
+        'task': 'github_management.tasks.update_all_leaderboards_task',
+        'schedule': crontab(hour=2, minute=0),  # Run daily at 2 AM
+    },
+    'global-stats-sync': {
+        'task': 'github_management.tasks.periodic_sync_dispatcher',
+        'schedule': crontab(minute=0),  # Run every hour
+    },
+}
 
 
 # -----------------------------

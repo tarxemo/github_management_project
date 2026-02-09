@@ -1,0 +1,110 @@
+{% extends 'base.html' %}
+{% load humanize %}
+
+{% block title %}Developer Discovery - Find Your Next Collaborator{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row mb-5 text-center">
+        <div class="col-12">
+            <h1 class="display-5 fw-bold">Discovery Feed</h1>
+            <p class="lead text-secondary">Personalized recommendations for you based on your stack and interests.</p>
+        </div>
+    </div>
+
+    <!-- Match Recommendations -->
+    <div class="row mb-5">
+        <div class="col-12 mb-3">
+            <h4 class="fw-bold"><i class="fas fa-magic text-primary me-2"></i> Recommended for You</h4>
+        </div>
+        {% for match in recommendations %}
+        <div class="col-md-4 mb-4">
+            <div class="card border-0 shadow-sm h-100 hover-lift">
+                <div class="card-body p-4">
+                    <div class="d-flex align-items-center mb-4">
+                        <img src="{{ match.user.avatar_url }}" alt="{{ match.user.github_username }}"
+                            class="rounded-circle me-3 shadow-sm" width="64" height="64">
+                        <div>
+                            <h5 class="mb-0 fw-bold">{{ match.user.full_name|default:match.user.github_username }}</h5>
+                            <small class="text-secondary">{{ match.user.country.name }}</small>
+                        </div>
+                        <div class="ms-auto">
+                            <span class="badge bg-primary rounded-pill">{{ match.match_score }}% Match</span>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="small text-secondary fw-bold text-uppercase">Common Skills</label>
+                        <div class="d-flex flex-wrap gap-1 mt-1">
+                            {% for skill in match.common_skills %}
+                            <span class="badge bg-light text-dark border">{{ skill }}</span>
+                            {% endfor %}
+                        </div>
+                    </div>
+
+                    <a href="{% url 'github_management:user_detail' match.user.github_username %}"
+                        class="btn btn-outline-primary w-100 rounded-pill">Connect</a>
+                </div>
+            </div>
+        </div>
+        {% empty %}
+        <div class="col-12">
+            <div class="alert alert-light border shadow-sm p-4 text-center">
+                <p class="mb-0">Link your GitHub profile to get personalized recommendations!</p>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- Trending Repositories -->
+    <div class="row mb-5">
+        <div class="col-12 mb-3">
+            <h4 class="fw-bold"><i class="fas fa-fire text-danger me-2"></i> Trending Projects</h4>
+        </div>
+        {% for repo in trending_repos %}
+        <div class="col-md-6 mb-4">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body p-4">
+                    <div class="d-flex justify-content-between mb-2">
+                        <h5 class="mb-0 fw-bold">
+                            <a href="{{ repo.html_url }}" class="text-decoration-none text-dark" target="_blank">
+                                {{ repo.name }}
+                            </a>
+                        </h5>
+                        <div class="text-warning">
+                            <i class="fas fa-star me-1"></i> {{ repo.stargazers_count|intcomma }}
+                        </div>
+                    </div>
+                    <p class="text-secondary small mb-3">{{ repo.description|truncatechars:100 }}</p>
+                    <div class="d-flex align-items-center justify-content-between">
+                        <div>
+                            {% if repo.language %}
+                            <span class="badge bg-info-light text-info">{{ repo.language }}</span>
+                            {% endif %}
+                        </div>
+                        <div class="small text-secondary">
+                            Updated {{ repo.github_updated_at|naturaltime }}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<style>
+    .hover-lift {
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .hover-lift:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 1rem 3rem rgba(0, 0, 0, 0.1) !important;
+    }
+
+    .bg-info-light {
+        background-color: rgba(13, 202, 240, 0.1);
+    }
+</style>
+{% endblock %}

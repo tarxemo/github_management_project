@@ -150,11 +150,22 @@ github_user.rank }} rank in {{ github_user.country.name }}) - GitHub User{% endb
         <div class="sm:col-span-1">
           <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Blog/Website</dt>
           <dd class="mt-1 text-sm">
-            {% if github_user.blog %}
-            <a href="{{ github_user.blog }}" target="_blank"
-              class="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-300">{{
-              github_user.blog }}</a>
-            {% else %}-{% endif %}
+{% if github_user.blog %}
+  {% if github_user.blog|slice:":4" != "http" %}
+    <a href="https://{{ github_user.blog }}" target="_blank"
+       class="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-300">
+      {{ github_user.blog }}
+    </a>
+  {% else %}
+    <a href="{{ github_user.blog }}" target="_blank"
+       class="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-300">
+      {{ github_user.blog }}
+    </a>
+  {% endif %}
+{% else %}
+  -
+{% endif %}
+
           </dd>
         </div>
 
@@ -163,8 +174,7 @@ github_user.rank }} rank in {{ github_user.country.name }}) - GitHub User{% endb
           <dd class="mt-1 text-sm">
             {% if github_user.email_public %}
             <a href="mailto:{{ github_user.email_public }}"
-              class="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-300">{{
-              github_user.email_public }}</a>
+              class="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-300">{{github_user.email_public }}</a>
             {% else %}-{% endif %}
           </dd>
         </div>
@@ -173,8 +183,7 @@ github_user.rank }} rank in {{ github_user.country.name }}) - GitHub User{% endb
           <dd class="mt-1 text-sm">
             {% if github_user.twitter_username %}
             <a href="https://twitter.com/{{ github_user.twitter_username }}" target="_blank"
-              class="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-300">@{{
-              github_user.twitter_username }}</a>
+              class="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-300">@{{github_user.twitter_username }}</a>
             {% else %}-{% endif %}
           </dd>
         </div>
@@ -194,20 +203,16 @@ github_user.rank }} rank in {{ github_user.country.name }}) - GitHub User{% endb
         </div>
         <div class="sm:col-span-1">
           <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Account</dt>
-          <dd class="mt-1 text-sm text-gray-900 dark:text-white">{{ github_user.account_type|default:'-' }}{% if
-            github_user.site_admin %} • Site Admin{% endif %}</dd>
+          <dd class="mt-1 text-sm text-gray-900 dark:text-white">{{ github_user.account_type|default:'-' }}{% if github_user.site_admin %} • Site Admin{% endif %}</dd>
         </div>
 
         <div class="sm:col-span-1">
           <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Joined GitHub</dt>
-          <dd class="mt-1 text-sm text-gray-900 dark:text-white">{% if github_user.github_created_at %}{{
-            github_user.github_created_at|date:"M d, Y" }} ({{ github_user.github_created_at|timesince }} ago){% else
-            %}-{% endif %}</dd>
+          <dd class="mt-1 text-sm text-gray-900 dark:text-white">{% if github_user.github_created_at %}{{ github_user.github_created_at|date:"M d, Y" }} ({{ github_user.github_created_at|timesince }} ago){% else %}-{% endif %}</dd>
         </div>
         <div class="sm:col-span-1">
           <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Last Updated</dt>
-          <dd class="mt-1 text-sm text-gray-900 dark:text-white">{% if github_user.github_updated_at %}{{
-            github_user.github_updated_at|date:"M d, Y H:i" }}{% else %}-{% endif %}</dd>
+          <dd class="mt-1 text-sm text-gray-900 dark:text-white">{% if github_user.github_updated_at %}{{ github_user.github_updated_at|date:"M d, Y H:i" }}{% else %}-{% endif %}</dd>
         </div>
       </dl>
     </div>
@@ -247,8 +252,7 @@ github_user.rank }} rank in {{ github_user.country.name }}) - GitHub User{% endb
         </div>
         <div class="bg-gray-50 dark:bg-gray-700 rounded-md p-4">
           <div class="text-sm text-gray-500 dark:text-gray-300">Contributions</div>
-          <div class="text-xl font-semibold text-gray-900 dark:text-white">{{
-            github_user.contributions_last_year|intcomma }}</div>
+          <div class="text-xl font-semibold text-gray-900 dark:text-white">{{ github_user.contributions_last_year|intcomma }}</div>
         </div>
         <div class="bg-gray-50 dark:bg-gray-700 rounded-md p-4">
           <div class="text-sm text-gray-500 dark:text-gray-300">Intelligence</div>

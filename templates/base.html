@@ -4,39 +4,44 @@
 {% load static %}
 <!DOCTYPE html>
 <html lang="en" class="h-full">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="Discover and connect with GitHub users by country. Find top developers, follow, and grow your network.">
+    <meta name="description"
+        content="Discover and connect with GitHub users by country. Find top developers, follow, and grow your network.">
     <meta name="keywords" content="GitHub, developers, programmers, open source, coding, software development">
     <meta name="author" content="GitHub Management">
-    
+
     <!-- Open Graph / Facebook -->
     <meta property="og:type" content="website">
     <meta property="og:url" content="{{ request.build_absolute_uri }}">
     <meta property="og:title" content="GitHub Management - Connect with Developers Worldwide">
-    <meta property="og:description" content="Discover and connect with GitHub users by country. Find top developers, follow, and grow your network.">
+    <meta property="og:description"
+        content="Discover and connect with GitHub users by country. Find top developers, follow, and grow your network.">
     <meta property="og:image" content="{% static 'logo/og-image.png' %}">
-    
+
     <!-- Twitter -->
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:url" content="{{ request.build_absolute_uri }}">
     <meta name="twitter:title" content="GitHub Management - Connect with Developers Worldwide">
-    <meta name="twitter:description" content="Discover and connect with GitHub users by country. Find top developers, follow, and grow your network.">
+    <meta name="twitter:description"
+        content="Discover and connect with GitHub users by country. Find top developers, follow, and grow your network.">
     <meta name="twitter:image" content="{% static 'logo/og-image.png' %}">
-    
+
     <!-- Canonical URL -->
     <link rel="canonical" href="{{ request.build_absolute_uri }}">
-    
+
     <!-- Favicon -->
     <link rel="icon" type="image/x-icon" href="{% static 'logo/favicon.ico' %}">
     <link rel="apple-touch-icon" href="{% static 'logo/apple-touch-icon.png' %}">
-    
+
     <!-- OpenSearch -->
-    <link rel="search" type="application/opensearchdescription+xml" title="GitHub Management" href="{% url 'opensearch' %}">
-    
+    <link rel="search" type="application/opensearchdescription+xml" title="GitHub Management"
+        href="{% url 'opensearch' %}">
+
     <title>{% block title %}GitHub Management - Connect with Developers Worldwide{% endblock %}</title>
-    
+
     <!-- Structured Data / JSON-LD -->
     <script type="application/ld+json">
     {
@@ -54,15 +59,16 @@
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Google Fonts -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
+        rel="stylesheet">
     <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    
+
     <script>
         // Theme management - runs before page render to prevent flash
-        (function() {
-            const theme = localStorage.getItem('theme') || 
-                         (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+        (function () {
+            const theme = localStorage.getItem('theme') ||
+                (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
             document.documentElement.classList.toggle('dark', theme === 'dark');
         })();
 
@@ -85,11 +91,11 @@
         body {
             font-family: 'Inter', sans-serif;
         }
-        
+
         .gradient-bg {
             background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
         }
-        
+
         .dark .gradient-bg {
             background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
         }
@@ -137,12 +143,14 @@
         }
 
         /* Enhanced focus states */
-        a:focus, button:focus {
+        a:focus,
+        button:focus {
             outline: 2px solid #6366f1;
             outline-offset: 2px;
         }
 
-        .dark a:focus, .dark button:focus {
+        .dark a:focus,
+        .dark button:focus {
             outline-color: #818cf8;
         }
 
@@ -152,6 +160,7 @@
                 transform: translateY(-20px);
                 opacity: 0;
             }
+
             to {
                 transform: translateY(0);
                 opacity: 1;
@@ -164,6 +173,7 @@
     </style>
     {% block extra_head %}{% endblock %}
 </head>
+
 <body class="h-full bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100">
     <!-- Google One Tap Sign In -->
     {% if not user.is_authenticated %}
@@ -194,13 +204,13 @@
                     {% endif %}">
                     <div class="flex-shrink-0">
                         {% if message.tags == 'error' %}
-                            <i class="fas fa-exclamation-circle text-red-600 dark:text-red-400 text-xl"></i>
+                        <i class="fas fa-exclamation-circle text-red-600 dark:text-red-400 text-xl"></i>
                         {% elif message.tags == 'success' %}
-                            <i class="fas fa-check-circle text-green-600 dark:text-green-400 text-xl"></i>
+                        <i class="fas fa-check-circle text-green-600 dark:text-green-400 text-xl"></i>
                         {% elif message.tags == 'warning' %}
-                            <i class="fas fa-exclamation-triangle text-yellow-600 dark:text-yellow-400 text-xl"></i>
+                        <i class="fas fa-exclamation-triangle text-yellow-600 dark:text-yellow-400 text-xl"></i>
                         {% else %}
-                            <i class="fas fa-info-circle text-blue-600 dark:text-blue-400 text-xl"></i>
+                        <i class="fas fa-info-circle text-blue-600 dark:text-blue-400 text-xl"></i>
                         {% endif %}
                     </div>
                     <div class="flex-1
@@ -239,13 +249,16 @@
                     &copy; {% now "Y" %} GitHub Manager. All rights reserved.
                 </p>
                 <div class="flex items-center space-x-4">
-                    <a href="mailto:code@tarxemo.com" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors">
+                    <a href="mailto:code@tarxemo.com"
+                        class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors">
                         <i class="fab fa-envelope"></i>
                     </a>
-                    <a href="https://github.com/tarxemo/github_management_project.git" target="_blank" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors">
+                    <a href="https://github.com/tarxemo/github_management_project.git" target="_blank"
+                        class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors">
                         <i class="fab fa-github"></i>
                     </a>
-                    <a href="https://www.linkedin.com/in/tar-xemo/" target="_blank" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors">
+                    <a href="https://www.linkedin.com/in/tar-xemo/" target="_blank"
+                        class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors">
                         <i class="fab fa-linkedin"></i>
                     </a>
                 </div>
@@ -254,5 +267,33 @@
     </footer>
 
     {% block extra_js %}{% endblock %}
+
+    <!-- Customer Support Widget -->
+    <!-- React & ReactDOM (Required Dependencies) -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+
+    <!-- SiteWise Customer Support -->
+    <link rel="stylesheet" href="https://unpkg.com/@tarxemo/customer_support@1.2.11/dist/customer_support.css">
+    <script src="https://unpkg.com/@tarxemo/customer_support@1.2.11/dist/index.umd.js"></script>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            window.CustomerSupport.init({
+                apiKey: 'Bo-WVyTaUexLcMLYPJa9vDr8cwyoCP9KiIZO_jZ939o', // Public Key
+                position: 'bottom-right',
+                theme: {
+                    primaryColor: '#6366f1',
+                    secondaryColor: '#8b5cf6',
+                    backgroundColor: '#ffffff',
+                    textColor: '#1f2937',
+                    borderRadius: '12px'
+                },
+                welcomeMessage: "Hi there! Need help with GitHub Management? Ask us anything!",
+                placeholder: "Ask about country stats, top users..."
+            });
+        });
+    </script>
 </body>
+
 </html>

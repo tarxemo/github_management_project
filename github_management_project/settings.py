@@ -176,6 +176,12 @@ GITHUB_OAUTH2_SECRET = os.getenv("GITHUB_OAUTH2_SECRET")
 GOOGLE_OAUTH2_CLIENT_ID = os.getenv("GOOGLE_OAUTH2_CLIENT_ID")
 GOOGLE_OAUTH2_SECRET = os.getenv("GOOGLE_OAUTH2_SECRET")
 
+# -----------------------------
+# SiteWise Customer Support
+# -----------------------------
+SITEWISE_API_KEY = os.getenv("SITEWISE_API_KEY", "")
+SITEWISE_BASE_URL = os.getenv("SITEWISE_BASE_URL", "https://api.yoursitewise.com")
+
 # Social Account Settings
 SOCIALACCOUNT_PROVIDERS = {
     'github': {
@@ -309,6 +315,7 @@ TEMPLATES = [
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
                 'users.context_processors.google_auth',
+                'github_management_project.utils.sitewise_context',
             ],
         },
     },

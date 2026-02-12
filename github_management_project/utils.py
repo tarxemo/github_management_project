@@ -84,3 +84,37 @@ def add_text_watermark(canvas, doc, text="Leonidas Farm", font_size=30, angle=45
             canvas.restoreState()
 
     canvas.restoreState()
+
+
+def get_github_token():
+    """
+    Retrieve the next available GitHub token using round-robin.
+    """
+    from django.conf import settings
+    from django.core.cache import cache
+
+    tokens = settings.GITHUB_TOKENS
+    if not tokens:
+        raise ValueError("No GitHub tokens configured.")
+
+    # Use cache to track the current token index
+    cache_key = 'github_token_index'
+    current_index = cache.get(cache_key, 0)
+
+    # Get the token and update the index
+    token = tokens[current_index]
+    next_index = (current_index + 1) % len(tokens)
+    cache.set(cache_key, next_index, timeout=None)
+
+    return token
+
+
+def sitewise_context(request):
+    """
+    Context processor to make SiteWise configuration available in templates.
+    """
+    from django.conf import settings
+    return {
+        'SITEWISE_API_KEY': settings.SITEWISE_API_KEY,
+        'SITEWISE_BASE_URL': settings.SITEWISE_BASE_URL,
+    }

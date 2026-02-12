@@ -88,8 +88,7 @@
                                         {% endif %}
 
                                         {% if entry.rank_change > 0 %}
-                                        <small class="text-success"><i class="fas fa-caret-up"></i> {{ entry.rank_change
-                                            }}</small>
+                                        <small class="text-success"><i class="fas fa-caret-up"></i> {{ entry.rank_change }}</small>
                                         {% elif entry.rank_change < 0 %} <small class="text-danger"><i
                                                 class="fas fa-caret-down"></i> {{ entry.rank_change }}</small>
                                             {% endif %}
@@ -100,8 +99,7 @@
                                         <img src="{{ entry.display_data.avatar_url }}" alt="{{ entry.github_username }}"
                                             class="rounded-circle me-3" width="48" height="48">
                                         <div>
-                                            <h6 class="mb-0 fw-bold">{{
-                                                entry.display_data.name|default:entry.github_username }}</h6>
+                                            <h6 class="mb-0 fw-bold">{{ entry.display_data.name|default:entry.github_username }}</h6>
                                             <small class="text-secondary">@{{ entry.github_username }}</small>
                                         </div>
                                     </div>

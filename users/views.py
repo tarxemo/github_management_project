@@ -132,31 +132,109 @@ def relationship_management(request):
         'paginator': paginator,
     }
     
+    if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+        return render(request, 'users/partials/user_grid.html', context)
+
     return render(request, 'users/relationship_management.html', context)
 
 @login_required
 def follow_user(request, username):
     target_user = get_object_or_404(User, github_username__iexact=username)
+    is_ajax = request.headers.get('x-requested-with') == 'XMLHttpRequest'
+
     # Ensure token present
     if not getattr(request.user, 'github_access_token', None):
+        if is_ajax:
+             return JsonResponse({'status': 'error', 'message': 'GitHub token missing.'}, status=403)
         from django.urls import reverse
         add_token_url = reverse('add_github_token')
         messages.error(request, f"GitHub token missing. Please add your token here: {add_token_url}")
         return redirect('relationship_management')
-    GitHubService.follow_user_on_github(request.user, target_user.github_username)
+    
+    try:
+        GitHubService.follow_user_on_github(request.user, target_user.github_username)
+        # Update local state immediately if possible, or wait for webhook/sync
+        # Use update_or_create to reflect change immediately in local DB for UI feedback
+        UserFollowing.objects.get_or_create(from_user=request.user, to_user=target_user)
+        
+    except Exception as e:
+        if is_ajax:
+            return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
+        messages.error(request, f"Error following user: {e}")
+        return redirect('relationship_management')
+
+    if is_ajax:
+        # Get updated stats
+        following_count = UserFollowing.objects.filter(from_user=request.user).count()
+        follower_count = UserFollowing.objects.filter(to_user=request.user).count()
+        mutual_count = UserFollowing.objects.filter(from_user=request.user, to_user__in=UserFollowing.objects.filter(to_user=request.user).values('from_user')).count()
+        
+        # Target user stats (approximate, or fetch fresh)
+        target_followers = UserFollowing.objects.filter(to_user=target_user).count()
+        
+        return JsonResponse({
+            'status': 'success',
+            'is_following': True,
+            'target_stats': {
+                'followers': target_followers
+            },
+            'user_stats': {
+                'following': following_count,
+                'followers': follower_count,
+                'mutual': mutual_count,
+                'total': following_count + follower_count # simplified total
+            }
+        })
+
     messages.success(request, f"Started following {target_user.github_username}.")
     return redirect('relationship_management')
 
 @login_required
 def unfollow_user(request, username):
     target_user = get_object_or_404(User, github_username__iexact=username)
+    is_ajax = request.headers.get('x-requested-with') == 'XMLHttpRequest'
+
     # Ensure token present
     if not getattr(request.user, 'github_access_token', None):
+        if is_ajax:
+             return JsonResponse({'status': 'error', 'message': 'GitHub token missing.'}, status=403)
         from django.urls import reverse
         add_token_url = reverse('add_github_token')
         messages.error(request, f"GitHub token missing. Please add your token here: {add_token_url}")
         return redirect('relationship_management')
-    GitHubService.unfollow_user_on_github(request.user, target_user.github_username)
+    
+    try:
+        GitHubService.unfollow_user_on_github(request.user, target_user.github_username)
+        # Reflect change locally
+        UserFollowing.objects.filter(from_user=request.user, to_user=target_user).delete()
+    except Exception as e:
+        if is_ajax:
+             return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
+        messages.error(request, f"Error unfollowing user: {e}")
+        return redirect('relationship_management')
+
+    if is_ajax:
+        # Get updated stats
+        following_count = UserFollowing.objects.filter(from_user=request.user).count()
+        follower_count = UserFollowing.objects.filter(to_user=request.user).count()
+        mutual_count = UserFollowing.objects.filter(from_user=request.user, to_user__in=UserFollowing.objects.filter(to_user=request.user).values('from_user')).count()
+        
+        target_followers = UserFollowing.objects.filter(to_user=target_user).count()
+
+        return JsonResponse({
+            'status': 'success',
+            'is_following': False,
+             'target_stats': {
+                'followers': target_followers
+            },
+            'user_stats': {
+                'following': following_count,
+                'followers': follower_count,
+                'mutual': mutual_count,
+                'total': following_count + follower_count
+            }
+        })
+
     messages.success(request, f"Unfollowed {target_user.github_username}.")
     return redirect('relationship_management')
 
@@ -191,6 +269,10 @@ def sync_relationships_now(request):
 
     from users.tasks import sync_github_followers_following
     sync_github_followers_following.delay(user.id)
+    
+    if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+        return JsonResponse({'status': 'success', 'message': 'Started background sync of your GitHub followers and following.'})
+        
     messages.success(request, "Started background sync of your GitHub followers and following.")
     return redirect('relationship_management')
 

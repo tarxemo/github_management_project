@@ -1,7 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}{{ github_user.github_username }} ({{ github_user.full_name|default:github_user.github_username }}) ({{
-github_user.rank }} rank in {{ github_user.country.name }}) - GitHub User{% endblock %}
+{% block title %}{{ github_user.github_username }} ({{ github_user.full_name|default:github_user.github_username }}) ({{ github_user.rank }} rank in {{ github_user.country.name }}) - GitHub User{% endblock %}
 
 {% block extra_head %}
 <meta name="description"
@@ -189,8 +188,7 @@ github_user.rank }} rank in {{ github_user.country.name }}) - GitHub User{% endb
         </div>
         <div class="sm:col-span-1">
           <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Hireable</dt>
-          <dd class="mt-1 text-sm text-gray-900 dark:text-white">{% if github_user.hireable %}Yes{% elif
-            github_user.hireable is not None %}No{% else %}-{% endif %}</dd>
+          <dd class="mt-1 text-sm text-gray-900 dark:text-white">{% if github_user.hireable %}Yes{% elif github_user.hireable is not None %}No{% else %}-{% endif %}</dd>
         </div>
 
         <div class="sm:col-span-1">

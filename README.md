@@ -110,3 +110,9 @@ This project is licensed under the MIT License.
 ## 🙏 Join the community
 Join us in building the ultimate developer ecosystem!
 Project Link: [https://github.tarxemo.com](https://github.tarxemo.com)
+
+# working versions
+```
+django-graphql-jwt==0.3.0 
+PyJWT==1.7.1
+```
